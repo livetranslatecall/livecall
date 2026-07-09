@@ -446,7 +446,10 @@ await channel.subscribe(async (status) => {
    ========================================================================= */
 async function initMedia() {
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    localStream = await navigator.mediaDevices.getUserMedia({
+  video: { deviceId: { ideal: "e4bb15485886a2b2f9a5f8b473c4e1dbc68c14a0a9c93b2b89ea8e3816d4556f" } },
+  audio: true
+});
     localVideo.srcObject = localStream;
   } catch (err) {
     console.error("Kamera/mikrofon hiba:", err);
