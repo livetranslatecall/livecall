@@ -416,23 +416,32 @@ async function setupChannel(code) {
   channel.on("presence", { event: "sync" }, () => {
     const state = channel.presenceState();
     const count = Object.keys(state).length;
-    // Az initiator akkor indítja az offert, ha már legalább 2 résztvevő van
-    // és még nincs helyi leíró beállítva
     if (count >= 2 && isInitiator && pc && !pc.currentLocalDescription) {
       startCallAsInitiator();
     }
   });
 
-  await channel.subscribe(async (status) => {
-    if (status === "SUBSCRIBED") {
-      await channel.track({
-        name: myName || "Vendég",
-        lang: myLang,
-        initiator: isInitiator
-      });
+  channel.on("broadcast", { event: "signal" }, ({ payload }) => {
+    if (payload.kind === "request-offer" && isInitiator && pc && !pc.currentLocalDescription) {
+      startCallAsInitiator();
     }
   });
-}
+
+await channel.subscribe(async (status) => {
+    if (status === "SUBSCRIBED") {
+      await channel.track({ name: myName || "Vendég", lang: myLang, initiator: isInitiator });
+
+      if (!isInitiator) {
+        setTimeout(() => {
+          channel.send({
+            type: "broadcast",
+            event: "signal",
+            payload: { kind: "request-offer" }
+          });
+        }, 800);
+      }
+    }
+  });
 
 /* =========================================================================
    WEBRTC
