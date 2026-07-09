@@ -446,10 +446,22 @@ await channel.subscribe(async (status) => {
    ========================================================================= */
 async function initMedia() {
   try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cameras = devices.filter(d => d.kind === "videoinput");
+    const preferred = cameras.find(d =>
+      d.label.toLowerCase().includes("integrated") ||
+      d.label.toLowerCase().includes("integrated camera") ||
+      d.label.toLowerCase().includes("beépített") ||
+      d.label.toLowerCase().includes("webcam")
+    );
+    const videoConstraint = preferred
+      ? { deviceId: { exact: preferred.deviceId } }
+      : { facingMode: "user" };
+
     localStream = await navigator.mediaDevices.getUserMedia({
-  video: { deviceId: { ideal: "e4bb15485886a2b2f9a5f8b473c4e1dbc68c14a0a9c93b2b89ea8e3816d4556f" } },
-  audio: true
-});
+      video: videoConstraint,
+      audio: true
+    });
     localVideo.srcObject = localStream;
   } catch (err) {
     console.error("Kamera/mikrofon hiba:", err);
