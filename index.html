@@ -9,8 +9,16 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- CSP meta az eval() engedélyezéséhez (szükséges a Supabase SDK-hoz) -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net https://yyexlblyepkxyqqbgpvu.supabase.co; worker-src 'self' blob:;">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+<!-- Supabase SDK betöltése CDN-ről (kerüli az eval() problémát) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
 <style>
   :root{
     --bg:#0d1420;
@@ -259,6 +267,10 @@
 const SUPABASE_URL = "https://yyexlblyepkxyqqbgpvu.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZXhsYmx5ZXBreHlxcWJncHZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTE5MjAsImV4cCI6MjA5OTEyNzkyMH0.qG1iDFLarL_OCAuJVnpsb6uOUMRNvUyWdpxYw7C5TDs";
 
+// Globálisan is elérhetővé tesszük (más scriptek számára)
+window.SUPABASE_URL = SUPABASE_URL;
+window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
+
 /* Ingyenes TURN szerver (nyilvános teszt-hitelesítő adatok, korlátozott
    kapacitással — ha instabil, cseréld le saját ingyenes Metered.ca fiókra). */
 const ICE_SERVERS = [
@@ -272,7 +284,8 @@ const LANG_LABEL = { hu: "Magyar", en: "English", ru: "Русский" };
 const LANG_TAG = { hu: "HU", en: "EN", ru: "RU" };
 const STT_LOCALE = { hu: "hu-HU", en: "en-US", ru: "ru-RU" };
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Supabase SDK betöltése a window objektumból (CDN-ről)
+const { createClient } = window.supabase;
 
 /* ---------- Elemek ---------- */
 const el = (id) => document.getElementById(id);
