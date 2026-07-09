@@ -7,11 +7,13 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d1420">
 <link rel="apple-touch-icon" href="icon-192.png">
+<!-- Frissített meta tag-ek -->
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<!-- CSP meta az eval() engedélyezéséhez (szükséges a Supabase SDK-hoz) -->
-<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net https://yyexlblyepkxyqqbgpvu.supabase.co; worker-src 'self' blob:;">
+<!-- CSP az inline scriptekhez is (hozzáadva az 'unsafe-inline' a böngésző kiterjesztések miatt) -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://yyexlblyepkxyqqbgpvu.supabase.co; worker-src 'self' blob:;">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
