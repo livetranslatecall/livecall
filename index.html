@@ -7,18 +7,17 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d1420">
 <link rel="apple-touch-icon" href="icon-192.png">
-<!-- Frissített meta tag-ek -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<!-- CSP az inline scriptekhez is (hozzáadva az 'unsafe-inline' a böngésző kiterjesztések miatt) -->
-<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://yyexlblyepkxyqqbgpvu.supabase.co; worker-src 'self' blob:;">
+<!-- CSP - enyhítve a böngésző kiterjesztések miatt -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://yyexlblyepkxyqqbgpvu.supabase.co; worker-src 'self' blob:; connect-src 'self' https://yyexlblyepkxyqqbgpvu.supabase.co wss://yyexlblyepkxyqqbgpvu.supabase.co https://api.mymemory.translated.net;">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 
-<!-- Supabase SDK betöltése CDN-ről (kerüli az eval() problémát) -->
+<!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <style>
@@ -263,18 +262,15 @@
 
 <script type="module">
 /* =========================================================================
-   BEÁLLÍTÁS — ide kell beírnod a saját Supabase adataidat
-   (Supabase Dashboard → Project Settings → API)
+   BEÁLLÍTÁS — Supabase adatok
    ========================================================================= */
 const SUPABASE_URL = "https://yyexlblyepkxyqqbgpvu.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZXhsYmx5ZXBreHlxcWJncHZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTE5MjAsImV4cCI6MjA5OTEyNzkyMH0.qG1iDFLarL_OCAuJVnpsb6uOUMRNvUyWdpxYw7C5TDs";
 
-// Globálisan is elérhetővé tesszük (más scriptek számára)
+// Globálisan is elérhető
 window.SUPABASE_URL = SUPABASE_URL;
 window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 
-/* Ingyenes TURN szerver (nyilvános teszt-hitelesítő adatok, korlátozott
-   kapacitással — ha instabil, cseréld le saját ingyenes Metered.ca fiókra). */
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
@@ -286,7 +282,7 @@ const LANG_LABEL = { hu: "Magyar", en: "English", ru: "Русский" };
 const LANG_TAG = { hu: "HU", en: "EN", ru: "RU" };
 const STT_LOCALE = { hu: "hu-HU", en: "en-US", ru: "ru-RU" };
 
-// Supabase SDK betöltése a window objektumból (CDN-ről)
+// Supabase SDK betöltése a window objektumból
 const { createClient } = window.supabase;
 
 /* ---------- Elemek ---------- */
@@ -314,12 +310,6 @@ let pendingCandidates = [];
 let remoteDescSet = false;
 const translateCache = new Map();
 
-/* Ha nincs kitöltve a Supabase konfiguráció, jelezzük egyértelműen. */
-if (SUPABASE_URL.includes("YOUR-PROJECT") || SUPABASE_ANON_KEY.includes("YOUR-ANON")) {
-  setupStatus.textContent = "⚠️ Előbb írd be a Supabase URL-t és anon kulcsot a kód elején (SUPABASE_URL / SUPABASE_ANON_KEY).";
-  setupStatus.style.color = "#f2a65a";
-}
-
 /* ========================= FORDÍTÁS ========================= */
 async function translateText(text, sourceLang, targetLang) {
   if (!text || sourceLang === targetLang) return text;
@@ -334,7 +324,7 @@ async function translateText(text, sourceLang, targetLang) {
     return translated;
   } catch (e) {
     console.error("Fordítási hiba:", e);
-    return text + " (fordítás sikertelen)";
+    return text;
   }
 }
 
@@ -344,6 +334,10 @@ function randomCode() {
   let s = "";
   for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return s;
+}
+
+function cryptoId() {
+  return "u-" + Math.random().toString(36).slice(2, 10);
 }
 
 async function setupChannel(code) {
@@ -357,26 +351,28 @@ async function setupChannel(code) {
   channel.on("presence", { event: "sync" }, () => {
     const state = channel.presenceState();
     const count = Object.keys(state).length;
-    if (count >= 2 && isInitiator && !pc.currentLocalDescription) {
+    if (count >= 2 && isInitiator && pc && !pc.currentLocalDescription) {
       startCallAsInitiator();
     }
   });
 
   await channel.subscribe(async (status) => {
     if (status === "SUBSCRIBED") {
-      await channel.track({ name: myName, lang: myLang, initiator: isInitiator });
+      await channel.track({ name: myName || "Vendég", lang: myLang, initiator: isInitiator });
     }
   });
 }
 
-function cryptoId() {
-  return "u-" + Math.random().toString(36).slice(2, 10);
-}
-
 /* ========================= WEBRTC ========================= */
 async function initMedia() {
-  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  localVideo.srcObject = localStream;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    localVideo.srcObject = localStream;
+  } catch (err) {
+    console.error("Kamera/mikrofon hiba:", err);
+    setupStatus.textContent = "❌ Nincs engedély a kamerához/mikrofonhoz!";
+    throw err;
+  }
 }
 
 function createPeerConnection() {
@@ -385,47 +381,58 @@ function createPeerConnection() {
   localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 
   pc.ontrack = (event) => {
-    remoteVideo.srcObject = event.streams[0];
+    if (event.streams && event.streams[0]) {
+      remoteVideo.srcObject = event.streams[0];
+    }
   };
 
   pc.onicecandidate = (event) => {
-    if (event.candidate) {
+    if (event.candidate && channel) {
       channel.send({ type: "broadcast", event: "signal", payload: { kind: "ice", candidate: event.candidate } });
     }
   };
 
   pc.onconnectionstatechange = () => {
     if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
-      setupStatus.textContent = "";
+      setupStatus.textContent = "⚠️ A kapcsolat megszakadt.";
     }
   };
 }
 
 async function startCallAsInitiator() {
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  channel.send({ type: "broadcast", event: "signal", payload: { kind: "offer", sdp: offer } });
+  if (!pc) return;
+  try {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    channel.send({ type: "broadcast", event: "signal", payload: { kind: "offer", sdp: offer } });
+  } catch (err) {
+    console.error("Offer hiba:", err);
+  }
 }
 
 async function handleSignal(payload) {
   if (!pc) return;
-  if (payload.kind === "offer") {
-    await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-    remoteDescSet = true;
-    await flushPendingCandidates();
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    channel.send({ type: "broadcast", event: "signal", payload: { kind: "answer", sdp: answer } });
-  } else if (payload.kind === "answer") {
-    await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-    remoteDescSet = true;
-    await flushPendingCandidates();
-  } else if (payload.kind === "ice") {
-    if (remoteDescSet) {
-      try { await pc.addIceCandidate(payload.candidate); } catch (e) { console.warn(e); }
-    } else {
-      pendingCandidates.push(payload.candidate);
+  try {
+    if (payload.kind === "offer") {
+      await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+      remoteDescSet = true;
+      await flushPendingCandidates();
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      channel.send({ type: "broadcast", event: "signal", payload: { kind: "answer", sdp: answer } });
+    } else if (payload.kind === "answer") {
+      await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+      remoteDescSet = true;
+      await flushPendingCandidates();
+    } else if (payload.kind === "ice") {
+      if (remoteDescSet) {
+        try { await pc.addIceCandidate(payload.candidate); } catch (e) { console.warn("ICE hiba:", e); }
+      } else {
+        pendingCandidates.push(payload.candidate);
+      }
     }
+  } catch (err) {
+    console.error("Signal hiba:", err);
   }
 }
 
@@ -436,73 +443,85 @@ async function flushPendingCandidates() {
   pendingCandidates = [];
 }
 
-/* ========================= BESZÉDFELISMERÉS (STT) ========================= */
+/* ========================= BESZÉDFELISMERÉS ========================= */
 function startRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
-    setupStatus.textContent = "";
-    ownMain.textContent = "";
-    console.warn("A böngésző nem támogatja a Web Speech API-t — használd a chatet szöveges kommunikációra.");
+    console.warn("Web Speech API nem támogatott.");
     return;
   }
-  recognition = new SR();
-  recognition.lang = STT_LOCALE[myLang];
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognitionShouldRun = true;
+  try {
+    recognition = new SR();
+    recognition.lang = STT_LOCALE[myLang] || "hu-HU";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognitionShouldRun = true;
 
-  recognition.onresult = async (event) => {
-    let finalTranscript = "";
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const res = event.results[i];
-      if (res.isFinal) finalTranscript += res[0].transcript;
-      else {
-        ownBox.style.display = "block";
-        ownMain.textContent = res[0].transcript;
+    recognition.onresult = async (event) => {
+      let finalTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const res = event.results[i];
+        if (res.isFinal) finalTranscript += res[0].transcript;
+        else {
+          ownBox.style.display = "block";
+          ownMain.textContent = res[0].transcript;
+        }
       }
-    }
-    if (finalTranscript.trim()) {
-      ownBox.style.display = "block";
-      ownMain.textContent = finalTranscript.trim();
-      channel.send({
-        type: "broadcast", event: "caption",
-        payload: { text: finalTranscript.trim(), sourceLang: myLang, name: myName || LANG_LABEL[myLang] }
-      });
-      setTimeout(() => { ownBox.style.display = "none"; }, 4000);
-    }
-  };
+      if (finalTranscript.trim()) {
+        ownBox.style.display = "block";
+        ownMain.textContent = finalTranscript.trim();
+        if (channel) {
+          channel.send({
+            type: "broadcast", event: "caption",
+            payload: { text: finalTranscript.trim(), sourceLang: myLang, name: myName || LANG_LABEL[myLang] }
+          });
+        }
+        setTimeout(() => { ownBox.style.display = "none"; }, 4000);
+      }
+    };
 
-  recognition.onerror = (e) => {
-    console.warn("STT hiba:", e.error);
-  };
+    recognition.onerror = (e) => {
+      console.warn("STT hiba:", e.error);
+    };
 
-  recognition.onend = () => {
-    if (recognitionShouldRun && micOn) {
-      try { recognition.start(); } catch (e) { /* már fut */ }
-    }
-  };
+    recognition.onend = () => {
+      if (recognitionShouldRun && micOn) {
+        try { recognition.start(); } catch (e) {}
+      }
+    };
 
-  try { recognition.start(); } catch (e) { console.warn(e); }
+    recognition.start();
+  } catch (err) {
+    console.warn("STT indítási hiba:", err);
+  }
 }
 
 function stopRecognition() {
   recognitionShouldRun = false;
-  if (recognition) { try { recognition.stop(); } catch (e) {} }
+  if (recognition) {
+    try { recognition.stop(); } catch (e) {}
+  }
 }
 
-/* ========================= FELIRAT MEGJELENÍTÉS ========================= */
+/* ========================= FELIRAT ========================= */
 let captionHideTimer = null;
 async function handleIncomingCaption(payload) {
-  const translated = await translateText(payload.text, payload.sourceLang, myLang);
-  incomingTag.textContent = (payload.name || LANG_LABEL[payload.sourceLang]).toUpperCase();
-  incomingMain.textContent = translated;
-  incomingSub.textContent = payload.sourceLang !== myLang ? `„${payload.text}” (${LANG_LABEL[payload.sourceLang]})` : "";
-  incomingBox.style.display = "block";
-  clearTimeout(captionHideTimer);
-  captionHideTimer = setTimeout(() => { incomingBox.style.display = "none"; }, 7000);
+  if (!payload || !payload.text) return;
+  try {
+    const translated = await translateText(payload.text, payload.sourceLang || "hu", myLang);
+    incomingTag.textContent = (payload.name || LANG_LABEL[payload.sourceLang] || "PARTNER").toUpperCase();
+    incomingMain.textContent = translated;
+    incomingSub.textContent = payload.sourceLang && payload.sourceLang !== myLang ? 
+      `„${payload.text}” (${LANG_LABEL[payload.sourceLang]})` : "";
+    incomingBox.style.display = "block";
+    clearTimeout(captionHideTimer);
+    captionHideTimer = setTimeout(() => { incomingBox.style.display = "none"; }, 7000);
+  } catch (err) {
+    console.error("Felirat hiba:", err);
+  }
 }
 
-/* ========================= SZÖVEGES CHAT ========================= */
+/* ========================= CHAT ========================= */
 function addChatBubble(text, sub, isMe) {
   const wrap = document.createElement("div");
   wrap.className = "msg" + (isMe ? " me" : "");
@@ -521,20 +540,27 @@ function addChatBubble(text, sub, isMe) {
 }
 
 async function handleIncomingChat(payload) {
-  const translated = await translateText(payload.text, payload.sourceLang, myLang);
-  const sub = payload.sourceLang !== myLang ? `eredeti: „${payload.text}”` : "";
-  addChatBubble(translated, sub, false);
+  if (!payload || !payload.text) return;
+  try {
+    const translated = await translateText(payload.text, payload.sourceLang || "hu", myLang);
+    const sub = payload.sourceLang && payload.sourceLang !== myLang ? 
+      `eredeti: „${payload.text}”` : "";
+    addChatBubble(translated, sub, false);
+  } catch (err) {
+    console.error("Chat hiba:", err);
+  }
 }
 
-chatSendBtn.onclick = sendChat;
-chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
 function sendChat() {
   const text = chatInput.value.trim();
-  if (!text) return;
+  if (!text || !channel) return;
   addChatBubble(text, "", true);
   channel.send({ type: "broadcast", event: "chat", payload: { text, sourceLang: myLang } });
   chatInput.value = "";
 }
+
+chatSendBtn.onclick = sendChat;
+chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
 
 /* ========================= UI VEZÉRLŐK ========================= */
 createRoomBtn.onclick = async () => {
@@ -550,7 +576,10 @@ createRoomBtn.onclick = async () => {
 
 joinRoomBtn.onclick = async () => {
   const code = joinCodeInput.value.trim().toUpperCase();
-  if (code.length < 4) { setupStatus.textContent = "Írd be a kapott kódot."; return; }
+  if (code.length < 4) { 
+    setupStatus.textContent = "Írd be a kapott kódot (4-6 karakter)."; 
+    return; 
+  }
   myName = myNameInput.value.trim();
   myLang = myLangSelect.value;
   roomId = code;
@@ -560,9 +589,11 @@ joinRoomBtn.onclick = async () => {
 };
 
 copyCodeBtn.onclick = () => {
-  navigator.clipboard.writeText(roomId);
-  copyCodeBtn.textContent = "✅ Másolva";
-  setTimeout(() => (copyCodeBtn.textContent = "📋 Kód másolása"), 1500);
+  if (roomId) {
+    navigator.clipboard.writeText(roomId).catch(() => {});
+    copyCodeBtn.textContent = "✅ Másolva";
+    setTimeout(() => (copyCodeBtn.textContent = "📋 Kód másolása"), 1500);
+  }
 };
 
 async function beginCallFlow() {
@@ -573,17 +604,18 @@ async function beginCallFlow() {
     await setupChannel(roomId);
 
     roomPill.textContent = "Szoba: " + roomId;
-    langPill.textContent = LANG_TAG[myLang];
+    langPill.textContent = LANG_TAG[myLang] || "HU";
     setupScreen.classList.remove("active");
     callScreen.classList.add("active");
     startRecognition();
   } catch (err) {
     console.error(err);
-    setupStatus.textContent = "Hiba: " + (err.message || "nem sikerült elindítani a hívást. Ellenőrizd a kamera/mikrofon engedélyt.");
+    setupStatus.textContent = "❌ Hiba: " + (err.message || "Nem sikerült elindítani a hívást.");
   }
 }
 
 micBtn.onclick = () => {
+  if (!localStream) return;
   micOn = !micOn;
   localStream.getAudioTracks().forEach((t) => (t.enabled = micOn));
   micBtn.classList.toggle("off", !micOn);
@@ -592,6 +624,7 @@ micBtn.onclick = () => {
 };
 
 camBtn.onclick = () => {
+  if (!localStream) return;
   camOn = !camOn;
   localStream.getVideoTracks().forEach((t) => (t.enabled = camOn));
   camBtn.classList.toggle("off", !camOn);
@@ -602,12 +635,14 @@ langBtn.onclick = () => langMenu.classList.toggle("open");
 langMenu.querySelectorAll("button").forEach((btn) => {
   btn.onclick = () => {
     myLang = btn.dataset.lang;
-    langPill.textContent = LANG_TAG[myLang];
+    langPill.textContent = LANG_TAG[myLang] || "HU";
     langMenu.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b === btn));
     langMenu.classList.remove("open");
     stopRecognition();
     startRecognition();
-    channel.track({ name: myName, lang: myLang, initiator: isInitiator });
+    if (channel) {
+      channel.track({ name: myName || "Vendég", lang: myLang, initiator: isInitiator });
+    }
   };
 });
 
@@ -616,9 +651,18 @@ chatCloseBtn.onclick = () => chatPanel.classList.remove("open");
 
 hangupBtn.onclick = () => {
   stopRecognition();
-  if (pc) pc.close();
-  if (channel) supabase.removeChannel(channel);
-  if (localStream) localStream.getTracks().forEach((t) => t.stop());
+  if (pc) {
+    pc.close();
+    pc = null;
+  }
+  if (channel) {
+    supabase.removeChannel(channel);
+    channel = null;
+  }
+  if (localStream) {
+    localStream.getTracks().forEach((t) => t.stop());
+    localStream = null;
+  }
   remoteVideo.srcObject = null;
   localVideo.srcObject = null;
   callScreen.classList.remove("active");
@@ -630,7 +674,9 @@ hangupBtn.onclick = () => {
 /* ========================= SERVICE WORKER ========================= */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW regisztráció sikertelen:", e));
+    navigator.serviceWorker.register("sw.js")
+      .then(() => console.log("SW regisztrálva"))
+      .catch((e) => console.warn("SW regisztráció sikertelen:", e));
   });
 }
 </script>
