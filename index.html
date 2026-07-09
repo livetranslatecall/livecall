@@ -922,12 +922,10 @@ function startRecognition() {
     };
 
     recognition.onend = () => {
-      micBtn.style.outline = "";
-      if (!recognitionShouldRun || !micOn || callEnded) return;
-      // Exponenciális backoff helyett fix, de biztonságos delay
-      const delay = recognition?._errorCount > 3 ? 2000 : 500;
-      setTimeout(createAndStart, delay);
-    };
+  micBtn.style.outline = "";
+  if (!recognitionShouldRun || !micOn || callEnded) return;
+  setTimeout(createAndStart, 500);
+};
 
     try {
       recognition.start();
@@ -941,8 +939,16 @@ function startRecognition() {
 }
 
 function stopRecognition(){
-  recognitionShouldRun=false;
-  if(recognition){ try{recognition.stop();}catch(_){} recognition=null; }
+  recognitionShouldRun = false;
+  micBtn.style.outline = "";
+  if(recognition){
+    recognition.onstart = null;
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onend = null;   // ← fontos: ne indítsa újra magát leállítás után
+    try{ recognition.abort(); } catch(_){}
+    recognition = null;
+  }
 }
 
 /* =========================================================================
