@@ -709,7 +709,12 @@ async function initMedia(){
   try{
     const devices=await navigator.mediaDevices.enumerateDevices();
     const cameras=devices.filter(d=>d.kind==="videoinput");
-    const preferred=cameras.find(d=>/integrated|beépített|webcam/i.test(d.label));
+    const preferred=cameras.find(d=>
+      d.label.toLowerCase().includes("integrated") ||
+      d.label.toLowerCase().includes("integrated camera") ||
+      d.label.toLowerCase().includes("beépített") ||
+      d.label.toLowerCase().includes("webcam")
+    );
     const videoConstraint=preferred?{deviceId:{exact:preferred.deviceId}}:{facingMode:"user"};
     localStream=await navigator.mediaDevices.getUserMedia({
       video:videoConstraint,
