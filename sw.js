@@ -1,4 +1,4 @@
-const CACHE_NAME = "forditohivas-v3";
+const CACHE_NAME = "forditohivas-v4";
 const CORE_ASSETS = [
   "./",
   "./index.html",
