@@ -722,9 +722,10 @@ async function initMedia(){
 });
     localVideo.srcObject=localStream;
   }catch(err){
-    setupStatus.textContent=t("errPerm");
-    throw err;
-  }
+  console.error("Kamera/mikrofon hiba:", err);
+  setupStatus.textContent = "❌ Nincs engedély a kamerához/mikrofonhoz!";
+  throw err;
+}
 }
 
 function createPeerConnection(){
