@@ -717,9 +717,9 @@ async function initMedia(){
     );
     const videoConstraint=preferred?{deviceId:{exact:preferred.deviceId}}:{facingMode:"user"};
     localStream=await navigator.mediaDevices.getUserMedia({
-      video:videoConstraint,
-      audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}
-    });
+  video:videoConstraint,
+  audio:true
+});
     localVideo.srcObject=localStream;
   }catch(err){
     setupStatus.textContent=t("errPerm");
