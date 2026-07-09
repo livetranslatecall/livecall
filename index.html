@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Élő Fordító Hívás</title>
+<title>LiveTranslate Call</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d1420">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -14,904 +14,1263 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-
 <style>
-  :root{
-    --bg:#0d1420;
-    --panel:#161f30;
-    --panel-2:#1d2942;
-    --line:#293349;
-    --text:#eef2f8;
-    --text-dim:#8b96ab;
-    --teal:#4fd1c5;
-    --amber:#f2a65a;
-    --danger:#e2586b;
-    --radius:18px;
-  }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{height:100%;}
-  body{
-    margin:0;background:var(--bg);color:var(--text);
-    font-family:'Manrope',system-ui,sans-serif;
-    overflow:hidden;
-    height:100dvh;
-  }
-  h1,h2,.brand,.big-code{font-family:'Space Grotesk',system-ui,sans-serif;}
-  .screen{display:none;height:100dvh;flex-direction:column;}
-  .screen.active{display:flex;}
+:root{
+  --bg:#0d1420;--panel:#161f30;--panel-2:#1d2942;--line:#293349;
+  --text:#eef2f8;--text-dim:#8b96ab;--teal:#4fd1c5;--amber:#f2a65a;
+  --danger:#e2586b;--green:#48bb78;--purple:#9f7aea;--radius:18px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;margin:0;}
+body{background:var(--bg);color:var(--text);font-family:'Manrope',system-ui,sans-serif;overflow:hidden;height:100dvh;}
+h1,h2,.brand,.big-code{font-family:'Space Grotesk',system-ui,sans-serif;}
+.screen{display:none;height:100dvh;flex-direction:column;}
+.screen.active{display:flex;}
 
-  #setup{
-    align-items:center;justify-content:center;padding:28px;
-    background:
-      radial-gradient(circle at 15% 10%,rgba(79,209,197,.14),transparent 45%),
-      radial-gradient(circle at 85% 90%,rgba(242,166,90,.12),transparent 45%),
-      var(--bg);
-  }
-  .card{
-    width:100%;max-width:420px;background:var(--panel);
-    border:1px solid var(--line);border-radius:24px;padding:26px 24px;
-  }
-  .brand{font-size:22px;font-weight:700;letter-spacing:.2px;margin:0 0 4px;}
-  .brand span{color:var(--teal);}
-  .tagline{color:var(--text-dim);font-size:14px;margin:0 0 22px;}
-  label{display:block;font-size:13px;color:var(--text-dim);margin:16px 0 6px;font-weight:600;}
-  input[type=text],select{
-    width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);
-    background:var(--panel-2);color:var(--text);font-size:16px;font-family:inherit;
-  }
-  select{
-    appearance:none;
-    background-image:linear-gradient(45deg,transparent 50%,var(--text-dim) 50%),
-                     linear-gradient(135deg,var(--text-dim) 50%,transparent 50%);
-    background-position:calc(100% - 18px) center,calc(100% - 13px) center;
-    background-size:5px 5px;background-repeat:no-repeat;
-  }
-  .row2{display:flex;gap:10px;}
-  .row2>div{flex:1;}
-  .btn{
-    border:none;border-radius:12px;padding:14px 18px;font-size:15px;font-weight:700;
-    font-family:'Manrope',sans-serif;cursor:pointer;width:100%;margin-top:10px;
-    display:flex;align-items:center;justify-content:center;gap:8px;
-    transition:transform .1s ease,opacity .15s ease;
-  }
-  .btn:active{transform:scale(.97);}
-  .btn-primary{background:var(--teal);color:#08221f;}
-  .btn-secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--line);}
-  .btn-danger{background:var(--danger);color:#2a0a10;}
-  .btn:disabled{opacity:.5;cursor:default;}
-  .divider{display:flex;align-items:center;gap:10px;margin:20px 0 4px;color:var(--text-dim);font-size:12px;}
-  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line);}
-  .status-line{margin-top:14px;font-size:13px;color:var(--text-dim);text-align:center;min-height:18px;}
-  .code-badge{
-    display:inline-block;background:var(--panel-2);border:1px dashed var(--teal);color:var(--teal);
-    padding:10px 14px;border-radius:10px;font-weight:700;letter-spacing:3px;font-size:20px;margin-top:8px;
-  }
+/* ── SETUP ── */
+#setup{
+  align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(circle at 15% 10%,rgba(79,209,197,.14),transparent 45%),
+             radial-gradient(circle at 85% 90%,rgba(242,166,90,.12),transparent 45%),var(--bg);
+  overflow-y:auto;
+}
+.card{width:100%;max-width:440px;background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:28px 24px;}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+.brand{font-size:22px;font-weight:700;letter-spacing:.2px;margin:0;}
+.brand span{color:var(--teal);}
+.tagline{color:var(--text-dim);font-size:13px;margin:0 0 20px;}
+label{display:block;font-size:12px;color:var(--text-dim);margin:14px 0 5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+input[type=text],select{
+  width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--text);font-size:15px;font-family:inherit;outline:none;
+  transition:border-color .2s;
+}
+input[type=text]:focus,select:focus{border-color:var(--teal);}
+select{
+  appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--text-dim) 50%),
+                   linear-gradient(135deg,var(--text-dim) 50%,transparent 50%);
+  background-position:calc(100% - 18px) center,calc(100% - 13px) center;
+  background-size:5px 5px;background-repeat:no-repeat;
+}
+.row2{display:flex;gap:10px;}
+.row2>div{flex:1;}
+.btn{
+  border:none;border-radius:12px;padding:13px 18px;font-size:14px;font-weight:700;
+  font-family:'Manrope',sans-serif;cursor:pointer;width:100%;margin-top:10px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform .1s,opacity .15s,box-shadow .2s;
+}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:var(--teal);color:#08221f;box-shadow:0 4px 18px rgba(79,209,197,.3);}
+.btn-primary:hover{box-shadow:0 6px 24px rgba(79,209,197,.45);}
+.btn-secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--line);}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn:disabled{opacity:.45;cursor:default;}
+.divider{display:flex;align-items:center;gap:10px;margin:18px 0 4px;color:var(--text-dim);font-size:11px;text-transform:uppercase;letter-spacing:.8px;}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line);}
+.status-line{margin-top:12px;font-size:13px;color:var(--text-dim);text-align:center;min-height:18px;}
+.code-badge{display:inline-block;background:var(--panel-2);border:1px dashed var(--teal);color:var(--teal);padding:10px 18px;border-radius:10px;font-weight:700;letter-spacing:4px;font-size:22px;margin-top:8px;}
 
-  #call{background:#000;position:relative;}
-  #remoteVideo{width:100%;height:100%;object-fit:cover;background:#000;}
-  #localVideo{
-    position:absolute;width:110px;height:150px;object-fit:cover;border-radius:14px;
-    right:14px;top:calc(env(safe-area-inset-top,0px) + 14px);border:2px solid rgba(255,255,255,.25);
-    background:#111;z-index:5;
-  }
-  .top-bar{
-    position:absolute;top:0;left:0;right:0;
-    padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 40px;
-    display:flex;justify-content:space-between;align-items:flex-start;z-index:4;
-    background:linear-gradient(to bottom,rgba(0,0,0,.55),transparent);
-  }
-  .room-pill{background:rgba(20,26,40,.7);backdrop-filter:blur(6px);padding:6px 12px;border-radius:20px;font-size:12px;color:var(--text-dim);}
-  .lang-pill{background:rgba(79,209,197,.18);color:var(--teal);border:1px solid rgba(79,209,197,.4);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;}
+/* UI Language selector in setup */
+.ui-lang-row{display:flex;gap:8px;margin-bottom:18px;}
+.ui-lang-btn{flex:1;padding:8px 4px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text-dim);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center;}
+.ui-lang-btn.active{background:var(--teal);color:#08221f;border-color:var(--teal);}
 
-  #captionWrap{
-    position:absolute;left:0;right:0;bottom:96px;padding:0 16px;z-index:4;
-    display:flex;flex-direction:column;align-items:center;gap:6px;
-    pointer-events:none;
-  }
-  .caption-box{
-    max-width:92%;background:rgba(13,20,32,.82);backdrop-filter:blur(8px);
-    border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px 16px;
-    text-align:center;transition:opacity .25s ease,transform .25s ease;
-  }
-  .caption-main{font-size:19px;font-weight:700;line-height:1.35;color:var(--text);}
-  .caption-sub{font-size:12px;color:var(--text-dim);margin-top:4px;font-style:italic;}
-  .caption-tag{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--amber);font-weight:700;margin-bottom:4px;}
+/* ── CALL SCREEN ── */
+#call{background:#000;position:relative;}
+#remoteVideo{width:100%;height:100%;object-fit:cover;background:#111;display:block;}
 
-  .controls{
-    position:absolute;bottom:0;left:0;right:0;z-index:6;
-    padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 16px);
-    display:flex;justify-content:center;gap:14px;align-items:center;
-    background:linear-gradient(to top,rgba(0,0,0,.7),transparent);
-  }
-  .ctrl-btn{
-    width:54px;height:54px;border-radius:50%;border:none;background:rgba(255,255,255,.12);
-    color:var(--text);font-size:20px;display:flex;align-items:center;justify-content:center;
-    cursor:pointer;backdrop-filter:blur(6px);
-  }
-  .ctrl-btn.off{background:var(--danger);color:#2a0a10;}
-  .ctrl-btn.end{background:var(--danger);width:60px;height:60px;font-size:22px;}
-  .ctrl-btn.active-teal{background:var(--teal);color:#08221f;}
+/* Draggable video windows */
+.vid-wrap{
+  position:absolute;border-radius:16px;overflow:hidden;
+  border:2px solid rgba(255,255,255,.2);background:#111;
+  cursor:grab;user-select:none;touch-action:none;z-index:5;
+  box-shadow:0 8px 32px rgba(0,0,0,.6);
+  transition:border-color .2s;
+}
+.vid-wrap:active{cursor:grabbing;border-color:var(--teal);}
+.vid-wrap video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;}
+#localWrap{width:110px;height:150px;right:14px;top:calc(env(safe-area-inset-top,0px)+14px);}
+#remoteWrap{width:100%;height:100%;position:absolute;top:0;left:0;border:none;border-radius:0;cursor:default;z-index:1;}
 
-  #chatPanel{
-    position:absolute;right:0;top:0;bottom:0;width:min(340px,86vw);background:var(--panel);
-    transform:translateX(100%);transition:transform .25s ease;z-index:10;
-    display:flex;flex-direction:column;border-left:1px solid var(--line);
-  }
-  #chatPanel.open{transform:translateX(0);}
-  .chat-head{
-    padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 12px;
-    border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;
-  }
-  .chat-head h2{font-size:16px;margin:0;}
-  .chat-close{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;}
-  #chatMessages{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px;}
-  .msg{max-width:88%;}
-  .msg.me{align-self:flex-end;text-align:right;}
-  .msg-bubble{background:var(--panel-2);border-radius:14px;padding:9px 12px;font-size:14px;}
-  .msg.me .msg-bubble{background:var(--teal);color:#08221f;}
-  .msg-orig{font-size:11px;color:var(--text-dim);margin-top:3px;font-style:italic;}
-  .msg.me .msg-orig{color:rgba(255,255,255,.6);}
-  .chat-input-row{
-    display:flex;gap:8px;
-    padding:12px 14px calc(env(safe-area-inset-bottom,0px) + 12px);
-    border-top:1px solid var(--line);
-  }
-  .chat-input-row input{
-    flex:1;padding:11px 13px;border-radius:20px;border:1px solid var(--line);
-    background:var(--panel-2);color:var(--text);font-size:14px;
-  }
-  .chat-send{
-    background:var(--teal);border:none;width:42px;height:42px;
-    border-radius:50%;color:#08221f;font-size:16px;cursor:pointer;flex-shrink:0;
-  }
+/* zoom controls on video */
+.zoom-ctrl{
+  position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
+  display:flex;gap:4px;opacity:0;transition:opacity .25s;pointer-events:none;
+}
+.vid-wrap:hover .zoom-ctrl,.vid-wrap.show-ctrl .zoom-ctrl{opacity:1;pointer-events:auto;}
+.zoom-btn{width:26px;height:26px;border-radius:50%;border:none;background:rgba(0,0,0,.65);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 
-  .lang-switch-menu{
-    position:absolute;bottom:78px;left:50%;transform:translateX(-50%);
-    background:var(--panel);border:1px solid var(--line);border-radius:14px;
-    padding:8px;display:none;z-index:8;box-shadow:0 10px 30px rgba(0,0,0,.4);
-  }
-  .lang-switch-menu.open{display:block;}
-  .lang-switch-menu button{
-    display:block;width:150px;text-align:left;padding:9px 12px;
-    background:none;border:none;color:var(--text);font-size:14px;border-radius:8px;cursor:pointer;
-  }
-  .lang-switch-menu button:hover{background:var(--panel-2);}
-  .lang-switch-menu button.active{color:var(--teal);font-weight:700;}
+.top-bar{
+  position:absolute;top:0;left:0;right:0;
+  padding:calc(env(safe-area-inset-top,0px)+12px) 16px 44px;
+  display:flex;justify-content:space-between;align-items:flex-start;z-index:6;
+  background:linear-gradient(to bottom,rgba(0,0,0,.6),transparent);pointer-events:none;
+}
+.top-bar>*{pointer-events:auto;}
+.room-pill{background:rgba(20,26,40,.75);backdrop-filter:blur(6px);padding:6px 12px;border-radius:20px;font-size:12px;color:var(--text-dim);}
+.top-right{display:flex;gap:8px;align-items:center;}
+.lang-pill{background:rgba(79,209,197,.18);color:var(--teal);border:1px solid rgba(79,209,197,.4);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;}
+.net-pill{background:rgba(20,26,40,.75);backdrop-filter:blur(6px);padding:6px 10px;border-radius:20px;font-size:11px;display:flex;align-items:center;gap:5px;}
+.net-dot{width:8px;height:8px;border-radius:50%;background:var(--green);}
+.net-dot.warn{background:var(--amber);}
+.net-dot.bad{background:var(--danger);}
+.rec-pill{background:rgba(226,88,107,.25);color:var(--danger);border:1px solid rgba(226,88,107,.4);padding:6px 10px;border-radius:20px;font-size:11px;font-weight:700;display:none;animation:recpulse 1.2s infinite;}
+@keyframes recpulse{0%,100%{opacity:1;}50%{opacity:.5;}}
 
-  ::-webkit-scrollbar{width:6px;}
-  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+/* Captions */
+#captionWrap{
+  position:absolute;left:0;right:0;bottom:100px;padding:0 16px;z-index:7;
+  display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;
+}
+.caption-box{
+  max-width:94%;background:rgba(13,20,32,.85);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:12px 16px;
+  text-align:center;transition:opacity .3s,transform .3s;
+}
+.caption-main{font-size:19px;font-weight:700;line-height:1.35;color:var(--text);}
+.caption-sub{font-size:12px;color:var(--text-dim);margin-top:4px;font-style:italic;}
+.caption-tag{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--amber);font-weight:700;margin-bottom:4px;}
 
-  @media(min-width:720px){
-    #localVideo{width:180px;height:240px;}
-    .caption-main{font-size:24px;}
-  }
+/* Emoji reactions overlay */
+#emojiOverlay{position:absolute;inset:0;z-index:8;pointer-events:none;overflow:hidden;}
+.emoji-float{position:absolute;font-size:32px;animation:floatUp 2.8s ease-out forwards;}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1);}80%{opacity:.8;}100%{opacity:0;transform:translateY(-55vh) scale(1.4);}}
+
+/* Controls */
+.controls{
+  position:absolute;bottom:0;left:0;right:0;z-index:9;
+  padding:12px 14px calc(env(safe-area-inset-bottom,0px)+14px);
+  display:flex;justify-content:center;gap:10px;align-items:center;flex-wrap:wrap;
+  background:linear-gradient(to top,rgba(0,0,0,.75),transparent);
+}
+.ctrl-btn{
+  width:50px;height:50px;border-radius:50%;border:none;background:rgba(255,255,255,.13);
+  color:var(--text);font-size:18px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;backdrop-filter:blur(6px);transition:background .15s,transform .1s;flex-shrink:0;
+}
+.ctrl-btn:active{transform:scale(.92);}
+.ctrl-btn.off{background:var(--danger);color:#fff;}
+.ctrl-btn.end{background:var(--danger);width:58px;height:58px;font-size:22px;box-shadow:0 4px 18px rgba(226,88,107,.4);}
+.ctrl-btn.active-teal{background:var(--teal);color:#08221f;}
+.ctrl-btn.active-purple{background:var(--purple);color:#fff;}
+.ctrl-btn.active-amber{background:var(--amber);color:#2a1500;}
+
+/* Reaction bar */
+.react-bar{
+  position:absolute;bottom:78px;left:50%;transform:translateX(-50%);
+  background:rgba(22,31,48,.92);backdrop-filter:blur(10px);
+  border:1px solid var(--line);border-radius:40px;
+  padding:8px 14px;display:none;gap:8px;z-index:10;
+  box-shadow:0 8px 28px rgba(0,0,0,.5);
+}
+.react-bar.open{display:flex;}
+.react-emoji{font-size:24px;cursor:pointer;padding:4px;border-radius:8px;transition:transform .15s;}
+.react-emoji:active{transform:scale(1.4);}
+
+/* Language switch menu */
+.lang-switch-menu{
+  position:absolute;bottom:76px;left:50%;transform:translateX(-50%);
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:8px;display:none;z-index:11;box-shadow:0 10px 30px rgba(0,0,0,.5);min-width:170px;
+}
+.lang-switch-menu.open{display:block;}
+.lang-switch-menu button{
+  display:block;width:100%;text-align:left;padding:9px 12px;
+  background:none;border:none;color:var(--text);font-size:14px;border-radius:8px;cursor:pointer;
+}
+.lang-switch-menu button:hover{background:var(--panel-2);}
+.lang-switch-menu button.active{color:var(--teal);font-weight:700;}
+
+/* Chat panel */
+#chatPanel{
+  position:absolute;right:0;top:0;bottom:0;width:min(340px,88vw);background:var(--panel);
+  transform:translateX(100%);transition:transform .25s ease;z-index:12;
+  display:flex;flex-direction:column;border-left:1px solid var(--line);
+}
+#chatPanel.open{transform:translateX(0);}
+.chat-head{padding:calc(env(safe-area-inset-top,0px)+14px) 16px 12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+.chat-head h2{font-size:16px;margin:0;}
+.chat-close{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;}
+#chatMessages{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px;}
+.msg{max-width:90%;}
+.msg.me{align-self:flex-end;text-align:right;}
+.msg-bubble{background:var(--panel-2);border-radius:14px;padding:9px 12px;font-size:14px;word-break:break-word;}
+.msg.me .msg-bubble{background:var(--teal);color:#08221f;}
+.msg-orig{font-size:11px;color:var(--text-dim);margin-top:3px;font-style:italic;}
+.msg.me .msg-orig{color:rgba(8,34,31,.7);}
+.msg-file{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--panel-2);border-radius:12px;font-size:13px;cursor:pointer;border:1px solid var(--line);}
+.msg-file:hover{border-color:var(--teal);}
+.chat-input-row{display:flex;gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px)+10px);border-top:1px solid var(--line);align-items:center;}
+.chat-input-row input{flex:1;padding:10px 12px;border-radius:20px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-size:14px;font-family:inherit;outline:none;}
+.chat-input-row input:focus{border-color:var(--teal);}
+.chat-icon-btn{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;padding:4px;flex-shrink:0;}
+.chat-send{background:var(--teal);border:none;width:40px;height:40px;border-radius:50%;color:#08221f;font-size:16px;cursor:pointer;flex-shrink:0;}
+
+/* Caption history panel */
+#historyPanel{
+  position:absolute;left:0;top:0;bottom:0;width:min(320px,88vw);background:var(--panel);
+  transform:translateX(-100%);transition:transform .25s ease;z-index:12;
+  display:flex;flex-direction:column;border-right:1px solid var(--line);
+}
+#historyPanel.open{transform:translateX(0);}
+.hist-head{padding:calc(env(safe-area-inset-top,0px)+14px) 16px 12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+.hist-head h2{font-size:16px;margin:0;}
+#historyList{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px;}
+.hist-item{background:var(--panel-2);border-radius:12px;padding:10px 12px;font-size:13px;border-left:3px solid var(--teal);}
+.hist-item.partner{border-left-color:var(--amber);}
+.hist-time{font-size:10px;color:var(--text-dim);margin-bottom:3px;}
+.hist-text{font-weight:600;margin-bottom:2px;}
+.hist-orig{font-size:11px;color:var(--text-dim);font-style:italic;}
+
+/* Stats overlay */
+#statsOverlay{
+  position:absolute;top:60px;left:14px;background:rgba(13,20,32,.88);
+  backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:12px;
+  padding:10px 14px;font-size:11px;color:var(--text-dim);z-index:7;display:none;min-width:180px;
+}
+#statsOverlay.open{display:block;}
+.stat-row{display:flex;justify-content:space-between;gap:14px;margin-bottom:3px;}
+.stat-val{color:var(--teal);font-weight:700;}
+
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+@media(min-width:720px){
+  #localWrap{width:180px;height:240px;}
+  .caption-main{font-size:23px;}
+  .ctrl-btn{width:54px;height:54px;font-size:20px;}
+  .ctrl-btn.end{width:62px;height:62px;}
+}
 </style>
 </head>
 <body>
 
-<!-- SETUP SCREEN -->
+<!-- ═══════════════════════════════════════════════
+     SETUP SCREEN
+═══════════════════════════════════════════════ -->
 <div id="setup" class="screen active">
   <div class="card">
-    <div class="brand">Élő Fordító <span>Hívás</span></div>
-    <p class="tagline">Videóhívás menet közbeni felirat-fordítással — magyar, angol, orosz.</p>
+    <div class="card-top">
+      <div>
+        <div class="brand">LiveTranslate <span>Call</span></div>
+        <p class="tagline" data-i18n="tagline">Videóhívás menet közbeni fordítással</p>
+      </div>
+    </div>
 
-    <label for="myName">Neved (opcionális)</label>
-    <input type="text" id="myName" placeholder="pl. Klárika">
+    <!-- UI Language chooser -->
+    <div class="ui-lang-row">
+      <button class="ui-lang-btn active" data-uilang="hu">🇭🇺 Magyar</button>
+      <button class="ui-lang-btn" data-uilang="en">🇬🇧 English</button>
+      <button class="ui-lang-btn" data-uilang="ru">🇷🇺 Русский</button>
+    </div>
 
-    <label for="myLang">Milyen nyelven beszélsz / olvasol?</label>
+    <label data-i18n="labelName">Neved (opcionális)</label>
+    <input type="text" id="myName" data-i18n-placeholder="phName">
+
+    <label data-i18n="labelSpeakLang">Milyen nyelven beszélsz / olvasol?</label>
     <select id="myLang">
-      <option value="hu">Magyar</option>
-      <option value="en">Angol (English)</option>
-      <option value="ru">Orosz (Русский)</option>
+      <option value="hu">🇭🇺 Magyar — Hungarian</option>
+      <option value="en">🇬🇧 English — Angol</option>
+      <option value="ru">🇷🇺 Русский — Orosz</option>
     </select>
 
-    <div class="divider">szoba</div>
+    <div class="divider" data-i18n="divRoom">szoba</div>
 
-    <button class="btn btn-primary" id="createRoomBtn">📞 Új hívás indítása</button>
+    <button class="btn btn-primary" id="createRoomBtn">
+      <span>📞</span><span data-i18n="btnCreate">Új hívás indítása</span>
+    </button>
 
     <div class="row2" style="margin-top:14px;">
       <div>
-        <input type="text" id="joinCodeInput" placeholder="Kapott kód" maxlength="6" style="text-transform:uppercase;">
+        <input type="text" id="joinCodeInput" data-i18n-placeholder="phCode" maxlength="6" style="text-transform:uppercase;">
       </div>
     </div>
-    <button class="btn btn-secondary" id="joinRoomBtn">🔗 Csatlakozás kóddal</button>
+    <button class="btn btn-secondary" id="joinRoomBtn">
+      <span>🔗</span><span data-i18n="btnJoin">Csatlakozás kóddal</span>
+    </button>
 
     <div id="roomCodeDisplay" style="display:none;text-align:center;margin-top:18px;">
-      <div style="font-size:13px;color:var(--text-dim);">Küldd el ezt a kódot a hívott félnek:</div>
+      <div style="font-size:13px;color:var(--text-dim);" data-i18n="shareCode">Küldd el ezt a kódot:</div>
       <div class="big-code code-badge" id="bigRoomCode">------</div>
-      <button class="btn btn-secondary" id="copyCodeBtn" style="margin-top:10px;">📋 Kód másolása</button>
+      <button class="btn btn-secondary" id="copyCodeBtn" style="margin-top:10px;">
+        <span>📋</span><span data-i18n="btnCopy">Kód másolása</span>
+      </button>
     </div>
 
     <div class="status-line" id="setupStatus"></div>
   </div>
 </div>
 
-<!-- CALL SCREEN -->
+<!-- ═══════════════════════════════════════════════
+     CALL SCREEN
+═══════════════════════════════════════════════ -->
 <div id="call" class="screen">
-  <video id="remoteVideo" autoplay playsinline></video>
-  <video id="localVideo" autoplay playsinline muted></video>
 
-  <div class="top-bar">
-    <div class="room-pill" id="roomPill">Szoba: ------</div>
-    <div class="lang-pill" id="langPill">HU</div>
+  <!-- Remote video (draggable/zoomable) -->
+  <div class="vid-wrap" id="remoteWrap">
+    <video id="remoteVideo" autoplay playsinline></video>
+    <div class="zoom-ctrl">
+      <button class="zoom-btn" id="remoteZoomOut">−</button>
+      <button class="zoom-btn" id="remoteZoomIn">+</button>
+    </div>
   </div>
 
+  <!-- Local video (draggable/zoomable) -->
+  <div class="vid-wrap" id="localWrap">
+    <video id="localVideo" autoplay playsinline muted></video>
+    <div class="zoom-ctrl">
+      <button class="zoom-btn" id="localZoomOut">−</button>
+      <button class="zoom-btn" id="localZoomIn">+</button>
+    </div>
+  </div>
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="room-pill" id="roomPill">------</div>
+    <div class="top-right">
+      <div class="rec-pill" id="recPill">⏺ REC</div>
+      <div class="net-pill" id="netPill"><div class="net-dot" id="netDot"></div><span id="netLabel">--</span></div>
+      <div class="lang-pill" id="langPill">HU</div>
+    </div>
+  </div>
+
+  <!-- Captions (live overlay) -->
   <div id="captionWrap">
     <div class="caption-box" id="incomingCaptionBox" style="display:none;">
       <div class="caption-tag" id="incomingTag">PARTNER</div>
       <div class="caption-main" id="incomingMain"></div>
       <div class="caption-sub" id="incomingSub"></div>
     </div>
-    <div class="caption-box" id="ownCaptionBox" style="display:none;opacity:.7;">
-      <div class="caption-tag">TE MONDTAD</div>
+    <div class="caption-box" id="ownCaptionBox" style="display:none;opacity:.75;">
+      <div class="caption-tag" data-i18n="captionYou">TE MONDTAD</div>
       <div class="caption-main" id="ownMain" style="font-size:15px;"></div>
     </div>
   </div>
 
+  <!-- Emoji overlay -->
+  <div id="emojiOverlay"></div>
+
+  <!-- Stats overlay -->
+  <div id="statsOverlay">
+    <div class="stat-row"><span data-i18n="statRtt">RTT</span><span class="stat-val" id="statRtt">--</span></div>
+    <div class="stat-row"><span data-i18n="statJitter">Jitter</span><span class="stat-val" id="statJitter">--</span></div>
+    <div class="stat-row"><span data-i18n="statPacket">Csomagveszteség</span><span class="stat-val" id="statPacket">--</span></div>
+    <div class="stat-row"><span data-i18n="statBw">Sávszélesség</span><span class="stat-val" id="statBw">--</span></div>
+  </div>
+
+  <!-- Reaction bar -->
+  <div class="react-bar" id="reactBar">
+    <span class="react-emoji" data-emoji="👍">👍</span>
+    <span class="react-emoji" data-emoji="❤️">❤️</span>
+    <span class="react-emoji" data-emoji="😂">😂</span>
+    <span class="react-emoji" data-emoji="😮">😮</span>
+    <span class="react-emoji" data-emoji="👏">👏</span>
+    <span class="react-emoji" data-emoji="🔥">🔥</span>
+  </div>
+
+  <!-- Language switch menu -->
   <div class="lang-switch-menu" id="langMenu">
-    <button data-lang="hu">🇭🇺 Magyar</button>
-    <button data-lang="en">🇬🇧 Angol</button>
-    <button data-lang="ru">🇷🇺 Orosz</button>
+    <button data-lang="hu">🇭🇺 Magyar — Hungarian</button>
+    <button data-lang="en">🇬🇧 English — Angol</button>
+    <button data-lang="ru">🇷🇺 Русский — Orosz</button>
   </div>
 
+  <!-- Controls -->
   <div class="controls">
-    <button class="ctrl-btn" id="micBtn" title="Némítás">🎙️</button>
-    <button class="ctrl-btn" id="camBtn" title="Kamera">📷</button>
-    <button class="ctrl-btn" id="langBtn" title="Nyelv váltása">🌐</button>
-    <button class="ctrl-btn end" id="hangupBtn" title="Hívás vége">✖</button>
+    <button class="ctrl-btn" id="micBtn" title="Mic">🎙️</button>
+    <button class="ctrl-btn" id="camBtn" title="Camera">📷</button>
+    <button class="ctrl-btn" id="mirrorBtn" title="Mirror">🔀</button>
+    <button class="ctrl-btn" id="screenBtn" title="Screen share">🖥️</button>
+    <button class="ctrl-btn end" id="hangupBtn" title="Hang up">✖</button>
+    <button class="ctrl-btn" id="recBtn" title="Record">⏺</button>
+    <button class="ctrl-btn" id="reactBtn" title="Reactions">😊</button>
+    <button class="ctrl-btn" id="langBtn" title="Language">🌐</button>
+    <button class="ctrl-btn" id="histBtn" title="History">📜</button>
     <button class="ctrl-btn" id="chatBtn" title="Chat">💬</button>
+    <button class="ctrl-btn" id="statsBtn" title="Stats">📊</button>
+    <button class="ctrl-btn" id="pipBtn" title="PiP">⧉</button>
   </div>
 
+  <!-- Caption history panel -->
+  <div id="historyPanel">
+    <div class="hist-head">
+      <h2 data-i18n="histTitle">Felirat előzmények</h2>
+      <button class="chat-close" id="histCloseBtn">✕</button>
+    </div>
+    <div id="historyList"></div>
+  </div>
+
+  <!-- Chat panel -->
   <div id="chatPanel">
     <div class="chat-head">
-      <h2>Üzenetek</h2>
+      <h2 data-i18n="chatTitle">Üzenetek</h2>
       <button class="chat-close" id="chatCloseBtn">✕</button>
     </div>
     <div id="chatMessages"></div>
     <div class="chat-input-row">
-      <input type="text" id="chatInput" placeholder="Írj üzenetet…">
+      <button class="chat-icon-btn" id="fileBtn" title="Send file">📎</button>
+      <input type="text" id="chatInput" data-i18n-placeholder="phChat">
       <button class="chat-send" id="chatSendBtn">➤</button>
     </div>
+    <input type="file" id="fileInput" style="display:none;" multiple>
   </div>
-</div>
+
+</div><!-- end #call -->
 
 <script type="module">
 /* =========================================================================
    KONFIGURÁCIÓ
    ========================================================================= */
-const SUPABASE_URL     = "https://yyexlblyepkxyqqbgpvu.supabase.co";
+const SUPABASE_URL      = "https://yyexlblyepkxyqqbgpvu.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZXhsYmx5ZXBreHlxcWJncHZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTE5MjAsImV4cCI6MjA5OTEyNzkyMH0.qG1iDFLarL_OCAuJVnpsb6uOUMRNvUyWdpxYw7C5TDs";
-
 const ICE_SERVERS = [
-  { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun1.l.google.com:19302" },
-  { urls: "stun:freestun.net:3478" },
-  {
-    urls: "turn:freestun.net:3478",
-    username: "free",
-    credential: "free"
-  },
-  {
-    urls: "turns:freestun.net:5349",
-    username: "free",
-    credential: "free"
-  }
+  {urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"},
+  {urls:"stun:freestun.net:3478"},
+  {urls:"turn:freestun.net:3478",username:"free",credential:"free"},
+  {urls:"turns:freestun.net:5349",username:"free",credential:"free"}
 ];
+const LANG_LABEL = {hu:"Magyar",en:"English",ru:"Русский"};
+const LANG_TAG   = {hu:"HU",en:"EN",ru:"RU"};
+const STT_LOCALE = {hu:"hu-HU",en:"en-US",ru:"ru-RU"};
 
-const LANG_LABEL = { hu: "Magyar", en: "English", ru: "Русский" };
-const LANG_TAG   = { hu: "HU", en: "EN", ru: "RU" };
-const STT_LOCALE = { hu: "hu-HU", en: "en-US", ru: "ru-RU" };
+/* =========================================================================
+   UI TRANSLATIONS  (hu / en / ru)
+   ========================================================================= */
+const I18N = {
+  hu:{
+    tagline:"Videóhívás menet közbeni fordítással — magyar, angol, orosz",
+    labelName:"Neved (opcionális)", phName:"pl. Klárika",
+    labelSpeakLang:"Milyen nyelven beszélsz / olvasol?",
+    divRoom:"szoba",
+    btnCreate:"Új hívás indítása", btnJoin:"Csatlakozás kóddal",
+    btnCopy:"Kód másolása", shareCode:"Küldd el ezt a kódot a hívott félnek:",
+    phCode:"Kapott kód", phChat:"Írj üzenetet…",
+    captionYou:"TE MONDTAD", chatTitle:"Üzenetek", histTitle:"Felirat előzmények",
+    statRtt:"RTT", statJitter:"Jitter", statPacket:"Csomagveszteség", statBw:"Sávszélesség",
+    waitMsg:"Várakozás a másik félre…", joinMsg:"Csatlakozás…",
+    errPerm:"❌ Nincs engedély a kamerához/mikrofonhoz!",
+    callEnded:"A hívás véget ért.", copyDone:"✅ Másolva",
+    noCode:"Írd be a kapott kódot (4–6 karakter).",
+    screenShare:"Képernyőmegosztás", stopScreen:"Megosztás leállítva",
+    recStart:"Felvétel elindítva", recStop:"Felvétel mentve",
+    fileReceived:"Fájl érkezett", fileSend:"Fájl elküldve",
+  },
+  en:{
+    tagline:"Video call with live translation — Hungarian, English, Russian",
+    labelName:"Your name (optional)", phName:"e.g. Alex",
+    labelSpeakLang:"What language do you speak / read?",
+    divRoom:"room",
+    btnCreate:"Start new call", btnJoin:"Join with code",
+    btnCopy:"Copy code", shareCode:"Send this code to the other person:",
+    phCode:"Received code", phChat:"Type a message…",
+    captionYou:"YOU SAID", chatTitle:"Messages", histTitle:"Caption history",
+    statRtt:"RTT", statJitter:"Jitter", statPacket:"Packet loss", statBw:"Bandwidth",
+    waitMsg:"Waiting for the other person…", joinMsg:"Connecting…",
+    errPerm:"❌ Camera/microphone permission denied!",
+    callEnded:"Call ended.", copyDone:"✅ Copied",
+    noCode:"Enter the received code (4–6 characters).",
+    screenShare:"Screen sharing", stopScreen:"Sharing stopped",
+    recStart:"Recording started", recStop:"Recording saved",
+    fileReceived:"File received", fileSend:"File sent",
+  },
+  ru:{
+    tagline:"Видеозвонок с живым переводом — венгерский, английский, русский",
+    labelName:"Ваше имя (необязательно)", phName:"напр. Саша",
+    labelSpeakLang:"На каком языке вы говорите / читаете?",
+    divRoom:"комната",
+    btnCreate:"Начать новый звонок", btnJoin:"Присоединиться по коду",
+    btnCopy:"Скопировать код", shareCode:"Отправьте этот код собеседнику:",
+    phCode:"Полученный код", phChat:"Напишите сообщение…",
+    captionYou:"ВЫ СКАЗАЛИ", chatTitle:"Сообщения", histTitle:"История субтитров",
+    statRtt:"RTT", statJitter:"Джиттер", statPacket:"Потеря пакетов", statBw:"Пропускная способность",
+    waitMsg:"Ожидание другого участника…", joinMsg:"Подключение…",
+    errPerm:"❌ Нет доступа к камере/микрофону!",
+    callEnded:"Звонок завершён.", copyDone:"✅ Скопировано",
+    noCode:"Введите полученный код (4–6 символов).",
+    screenShare:"Демонстрация экрана", stopScreen:"Демонстрация остановлена",
+    recStart:"Запись начата", recStop:"Запись сохранена",
+    fileReceived:"Получен файл", fileSend:"Файл отправлен",
+  }
+};
+
+let uiLang = "hu";
+function t(key){ return (I18N[uiLang]||I18N.hu)[key] || key; }
+function applyI18n(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el=>{
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+}
+
+/* ── UI lang buttons ── */
+document.querySelectorAll(".ui-lang-btn").forEach(btn=>{
+  btn.onclick=()=>{
+    uiLang=btn.dataset.uilang;
+    document.querySelectorAll(".ui-lang-btn").forEach(b=>b.classList.toggle("active",b===btn));
+    applyI18n();
+  };
+});
+applyI18n();
 
 /* =========================================================================
    ELEM-REFERENCIÁK
    ========================================================================= */
-const el = (id) => document.getElementById(id);
-
-const setupScreen    = el("setup");
-const callScreen     = el("call");
-const myNameInput    = el("myName");
-const myLangSelect   = el("myLang");
-const createRoomBtn  = el("createRoomBtn");
-const joinRoomBtn    = el("joinRoomBtn");
-const joinCodeInput  = el("joinCodeInput");
-const roomCodeDisplay= el("roomCodeDisplay");
-const bigRoomCode    = el("bigRoomCode");
-const copyCodeBtn    = el("copyCodeBtn");
-const setupStatus    = el("setupStatus");
-const remoteVideo    = el("remoteVideo");
-const localVideo     = el("localVideo");
-const roomPill       = el("roomPill");
-const langPill       = el("langPill");
-const incomingBox    = el("incomingCaptionBox");
-const incomingTag    = el("incomingTag");
-const incomingMain   = el("incomingMain");
-const incomingSub    = el("incomingSub");
-const ownBox         = el("ownCaptionBox");
-const ownMain        = el("ownMain");
-const micBtn         = el("micBtn");
-const camBtn         = el("camBtn");
-const langBtn        = el("langBtn");
-const hangupBtn      = el("hangupBtn");
-const chatBtn        = el("chatBtn");
-const langMenu       = el("langMenu");
-const chatPanel      = el("chatPanel");
-const chatCloseBtn   = el("chatCloseBtn");
-const chatMessages   = el("chatMessages");
-const chatInput      = el("chatInput");
-const chatSendBtn    = el("chatSendBtn");
+const el = id => document.getElementById(id);
+const setupScreen=el("setup"),callScreen=el("call");
+const myNameInput=el("myName"),myLangSelect=el("myLang");
+const createRoomBtn=el("createRoomBtn"),joinRoomBtn=el("joinRoomBtn");
+const joinCodeInput=el("joinCodeInput"),roomCodeDisplay=el("roomCodeDisplay");
+const bigRoomCode=el("bigRoomCode"),copyCodeBtn=el("copyCodeBtn"),setupStatus=el("setupStatus");
+const remoteVideo=el("remoteVideo"),localVideo=el("localVideo");
+const remoteWrap=el("remoteWrap"),localWrap=el("localWrap");
+const roomPill=el("roomPill"),langPill=el("langPill");
+const incomingBox=el("incomingCaptionBox"),incomingTag=el("incomingTag");
+const incomingMain=el("incomingMain"),incomingSub=el("incomingSub");
+const ownBox=el("ownCaptionBox"),ownMain=el("ownMain");
+const micBtn=el("micBtn"),camBtn=el("camBtn"),langBtn=el("langBtn");
+const hangupBtn=el("hangupBtn"),chatBtn=el("chatBtn");
+const screenBtn=el("screenBtn"),recBtn=el("recBtn");
+const reactBtn=el("reactBtn"),reactBar=el("reactBar");
+const langMenu=el("langMenu");
+const chatPanel=el("chatPanel"),chatCloseBtn=el("chatCloseBtn");
+const chatMessages=el("chatMessages"),chatInput=el("chatInput"),chatSendBtn=el("chatSendBtn");
+const fileBtn=el("fileBtn"),fileInput=el("fileInput");
+const histBtn=el("histBtn"),histPanel=el("historyPanel"),histCloseBtn=el("histCloseBtn"),histList=el("historyList");
+const mirrorBtn=el("mirrorBtn"),pipBtn=el("pipBtn");
+const statsBtn=el("statsBtn"),statsOverlay=el("statsOverlay");
+const netDot=el("netDot"),netLabel=el("netLabel"),recPill=el("recPill");
+const emojiOverlay=el("emojiOverlay");
 
 /* =========================================================================
    ÁLLAPOT
    ========================================================================= */
-let supabase, channel, pc, localStream;
-let myLang = "hu", myName = "";
-let roomId = "", isInitiator = false;
-let micOn = true, camOn = true;
-let recognition, recognitionShouldRun = false;
-let pendingCandidates = [];
-let remoteDescSet = false;
-let captionHideTimer = null;
-let callEnded = false;
-
-const translateCache = new Map();
+let supabase,channel,pc,localStream,screenStream,dataChannel,remoteDataChannel;
+let myLang="hu",myName="",roomId="",isInitiator=false;
+let micOn=true,camOn=true,mirrored=false,isSharing=false,isRecording=false;
+let recognition,recognitionShouldRun=false;
+let pendingCandidates=[],remoteDescSet=false;
+let captionHideTimer=null,callEnded=false;
+let mediaRecorder=null,recordedChunks=[];
+let statsInterval=null;
+const translateCache=new Map();
 
 /* =========================================================================
-   FORDÍTÁS — MyMemory API
+   FORDÍTÁS
    ========================================================================= */
-async function translateText(text, sourceLang, targetLang) {
-  if (!text || sourceLang === targetLang) return text;
-  const key = `${sourceLang}|${targetLang}|${text}`;
-  if (translateCache.has(key)) return translateCache.get(key);
-  try {
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    const translated = data?.responseData?.translatedText || text;
-    translateCache.set(key, translated);
-    return translated;
-  } catch (e) {
-    console.error("Fordítási hiba:", e);
-    return text;
-  }
+async function translateText(text,src,tgt){
+  if(!text||src===tgt) return text;
+  const key=`${src}|${tgt}|${text}`;
+  if(translateCache.has(key)) return translateCache.get(key);
+  try{
+    const url=`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${src}|${tgt}`;
+    const res=await fetch(url);
+    const data=await res.json();
+    const out=data?.responseData?.translatedText||text;
+    translateCache.set(key,out);
+    return out;
+  }catch(e){ return text; }
 }
 
 /* =========================================================================
    SEGÉDFÜGGVÉNYEK
    ========================================================================= */
-function randomCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let s = "";
-  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
-  return s;
+function randomCode(){
+  const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from({length:6},()=>c[Math.floor(Math.random()*c.length)]).join("");
+}
+function cryptoId(){
+  return typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID():"u-"+Math.random().toString(36).slice(2,18);
+}
+function formatBytes(b){
+  if(b<1024) return b+"B";
+  if(b<1048576) return (b/1024).toFixed(1)+"KB";
+  return (b/1048576).toFixed(1)+"MB";
 }
 
-function cryptoId() {
-  // crypto.randomUUID() ha elérhető, különben fallback
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
+/* =========================================================================
+   DRAG + PINCH/SCROLL ZOOM  (both video wraps)
+   ========================================================================= */
+function makeDraggableZoomable(wrap,isMain){
+  let dragging=false,startX=0,startY=0,ox=0,oy=0;
+  let scale=1,minScale=.5,maxScale=4;
+  // position tracking
+  let posX=0,posY=0;
+
+  function applyTransform(vid){
+    if(isMain) return; // remote full-screen: only scale
+    wrap.style.transform=`translate(${posX}px,${posY}px) scale(${scale})`;
   }
-  return "u-" + Math.random().toString(36).slice(2, 18);
+  function applyScaleMain(){
+    remoteVideo.style.transform=`scale(${scale})`;
+    remoteVideo.style.transformOrigin="center center";
+  }
+
+  // Drag
+  wrap.addEventListener("pointerdown",e=>{
+    if(e.target.classList.contains("zoom-btn")) return;
+    dragging=true;
+    startX=e.clientX-posX;
+    startY=e.clientY-posY;
+    wrap.setPointerCapture(e.pointerId);
+    wrap.classList.add("show-ctrl");
+  });
+  wrap.addEventListener("pointermove",e=>{
+    if(!dragging) return;
+    if(isMain) return; // don't move remote full-screen
+    posX=e.clientX-startX;
+    posY=e.clientY-startY;
+    wrap.style.transform=`translate(${posX}px,${posY}px) scale(${scale})`;
+  });
+  wrap.addEventListener("pointerup",()=>{ dragging=false; });
+  wrap.addEventListener("pointercancel",()=>{ dragging=false; });
+
+  // Scroll zoom
+  wrap.addEventListener("wheel",e=>{
+    e.preventDefault();
+    scale=Math.min(maxScale,Math.max(minScale,scale-(e.deltaY*0.002)));
+    if(isMain) applyScaleMain(); else applyTransform();
+  },{passive:false});
+
+  // Pinch zoom
+  let lastPinchDist=null;
+  wrap.addEventListener("touchstart",e=>{
+    if(e.touches.length===2) lastPinchDist=Math.hypot(
+      e.touches[0].clientX-e.touches[1].clientX,
+      e.touches[0].clientY-e.touches[1].clientY
+    );
+  },{passive:true});
+  wrap.addEventListener("touchmove",e=>{
+    if(e.touches.length===2){
+      const d=Math.hypot(
+        e.touches[0].clientX-e.touches[1].clientX,
+        e.touches[0].clientY-e.touches[1].clientY
+      );
+      if(lastPinchDist){
+        scale=Math.min(maxScale,Math.max(minScale,scale*(d/lastPinchDist)));
+        if(isMain) applyScaleMain(); else applyTransform();
+      }
+      lastPinchDist=d;
+    }
+  },{passive:true});
+  wrap.addEventListener("touchend",()=>{ lastPinchDist=null; });
+
+  // Zoom buttons
+  const zoomIn =wrap.querySelector(isMain?"#remoteZoomIn":"#localZoomIn");
+  const zoomOut=wrap.querySelector(isMain?"#remoteZoomOut":"#localZoomOut");
+  if(zoomIn) zoomIn.onclick=()=>{
+    scale=Math.min(maxScale,scale+0.2);
+    if(isMain) applyScaleMain(); else applyTransform();
+  };
+  if(zoomOut) zoomOut.onclick=()=>{
+    scale=Math.max(minScale,scale-0.2);
+    if(isMain) applyScaleMain(); else applyTransform();
+  };
 }
+makeDraggableZoomable(localWrap,false);
+makeDraggableZoomable(remoteWrap,true);
 
 /* =========================================================================
    SUPABASE CSATORNA
    ========================================================================= */
-async function setupChannel(code) {
-  channel = supabase.channel("call-room-" + code, {
-    config: {
-      broadcast: { self: false },
-      presence:  { key: cryptoId() }
-    }
+async function setupChannel(code){
+  channel=supabase.channel("call-room-"+code,{
+    config:{broadcast:{self:false},presence:{key:cryptoId()}}
   });
-
-  channel.on("broadcast", { event: "signal"  }, ({ payload }) => handleSignal(payload));
-  channel.on("broadcast", { event: "caption" }, ({ payload }) => handleIncomingCaption(payload));
-  channel.on("broadcast", { event: "chat"    }, ({ payload }) => handleIncomingChat(payload));
-
-  channel.on("presence", { event: "sync" }, () => {
-    const state = channel.presenceState();
-    const count = Object.keys(state).length;
-    if (count >= 2 && isInitiator && pc && !pc.currentLocalDescription) {
-      startCallAsInitiator();
-    }
+  channel.on("broadcast",{event:"signal"},({payload})=>handleSignal(payload));
+  channel.on("broadcast",{event:"caption"},({payload})=>handleIncomingCaption(payload));
+  channel.on("broadcast",{event:"chat"},({payload})=>handleIncomingChat(payload));
+  channel.on("broadcast",{event:"reaction"},({payload})=>showEmojiFloat(payload.emoji,false));
+  channel.on("presence",{event:"sync"},()=>{
+    const count=Object.keys(channel.presenceState()).length;
+    if(count>=2&&isInitiator&&pc&&!pc.currentLocalDescription) startCallAsInitiator();
   });
-
-  channel.on("broadcast", { event: "signal" }, ({ payload }) => {
-    if (payload.kind === "request-offer" && isInitiator && pc && !pc.currentLocalDescription) {
-      startCallAsInitiator();
-    }
+  channel.on("broadcast",{event:"signal"},({payload})=>{
+    if(payload.kind==="request-offer"&&isInitiator&&pc&&!pc.currentLocalDescription) startCallAsInitiator();
   });
-
-await channel.subscribe(async (status) => {
-    if (status === "SUBSCRIBED") {
-      await channel.track({ name: myName || "Vendég", lang: myLang, initiator: isInitiator });
-
-      if (!isInitiator) {
-        setTimeout(() => {
-          channel.send({
-            type: "broadcast",
-            event: "signal",
-            payload: { kind: "request-offer" }
-          });
-        }, 800);
+  await channel.subscribe(async status=>{
+    if(status==="SUBSCRIBED"){
+      await channel.track({name:myName||"Guest",lang:myLang,initiator:isInitiator});
+      if(!isInitiator){
+        setTimeout(()=>{
+          channel.send({type:"broadcast",event:"signal",payload:{kind:"request-offer"}});
+        },800);
       }
     }
   });
 }
-
 
 /* =========================================================================
    WEBRTC
    ========================================================================= */
-async function initMedia() {
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const cameras = devices.filter(d => d.kind === "videoinput");
-    const preferred = cameras.find(d =>
-      d.label.toLowerCase().includes("integrated") ||
-      d.label.toLowerCase().includes("integrated camera") ||
-      d.label.toLowerCase().includes("beépített") ||
-      d.label.toLowerCase().includes("webcam")
-    );
-    const videoConstraint = preferred
-      ? { deviceId: { exact: preferred.deviceId } }
-      : { facingMode: "user" };
-
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: videoConstraint,
-      audio: true
+async function initMedia(){
+  try{
+    const devices=await navigator.mediaDevices.enumerateDevices();
+    const cameras=devices.filter(d=>d.kind==="videoinput");
+    const preferred=cameras.find(d=>/integrated|beépített|webcam/i.test(d.label));
+    const videoConstraint=preferred?{deviceId:{exact:preferred.deviceId}}:{facingMode:"user"};
+    localStream=await navigator.mediaDevices.getUserMedia({
+      video:videoConstraint,
+      audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}
     });
-    localVideo.srcObject = localStream;
-  } catch (err) {
-    console.error("Kamera/mikrofon hiba:", err);
-    setupStatus.textContent = "❌ Nincs engedély a kamerához/mikrofonhoz!";
+    localVideo.srcObject=localStream;
+  }catch(err){
+    setupStatus.textContent=t("errPerm");
     throw err;
   }
 }
 
-function createPeerConnection() {
-  pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+function createPeerConnection(){
+  pc=new RTCPeerConnection({iceServers:ICE_SERVERS});
+  localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
 
-  localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+  // DataChannel for file transfer
+  dataChannel=pc.createDataChannel("files",{ordered:true});
+  setupDataChannel(dataChannel);
 
-  pc.ontrack = (event) => {
-    if (event.streams && event.streams[0]) {
-      remoteVideo.srcObject = event.streams[0];
-    }
+  pc.ondatachannel=e=>{
+    remoteDataChannel=e.channel;
+    setupDataChannel(remoteDataChannel);
   };
 
-  pc.onicecandidate = (event) => {
-    if (event.candidate && channel) {
-      channel.send({
-        type: "broadcast",
-        event: "signal",
-        payload: { kind: "ice", candidate: event.candidate }
-      });
-    }
+  pc.ontrack=e=>{
+    if(e.streams&&e.streams[0]) remoteVideo.srcObject=e.streams[0];
   };
-
-  pc.onconnectionstatechange = () => {
-    const state = pc.connectionState;
-    console.log("PC állapot:", state);
-    if (state === "failed") {
-      setupStatus.textContent = "⚠️ A kapcsolat meghiúsult.";
-    } else if (state === "disconnected") {
-      setupStatus.textContent = "⚠️ A kapcsolat megszakadt.";
-    } else if (state === "connected") {
-      setupStatus.textContent = "";
-    }
-  };
-
-  pc.onicecandidateerror = (event) => {
-    // Nem minden ICE hiba végzetes; csak logoljuk
-    console.warn("ICE candidate hiba:", event.errorCode, event.errorText);
-  };
-}
-
-async function startCallAsInitiator() {
-  if (!pc) return;
-  try {
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    channel.send({
-      type: "broadcast",
-      event: "signal",
-      payload: { kind: "offer", sdp: offer }
+  pc.onicecandidate=e=>{
+    if(e.candidate&&channel) channel.send({
+      type:"broadcast",event:"signal",
+      payload:{kind:"ice",candidate:e.candidate}
     });
-  } catch (err) {
-    console.error("Offer létrehozási hiba:", err);
-  }
+  };
+  pc.onconnectionstatechange=()=>{
+    const s=pc.connectionState;
+    if(s==="failed") setNetStatus("bad");
+    else if(s==="disconnected") setNetStatus("warn");
+    else if(s==="connected"){
+      setNetStatus("good");
+      startStatsLoop();
+    }
+  };
 }
 
-async function handleSignal(payload) {
-  if (!pc) return;
-  try {
-    if (payload.kind === "offer") {
-      // Biztonságos: csak akkor fogadjuk, ha még nincs remote leíró
-      if (pc.signalingState !== "stable") {
-        console.warn("Offer érkezett, de a signaling állapot:", pc.signalingState);
-        return;
-      }
+function setNetStatus(level){
+  netDot.className="net-dot"+(level==="warn"?" warn":level==="bad"?" bad":"");
+  netLabel.textContent=level==="good"?"●●●":level==="warn"?"●●○":"●○○";
+}
+
+async function startCallAsInitiator(){
+  if(!pc) return;
+  try{
+    const offer=await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    channel.send({type:"broadcast",event:"signal",payload:{kind:"offer",sdp:offer}});
+  }catch(e){console.error(e);}
+}
+
+async function handleSignal(payload){
+  if(!pc) return;
+  try{
+    if(payload.kind==="offer"){
+      if(pc.signalingState!=="stable") return;
       await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-      remoteDescSet = true;
+      remoteDescSet=true;
       await flushPendingCandidates();
-      const answer = await pc.createAnswer();
+      const answer=await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      channel.send({
-        type: "broadcast",
-        event: "signal",
-        payload: { kind: "answer", sdp: answer }
-      });
-
-    } else if (payload.kind === "answer") {
-      if (pc.signalingState !== "have-local-offer") {
-        console.warn("Answer érkezett, de a signaling állapot:", pc.signalingState);
-        return;
-      }
+      channel.send({type:"broadcast",event:"signal",payload:{kind:"answer",sdp:answer}});
+    }else if(payload.kind==="answer"){
+      if(pc.signalingState!=="have-local-offer") return;
       await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-      remoteDescSet = true;
+      remoteDescSet=true;
       await flushPendingCandidates();
-
-    } else if (payload.kind === "ice") {
-      if (remoteDescSet && pc.remoteDescription) {
-        try {
-          await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-        } catch (e) {
-          console.warn("ICE candidate hozzáadási hiba:", e);
-        }
-      } else {
-        pendingCandidates.push(payload.candidate);
-      }
+    }else if(payload.kind==="ice"){
+      if(remoteDescSet&&pc.remoteDescription){
+        try{ await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); }
+        catch(e){ console.warn(e); }
+      }else{ pendingCandidates.push(payload.candidate); }
     }
-  } catch (err) {
-    console.error("Signal feldolgozási hiba:", err);
-  }
+  }catch(e){console.error(e);}
 }
 
-async function flushPendingCandidates() {
-  for (const c of pendingCandidates) {
-    try {
-      await pc.addIceCandidate(new RTCIceCandidate(c));
-    } catch (e) {
-      console.warn("Függőben lévő ICE candidate hiba:", e);
-    }
+async function flushPendingCandidates(){
+  for(const c of pendingCandidates){
+    try{ await pc.addIceCandidate(new RTCIceCandidate(c)); }catch(e){console.warn(e);}
   }
-  pendingCandidates = [];
+  pendingCandidates=[];
+}
+
+/* =========================================================================
+   RTCStats — hálózati minőség jelző
+   ========================================================================= */
+function startStatsLoop(){
+  if(statsInterval) clearInterval(statsInterval);
+  let prevBytes=0,prevTs=0;
+  statsInterval=setInterval(async()=>{
+    if(!pc) return;
+    try{
+      const stats=await pc.getStats();
+      let rtt=null,jitter=null,loss=null,bw=null;
+      stats.forEach(r=>{
+        if(r.type==="candidate-pair"&&r.state==="succeeded"&&r.currentRoundTripTime!=null){
+          rtt=Math.round(r.currentRoundTripTime*1000);
+        }
+        if(r.type==="inbound-rtp"&&r.kind==="audio"){
+          jitter=r.jitter!=null?Math.round(r.jitter*1000):null;
+          if(r.packetsLost!=null&&r.packetsReceived!=null){
+            const total=r.packetsLost+r.packetsReceived;
+            loss=total>0?((r.packetsLost/total)*100).toFixed(1)+"%":"0%";
+          }
+        }
+        if(r.type==="inbound-rtp"&&r.kind==="video"&&r.bytesReceived!=null){
+          const now=Date.now();
+          if(prevTs){
+            const dt=(now-prevTs)/1000;
+            bw=formatBytes(Math.round((r.bytesReceived-prevBytes)/dt))+"/s";
+          }
+          prevBytes=r.bytesReceived;
+          prevTs=now;
+        }
+      });
+      el("statRtt").textContent=rtt!=null?rtt+"ms":"--";
+      el("statJitter").textContent=jitter!=null?jitter+"ms":"--";
+      el("statPacket").textContent=loss||"--";
+      el("statBw").textContent=bw||"--";
+      // net quality indicator
+      if(rtt!=null){
+        if(rtt<150) setNetStatus("good");
+        else if(rtt<350) setNetStatus("warn");
+        else setNetStatus("bad");
+      }
+    }catch(e){}
+  },3000);
 }
 
 /* =========================================================================
    HANGFELISMERÉS (STT)
    ========================================================================= */
-function startRecognition() {
-  if (!micOn) return;
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    console.warn("Web Speech API nem támogatott ezen a böngészőn.");
-    return;
-  }
-  // Ha már fut, ne indítsuk újra
-  if (recognition) {
-    try { recognition.stop(); } catch (_) {}
-    recognition = null;
-  }
-  try {
-    recognition = new SR();
-    recognition.lang            = STT_LOCALE[myLang] || "hu-HU";
-    recognition.continuous      = true;
-    recognition.interimResults  = true;
-    recognitionShouldRun        = true;
-
-    recognition.onresult = async (event) => {
-      let finalTranscript = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const res = event.results[i];
-        if (res.isFinal) {
-          finalTranscript += res[0].transcript;
-        } else {
-          ownBox.style.display = "block";
-          ownMain.textContent  = res[0].transcript;
-        }
+function startRecognition(){
+  if(!micOn) return;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ console.warn("Web Speech API not supported"); return; }
+  if(recognition){ try{recognition.stop();}catch(_){} recognition=null; }
+  try{
+    recognition=new SR();
+    recognition.lang=STT_LOCALE[myLang]||"hu-HU";
+    recognition.continuous=true;
+    recognition.interimResults=true;
+    recognitionShouldRun=true;
+    recognition.onresult=async e=>{
+      let final="";
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const r=e.results[i];
+        if(r.isFinal) final+=r[0].transcript;
+        else{ ownBox.style.display="block"; ownMain.textContent=r[0].transcript; }
       }
-      if (finalTranscript.trim()) {
-        ownBox.style.display = "block";
-        ownMain.textContent  = finalTranscript.trim();
-        if (channel) {
-          channel.send({
-            type: "broadcast",
-            event: "caption",
-            payload: {
-              text:       finalTranscript.trim(),
-              sourceLang: myLang,
-              name:       myName || LANG_LABEL[myLang]
-            }
-          });
-        }
-        setTimeout(() => { ownBox.style.display = "none"; }, 4000);
+      if(final.trim()){
+        ownBox.style.display="block";
+        ownMain.textContent=final.trim();
+        if(channel) channel.send({
+          type:"broadcast",event:"caption",
+          payload:{text:final.trim(),sourceLang:myLang,name:myName||LANG_LABEL[myLang]}
+        });
+        addHistoryItem(final.trim(),"",true);
+        setTimeout(()=>{ ownBox.style.display="none"; },4000);
       }
     };
-
-    recognition.onerror = (e) => {
-      // "no-speech" és "aborted" nem végzetes
-      if (e.error !== "no-speech" && e.error !== "aborted") {
-        console.warn("STT hiba:", e.error);
-      }
-    };
-
-    recognition.onend = () => {
-      if (recognitionShouldRun && micOn && !callEnded) {
-        try { recognition.start(); } catch (_) {}
-      }
-    };
-
+    recognition.onerror=e=>{ if(e.error!=="no-speech"&&e.error!=="aborted") console.warn("STT:",e.error); };
+    recognition.onend=()=>{ if(recognitionShouldRun&&micOn&&!callEnded) try{recognition.start();}catch(_){} };
     recognition.start();
-  } catch (err) {
-    console.warn("STT indítási hiba:", err);
-  }
+  }catch(e){ console.warn("STT start error:",e); }
 }
 
-function stopRecognition() {
-  recognitionShouldRun = false;
-  if (recognition) {
-    try { recognition.stop(); } catch (_) {}
-    recognition = null;
-  }
+function stopRecognition(){
+  recognitionShouldRun=false;
+  if(recognition){ try{recognition.stop();}catch(_){} recognition=null; }
 }
 
 /* =========================================================================
-   FELIRATOK
+   FELIRATOK + ELŐZMÉNYEK
    ========================================================================= */
-async function handleIncomingCaption(payload) {
-  if (!payload || !payload.text) return;
-  try {
-    const translated = await translateText(
-      payload.text,
-      payload.sourceLang || "hu",
-      myLang
-    );
-    incomingTag.textContent  = (payload.name || LANG_LABEL[payload.sourceLang] || "PARTNER").toUpperCase();
-    incomingMain.textContent = translated;
-    incomingSub.textContent  = (payload.sourceLang && payload.sourceLang !== myLang)
-      ? `„${payload.text}" (${LANG_LABEL[payload.sourceLang] || payload.sourceLang})`
-      : "";
-    incomingBox.style.display = "block";
+async function handleIncomingCaption(payload){
+  if(!payload?.text) return;
+  try{
+    const translated=await translateText(payload.text,payload.sourceLang||"hu",myLang);
+    incomingTag.textContent=(payload.name||LANG_LABEL[payload.sourceLang]||"PARTNER").toUpperCase();
+    incomingMain.textContent=translated;
+    incomingSub.textContent=(payload.sourceLang&&payload.sourceLang!==myLang)
+      ?`„${payload.text}" (${LANG_LABEL[payload.sourceLang]||payload.sourceLang})`:"";
+    incomingBox.style.display="block";
     clearTimeout(captionHideTimer);
-    captionHideTimer = setTimeout(() => { incomingBox.style.display = "none"; }, 7000);
-  } catch (err) {
-    console.error("Felirat feldolgozási hiba:", err);
+    captionHideTimer=setTimeout(()=>{ incomingBox.style.display="none"; },7000);
+    addHistoryItem(translated,payload.text,false);
+  }catch(e){console.error(e);}
+}
+
+function addHistoryItem(main,orig,isOwn){
+  const item=document.createElement("div");
+  item.className="hist-item"+(isOwn?"":" partner");
+  const time=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  item.innerHTML=`<div class="hist-time">${time}</div><div class="hist-text">${main}</div>`
+    +(orig&&orig!==main?`<div class="hist-orig">${orig}</div>`:"");
+  histList.appendChild(item);
+  histList.scrollTop=histList.scrollHeight;
+}
+
+/* =========================================================================
+   CHAT + FÁJLKÜLDÉS
+   ========================================================================= */
+function addChatBubble(text,sub,isMe){
+  const wrap=document.createElement("div");
+  wrap.className="msg"+(isMe?" me":"");
+  const bubble=document.createElement("div");
+  bubble.className="msg-bubble";
+  bubble.textContent=text;
+  wrap.appendChild(bubble);
+  if(sub){ const s=document.createElement("div"); s.className="msg-orig"; s.textContent=sub; wrap.appendChild(s); }
+  chatMessages.appendChild(wrap);
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+}
+
+function addFileBubble(name,size,url,isMe){
+  const wrap=document.createElement("div");
+  wrap.className="msg"+(isMe?" me":"");
+  const f=document.createElement("a");
+  f.className="msg-file";
+  f.href=url; f.download=name; f.target="_blank";
+  f.innerHTML=`📎 <span>${name}</span><span style="color:var(--text-dim);font-size:11px">${formatBytes(size)}</span>`;
+  wrap.appendChild(f);
+  chatMessages.appendChild(wrap);
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+}
+
+async function handleIncomingChat(payload){
+  if(!payload?.text) return;
+  try{
+    const translated=await translateText(payload.text,payload.sourceLang||"hu",myLang);
+    const sub=(payload.sourceLang&&payload.sourceLang!==myLang)?`original: „${payload.text}"`:"";
+    addChatBubble(translated,sub,false);
+  }catch(e){console.error(e);}
+}
+
+function sendChat(){
+  const text=chatInput.value.trim();
+  if(!text||!channel) return;
+  addChatBubble(text,"",true);
+  channel.send({type:"broadcast",event:"chat",payload:{text,sourceLang:myLang}});
+  chatInput.value="";
+}
+
+/* DataChannel file transfer */
+function setupDataChannel(dc){
+  let incomingMeta=null,incomingChunks=[];
+  dc.onopen=()=>console.log("DataChannel open");
+  dc.onmessage=e=>{
+    if(typeof e.data==="string"){
+      try{
+        const msg=JSON.parse(e.data);
+        if(msg.type==="file-meta"){
+          incomingMeta=msg;
+          incomingChunks=[];
+        }else if(msg.type==="file-end"&&incomingMeta){
+          const blob=new Blob(incomingChunks,{type:incomingMeta.mime||"application/octet-stream"});
+          const url=URL.createObjectURL(blob);
+          addFileBubble(incomingMeta.name,incomingMeta.size,url,false);
+          incomingMeta=null;
+        }
+      }catch(_){}
+    }else if(e.data instanceof ArrayBuffer){
+      incomingChunks.push(e.data);
+    }
+  };
+}
+
+async function sendFile(file){
+  const dc=dataChannel||remoteDataChannel;
+  if(!dc||dc.readyState!=="open"){ addChatBubble("⚠️ DataChannel not ready","",true); return; }
+  const meta={type:"file-meta",name:file.name,size:file.size,mime:file.type};
+  dc.send(JSON.stringify(meta));
+  const reader=new FileReader();
+  const CHUNK=16384;
+  let offset=0;
+  const url=URL.createObjectURL(file);
+  addFileBubble(file.name,file.size,url,true);
+  reader.onload=e=>{
+    dc.send(e.target.result);
+    offset+=e.target.result.byteLength;
+    if(offset<file.size){ readNextChunk(); }
+    else{ dc.send(JSON.stringify({type:"file-end"})); }
+  };
+  function readNextChunk(){
+    const slice=file.slice(offset,offset+CHUNK);
+    reader.readAsArrayBuffer(slice);
+  }
+  readNextChunk();
+}
+
+/* =========================================================================
+   KÉPERNYŐMEGOSZTÁS
+   ========================================================================= */
+async function toggleScreenShare(){
+  if(!isSharing){
+    try{
+      screenStream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});
+      const videoTrack=screenStream.getVideoTracks()[0];
+      const sender=pc.getSenders().find(s=>s.track&&s.track.kind==="video");
+      if(sender) await sender.replaceTrack(videoTrack);
+      localVideo.srcObject=screenStream;
+      isSharing=true;
+      screenBtn.classList.add("active-teal");
+      screenBtn.textContent="🛑";
+      videoTrack.onended=()=>stopScreenShare();
+    }catch(e){ console.warn("Screen share error:",e); }
+  }else{ stopScreenShare(); }
+}
+
+async function stopScreenShare(){
+  if(!isSharing) return;
+  isSharing=false;
+  screenBtn.classList.remove("active-teal");
+  screenBtn.textContent="🖥️";
+  if(screenStream){ screenStream.getTracks().forEach(t=>t.stop()); screenStream=null; }
+  const sender=pc.getSenders().find(s=>s.track&&s.track.kind==="video");
+  const camTrack=localStream?.getVideoTracks()[0];
+  if(sender&&camTrack){ await sender.replaceTrack(camTrack); localVideo.srcObject=localStream; }
+}
+
+/* =========================================================================
+   FELVÉTEL
+   ========================================================================= */
+function toggleRecording(){
+  if(!isRecording){
+    recordedChunks=[];
+    const streams=[localStream];
+    if(remoteVideo.srcObject) streams.push(remoteVideo.srcObject);
+    // Mix streams: record local only (remote audio is in PC, not easily merged client-side)
+    const combined=new MediaStream([
+      ...localStream.getTracks(),
+      ...(remoteVideo.srcObject?remoteVideo.srcObject.getTracks():[])
+    ]);
+    const mimeType=MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+      ?"video/webm;codecs=vp9,opus"
+      :MediaRecorder.isTypeSupported("video/webm")?"video/webm":"video/mp4";
+    try{
+      mediaRecorder=new MediaRecorder(combined,{mimeType});
+      mediaRecorder.ondataavailable=e=>{ if(e.data.size>0) recordedChunks.push(e.data); };
+      mediaRecorder.onstop=()=>{
+        const blob=new Blob(recordedChunks,{type:mimeType});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url; a.download="LiveTranslate-"+new Date().toISOString().slice(0,19).replace(/:/g,"-")+".webm";
+        a.click();
+        setupStatus.textContent=t("recStop");
+      };
+      mediaRecorder.start(1000);
+      isRecording=true;
+      recBtn.classList.add("active-amber");
+      recBtn.textContent="⏹";
+      recPill.style.display="block";
+    }catch(e){ console.error("MediaRecorder error:",e); }
+  }else{
+    if(mediaRecorder&&mediaRecorder.state!=="inactive") mediaRecorder.stop();
+    isRecording=false;
+    recBtn.classList.remove("active-amber");
+    recBtn.textContent="⏺";
+    recPill.style.display="none";
   }
 }
 
 /* =========================================================================
-   CHAT
+   EMOJI REAKCIÓK
    ========================================================================= */
-function addChatBubble(text, sub, isMe) {
-  const wrap   = document.createElement("div");
-  wrap.className = "msg" + (isMe ? " me" : "");
-
-  const bubble = document.createElement("div");
-  bubble.className   = "msg-bubble";
-  bubble.textContent = text;
-  wrap.appendChild(bubble);
-
-  if (sub) {
-    const s = document.createElement("div");
-    s.className   = "msg-orig";
-    s.textContent = sub;
-    wrap.appendChild(s);
-  }
-
-  chatMessages.appendChild(wrap);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-async function handleIncomingChat(payload) {
-  if (!payload || !payload.text) return;
-  try {
-    const translated = await translateText(
-      payload.text,
-      payload.sourceLang || "hu",
-      myLang
-    );
-    const sub = (payload.sourceLang && payload.sourceLang !== myLang)
-      ? `eredeti: „${payload.text}"`
-      : "";
-    addChatBubble(translated, sub, false);
-  } catch (err) {
-    console.error("Chat feldolgozási hiba:", err);
+function showEmojiFloat(emoji,sendToChannel){
+  const e=document.createElement("div");
+  e.className="emoji-float";
+  e.textContent=emoji;
+  const left=10+Math.random()*80;
+  e.style.left=left+"%";
+  e.style.bottom="80px";
+  emojiOverlay.appendChild(e);
+  setTimeout(()=>e.remove(),3000);
+  if(sendToChannel&&channel){
+    channel.send({type:"broadcast",event:"reaction",payload:{emoji}});
   }
 }
 
-function sendChat() {
-  const text = chatInput.value.trim();
-  if (!text || !channel) return;
-  addChatBubble(text, "", true);
-  channel.send({
-    type: "broadcast",
-    event: "chat",
-    payload: { text, sourceLang: myLang }
-  });
-  chatInput.value = "";
+/* =========================================================================
+   KAMERA TÜKRÖZÉS
+   ========================================================================= */
+function toggleMirror(){
+  mirrored=!mirrored;
+  localVideo.style.transform=mirrored?"scaleX(-1)":"scaleX(1)";
+  mirrorBtn.classList.toggle("active-teal",mirrored);
+}
+
+/* =========================================================================
+   PICTURE IN PICTURE
+   ========================================================================= */
+async function togglePiP(){
+  try{
+    if(document.pictureInPictureElement){
+      await document.exitPictureInPicture();
+      pipBtn.classList.remove("active-teal");
+    }else{
+      await remoteVideo.requestPictureInPicture();
+      pipBtn.classList.add("active-teal");
+    }
+  }catch(e){ console.warn("PiP error:",e); }
 }
 
 /* =========================================================================
    HÍVÁS INDÍTÁSA
    ========================================================================= */
-async function beginCallFlow() {
-  callEnded = false;
-  try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+async function beginCallFlow(){
+  callEnded=false;
+  try{
+    supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
     await initMedia();
     createPeerConnection();
     await setupChannel(roomId);
-
-    roomPill.textContent = "Szoba: " + roomId;
-    langPill.textContent = LANG_TAG[myLang] || "HU";
-
+    roomPill.textContent="Room: "+roomId;
+    langPill.textContent=LANG_TAG[myLang]||"HU";
     setupScreen.classList.remove("active");
     callScreen.classList.add("active");
-
     startRecognition();
-  } catch (err) {
-    console.error("Hívásindítási hiba:", err);
-    setupStatus.textContent = "❌ Hiba: " + (err.message || "Nem sikerült elindítani a hívást.");
+  }catch(err){
+    console.error(err);
+    setupStatus.textContent=t("errPerm");
   }
 }
 
 /* =========================================================================
-   UI ESEMÉNYKEZELŐK — Setup
+   SETUP UI EVENTS
    ========================================================================= */
-createRoomBtn.onclick = async () => {
-  myName       = myNameInput.value.trim();
-  myLang       = myLangSelect.value;
-  roomId       = randomCode();
-  isInitiator  = true;
-
-  bigRoomCode.textContent        = roomId;
-  roomCodeDisplay.style.display  = "block";
-  setupStatus.textContent        = "Várakozás a másik félre…";
-
-  createRoomBtn.disabled = true;
-  joinRoomBtn.disabled   = true;
-
+createRoomBtn.onclick=async()=>{
+  myName=myNameInput.value.trim();
+  myLang=myLangSelect.value;
+  roomId=randomCode();
+  isInitiator=true;
+  bigRoomCode.textContent=roomId;
+  roomCodeDisplay.style.display="block";
+  setupStatus.textContent=t("waitMsg");
+  createRoomBtn.disabled=true; joinRoomBtn.disabled=true;
   await beginCallFlow();
 };
 
-joinRoomBtn.onclick = async () => {
-  const code = joinCodeInput.value.trim().toUpperCase();
-  if (code.length < 4) {
-    setupStatus.textContent = "Írd be a kapott kódot (4–6 karakter).";
-    return;
-  }
-  myName      = myNameInput.value.trim();
-  myLang      = myLangSelect.value;
-  roomId      = code;
-  isInitiator = false;
-  setupStatus.textContent = "Csatlakozás…";
-
-  createRoomBtn.disabled = true;
-  joinRoomBtn.disabled   = true;
-
+joinRoomBtn.onclick=async()=>{
+  const code=joinCodeInput.value.trim().toUpperCase();
+  if(code.length<4){ setupStatus.textContent=t("noCode"); return; }
+  myName=myNameInput.value.trim();
+  myLang=myLangSelect.value;
+  roomId=code; isInitiator=false;
+  setupStatus.textContent=t("joinMsg");
+  createRoomBtn.disabled=true; joinRoomBtn.disabled=true;
   await beginCallFlow();
 };
 
-copyCodeBtn.onclick = () => {
-  if (!roomId) return;
-  navigator.clipboard.writeText(roomId)
-    .then(() => {
-      copyCodeBtn.textContent = "✅ Másolva";
-      setTimeout(() => { copyCodeBtn.textContent = "📋 Kód másolása"; }, 1500);
-    })
-    .catch(() => {
-      // Fallback régi böngészőkre
-      const ta = document.createElement("textarea");
-      ta.value = roomId;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      copyCodeBtn.textContent = "✅ Másolva";
-      setTimeout(() => { copyCodeBtn.textContent = "📋 Kód másolása"; }, 1500);
-    });
+copyCodeBtn.onclick=()=>{
+  if(!roomId) return;
+  const done=()=>{ copyCodeBtn.querySelector("[data-i18n]").textContent=t("copyDone"); setTimeout(()=>{ copyCodeBtn.querySelector("[data-i18n]").textContent=t("btnCopy"); },1500); };
+  navigator.clipboard.writeText(roomId).then(done).catch(()=>{
+    const ta=document.createElement("textarea"); ta.value=roomId;
+    document.body.appendChild(ta); ta.select(); document.execCommand("copy");
+    document.body.removeChild(ta); done();
+  });
 };
 
 /* =========================================================================
-   UI ESEMÉNYKEZELŐK — Hívás
+   CALL UI EVENTS
    ========================================================================= */
-micBtn.onclick = () => {
-  if (!localStream) return;
-  micOn = !micOn;
-  localStream.getAudioTracks().forEach((t) => { t.enabled = micOn; });
-  micBtn.classList.toggle("off", !micOn);
-  micBtn.textContent = micOn ? "🎙️" : "🔇";
-  if (micOn) startRecognition();
-  else        stopRecognition();
+micBtn.onclick=()=>{
+  if(!localStream) return;
+  micOn=!micOn;
+  localStream.getAudioTracks().forEach(t=>t.enabled=micOn);
+  micBtn.classList.toggle("off",!micOn);
+  micBtn.textContent=micOn?"🎙️":"🔇";
+  if(micOn) startRecognition(); else stopRecognition();
 };
 
-camBtn.onclick = () => {
-  if (!localStream) return;
-  camOn = !camOn;
-  localStream.getVideoTracks().forEach((t) => { t.enabled = camOn; });
-  camBtn.classList.toggle("off", !camOn);
-  camBtn.textContent = camOn ? "📷" : "🚫";
+camBtn.onclick=()=>{
+  if(!localStream) return;
+  camOn=!camOn;
+  localStream.getVideoTracks().forEach(t=>t.enabled=camOn);
+  camBtn.classList.toggle("off",!camOn);
+  camBtn.textContent=camOn?"📷":"🚫";
 };
 
-langBtn.onclick = (e) => {
-  e.stopPropagation();
-  langMenu.classList.toggle("open");
-};
+mirrorBtn.onclick=toggleMirror;
+screenBtn.onclick=toggleScreenShare;
+recBtn.onclick=toggleRecording;
+pipBtn.onclick=togglePiP;
 
-// Menü bezárása ha máshova kattintanak
-document.addEventListener("click", (e) => {
-  if (!langMenu.contains(e.target) && e.target !== langBtn) {
-    langMenu.classList.remove("open");
-  }
+reactBtn.onclick=e=>{ e.stopPropagation(); reactBar.classList.toggle("open"); };
+reactBar.querySelectorAll(".react-emoji").forEach(btn=>{
+  btn.onclick=()=>{ showEmojiFloat(btn.dataset.emoji,true); reactBar.classList.remove("open"); };
 });
 
-langMenu.querySelectorAll("button").forEach((btn) => {
-  btn.onclick = () => {
-    myLang = btn.dataset.lang;
-    langPill.textContent = LANG_TAG[myLang] || "HU";
-    langMenu.querySelectorAll("button").forEach((b) => {
-      b.classList.toggle("active", b === btn);
-    });
+langBtn.onclick=e=>{ e.stopPropagation(); langMenu.classList.toggle("open"); };
+langMenu.querySelectorAll("button").forEach(btn=>{
+  btn.onclick=()=>{
+    myLang=btn.dataset.lang;
+    langPill.textContent=LANG_TAG[myLang]||"HU";
+    langMenu.querySelectorAll("button").forEach(b=>b.classList.toggle("active",b===btn));
     langMenu.classList.remove("open");
-    stopRecognition();
-    startRecognition();
-    if (channel) {
-      channel.track({ name: myName || "Vendég", lang: myLang, initiator: isInitiator });
-    }
+    stopRecognition(); startRecognition();
+    if(channel) channel.track({name:myName||"Guest",lang:myLang,initiator:isInitiator});
   };
 });
 
-chatBtn.onclick    = () => chatPanel.classList.add("open");
-chatCloseBtn.onclick = () => chatPanel.classList.remove("open");
-chatSendBtn.onclick  = sendChat;
-chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
+statsBtn.onclick=e=>{ e.stopPropagation(); statsOverlay.classList.toggle("open"); };
+histBtn.onclick=()=>histPanel.classList.add("open");
+histCloseBtn.onclick=()=>histPanel.classList.remove("open");
+chatBtn.onclick=()=>chatPanel.classList.add("open");
+chatCloseBtn.onclick=()=>chatPanel.classList.remove("open");
+chatSendBtn.onclick=sendChat;
+chatInput.addEventListener("keydown",e=>{ if(e.key==="Enter") sendChat(); });
 
-hangupBtn.onclick = () => {
-  callEnded = true;
+fileBtn.onclick=()=>fileInput.click();
+fileInput.onchange=async()=>{
+  for(const f of fileInput.files) await sendFile(f);
+  fileInput.value="";
+};
+
+document.addEventListener("click",e=>{
+  if(!langMenu.contains(e.target)&&e.target!==langBtn) langMenu.classList.remove("open");
+  if(!reactBar.contains(e.target)&&e.target!==reactBtn) reactBar.classList.remove("open");
+  if(!statsOverlay.contains(e.target)&&e.target!==statsBtn) statsOverlay.classList.remove("open");
+});
+
+hangupBtn.onclick=()=>{
+  callEnded=true;
   stopRecognition();
-
-  if (pc) {
-    pc.close();
-    pc = null;
-  }
-  if (channel) {
-    supabase.removeChannel(channel);
-    channel = null;
-  }
-  if (localStream) {
-    localStream.getTracks().forEach((t) => t.stop());
-    localStream = null;
-  }
-
-  remoteVideo.srcObject = null;
-  localVideo.srcObject  = null;
-  remoteDescSet         = false;
-  pendingCandidates     = [];
+  if(statsInterval){ clearInterval(statsInterval); statsInterval=null; }
+  if(isRecording) toggleRecording();
+  if(isSharing) stopScreenShare();
+  if(pc){ pc.close(); pc=null; }
+  if(channel){ supabase.removeChannel(channel); channel=null; }
+  if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; }
+  remoteVideo.srcObject=null; localVideo.srcObject=null;
+  remoteDescSet=false; pendingCandidates=[];
   translateCache.clear();
-  chatMessages.innerHTML = "";
-
+  chatMessages.innerHTML=""; histList.innerHTML="";
   callScreen.classList.remove("active");
   setupScreen.classList.add("active");
-
-  roomCodeDisplay.style.display = "none";
-  setupStatus.textContent       = "A hívás véget ért.";
-
-  // Gombok újra engedélyezése
-  createRoomBtn.disabled = false;
-  joinRoomBtn.disabled   = false;
+  roomCodeDisplay.style.display="none";
+  setupStatus.textContent=t("callEnded");
+  createRoomBtn.disabled=false; joinRoomBtn.disabled=false;
+  recPill.style.display="none";
+  isRecording=false; isSharing=false; mirrored=false;
 };
 
 /* =========================================================================
    SERVICE WORKER
    ========================================================================= */
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
     navigator.serviceWorker.register("sw.js")
-      .then(() => console.log("SW regisztrálva"))
-      .catch((e) => console.warn("SW regisztráció sikertelen:", e));
+      .then(()=>console.log("SW registered"))
+      .catch(e=>console.warn("SW error:",e));
   });
 }
 </script>
