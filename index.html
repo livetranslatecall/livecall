@@ -1743,18 +1743,18 @@ function createPeerConnectionForPeer(peerId, initiator){
 
   // Remote track fogadása
   pc.ontrack = e=>{
-    if(!e.streams||!e.streams[0]) return;
+    const stream = e.streams?.[0];
+    if(!stream) return;
     const p = peers.get(peerId);
     if(!p) return;
-    // Video elem beállítása
-    p.videoEl.srcObject = e.streams[0];
-    // Ha 2 fő: meglévő split view / mobile nézet frissítése
-    if(peers.size === 1){
-      remoteVideo.srcObject = e.streams[0];
-      splitRemoteVideo.srcObject = e.streams[0];
-      splitWaiting.style.display = "none";
-    }
+    p.videoEl.srcObject = stream;
+    remoteVideo.srcObject = stream;
+    splitRemoteVideo.srcObject = stream;
+    splitWaiting.style.display = "none";
     updateMultiGridLayout();
+    // Autoplay kényszerítés
+    remoteVideo.play().catch(()=>{});
+    splitRemoteVideo.play().catch(()=>{});
   };
 
   pc.onicecandidate = e=>{
@@ -3061,7 +3061,8 @@ async function beginCallFlow(){
   try{
     console.log("🔌 Supabase kapcsolat inicializálása...");
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    window.supabaseClient = supabaseClient;
+window.supabaseClient = supabaseClient;
+translator._initKeys(); // újratölti a kulcsokat Supabase-ből
     console.log("✅ Supabase kliens kész");
     
     console.log("🎥 Média inicializálása (kamera/mikrofon)...");
