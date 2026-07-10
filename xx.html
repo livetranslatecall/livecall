@@ -405,10 +405,29 @@ function loadKeys(){
   }catch{ return []; }
 }
 
-function saveKeys(keys){
-  localStorage.setItem(KEYS_KEY, JSON.stringify(keys.map(k=>({
-    key:k.key, label:k.label, used:k.used, lastError:k.lastError
-  }))));
+async function saveKeys(keys){
+  // 1. LocalStorage mentés (megmarad a régi működés)
+  localStorage.setItem(KEYS_KEY, JSON.stringify(keys));
+  
+  // 2. Supabase mentés (központi)
+  try{
+    // Töröljük a régieket
+    await supabaseClient.from("groq_keys").delete().neq("id", 0);
+    // Beszúrjuk az újakat
+    for(const k of keys){
+      if(k.key){
+        await supabaseClient.from("groq_keys").insert({
+          key_text: k.key,
+          label: k.label,
+          used: k.used || 0,
+          daily_limit: 1000
+        });
+      }
+    }
+  }catch(e){
+    console.warn("Supabase mentés hiba:", e);
+  }
+}
 }
 
 // ─── LOG ────────────────────────────────────────────────────────────
