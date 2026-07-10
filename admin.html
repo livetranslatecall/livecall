@@ -413,42 +413,74 @@ function hashStr(str){
   return h.toString(16);
 }
 
-function loadKeys(){
+async function loadKeys(){
+  // 1. Supabase próba
+  if(supabaseClient){
+    try{
+      const { data, error } = await supabaseClient
+        .from("groq_keys")
+        .select("keys")
+        .eq("id", 1)
+        .single();
+
+      if(error) throw error;
+
+      if(data?.keys && Array.isArray(data.keys) && data.keys.length > 0){
+        console.log("✅ Supabase loadKeys sikeres:", data.keys.filter(k=>k.key).length, "kulcs.");
+        localStorage.setItem(KEYS_KEY, JSON.stringify(data.keys));
+        return data.keys.map((k,i)=>({
+          key:       k.key       || "",
+          label:     k.label     || `Kulcs #${i+1}`,
+          used:      Number(k.used) || 0,
+          lastError: k.lastError || null,
+        }));
+      }
+    }catch(e){
+      console.warn("Supabase loadKeys hiba:", e?.message || e);
+    }
+  }
+
+  // 2. localStorage fallback
   try{
-    const raw=localStorage.getItem(KEYS_KEY);
+    const raw = localStorage.getItem(KEYS_KEY);
     if(!raw) return [];
-    const arr=JSON.parse(raw);
+    const arr = JSON.parse(raw);
     if(!Array.isArray(arr)) return [];
     return arr.map((k,i)=>({
-      key: k.key||"",
-      label: k.label||`Kulcs #${i+1}`,
-      used: Number(k.used)||0,
-      lastError: k.lastError||null,
+      key:       k.key       || "",
+      label:     k.label     || `Kulcs #${i+1}`,
+      used:      Number(k.used) || 0,
+      lastError: k.lastError || null,
     }));
   }catch{ return []; }
 }
 
 async function saveKeys(keys){
-  // 1. LocalStorage mentés (megmarad a régi működés)
+  // 1. LocalStorage mentés
   localStorage.setItem(KEYS_KEY, JSON.stringify(keys));
-  
-  // 2. Supabase mentés (központi)
-  try{
-    // Töröljük a régieket
-    await supabaseClient.from("groq_keys").delete().neq("id", 0);
-    // Beszúrjuk az újakat
-    for(const k of keys){
-      if(k.key){
-        await supabaseClient.from("groq_keys").insert({
-          key_text: k.key,
-          label: k.label,
-          used: k.used || 0,
-          daily_limit: 1000
-        });
-      }
-    }
-  }catch(e){
-    console.warn("Supabase mentés hiba:", e);
+
+  // 2. Supabase mentés — ugyanolyan struktúra mint amit translator.js vár
+  if(!supabaseClient) return;
+  try {
+    const toSave = keys.map(k => ({
+      key:       k.key       || "",
+      label:     k.label     || "",
+      used:      k.used      || 0,
+      lastError: k.lastError || null,
+    }));
+
+    const { error } = await supabaseClient
+      .from("groq_keys")
+      .upsert(
+        { id: 1, keys: toSave, updated_at: new Date().toISOString() },
+        { onConflict: "id" }
+      );
+
+    if(error) throw error;
+    console.log("✅ Supabase mentés sikeres.");
+  } catch(e) {
+    console.warn("Supabase mentés hiba:", e?.message || e);
+    addLog("warn", "Supabase mentés hiba: " + (e?.message || String(e)));
   }
 }
 
@@ -537,11 +569,11 @@ function doLogin(){
   openAdmin();
 }
 
-function openAdmin(){
+async function openAdmin(){
   $("loginScreen").style.display="none";
   $("adminScreen").style.display="block";
-  maybeResetDaily();
-  renderKeyGrid();
+  await maybeResetDaily();
+  await renderKeyGrid();
   updateStats();
   renderLog();
   startPolling();
@@ -558,14 +590,14 @@ $("logoutBtn").onclick=()=>{
 //  NAPI RESET
 // ═══════════════════════════════════════════════════════════════════
 
-function maybeResetDaily(){
+async function maybeResetDaily(){
   const stored = localStorage.getItem(RESET_KEY);
   const today  = todayStr();
   if(stored === today) return;
   localStorage.setItem(RESET_KEY, today);
-  const keys = loadKeys();
+  const keys = await loadKeys();
   keys.forEach(k=>{ k.used=0; k.lastError=null; });
-  saveKeys(keys);
+  await saveKeys(keys);
   addLog("info", `Napi számlálók visszaállítva: ${today}`);
 }
 
@@ -573,12 +605,11 @@ function maybeResetDaily(){
 //  KEY GRID MEGJELENÍTÉS
 // ═══════════════════════════════════════════════════════════════════
 
-function renderKeyGrid(){
-  const keys = loadKeys();
+async function renderKeyGrid(){
+  const keys = await loadKeys();
   const grid = $("keyGrid");
   grid.innerHTML="";
 
-  // Mindig 10 slot jelenik meg, üres slotok is
   for(let i=0;i<10;i++){
     const k = keys[i] || { key:"", label:`Kulcs #${i+1}`, used:0, lastError:null };
     const pct    = Math.min(100, Math.round((k.used/DAILY_LIMIT)*100));
@@ -587,21 +618,18 @@ function renderKeyGrid(){
     const hasKey = !!k.key;
     const hasError = !!k.lastError && !isExhausted;
 
-    // CSS osztály a kártyán
     let cardClass = "key-card";
     if(!hasKey) cardClass="key-card";
     else if(isExhausted) cardClass="key-card exhausted-key";
     else if(hasError) cardClass="key-card error-key";
     else cardClass="key-card active-key";
 
-    // Badge szöveg
     let badgeText, badgeClass;
     if(!hasKey){ badgeText="Üres"; badgeClass="empty"; }
     else if(isExhausted){ badgeText="Kimerült"; badgeClass="exhausted"; }
     else if(hasError){ badgeText="Hiba"; badgeClass="error"; }
     else{ badgeText="Aktív"; badgeClass="ok"; }
 
-    // Progressbar szín
     let fillClass = "ok";
     if(pct>=90) fillClass="full";
     else if(pct>=70) fillClass="warn";
@@ -637,7 +665,6 @@ function renderKeyGrid(){
     grid.appendChild(div);
   }
 
-  // Eseménykezelők delegálása
   grid.onclick=e=>{
     const btn=e.target.closest("[data-role]");
     if(!btn) return;
@@ -648,87 +675,88 @@ function renderKeyGrid(){
   };
 }
 
-function saveSingleKey(idx){
-  const card = $("keyGrid").querySelector(`[data-idx="${idx}"][data-role="apikey"]`);
+async function saveSingleKey(idx){
+  const card    = $("keyGrid").querySelector(`[data-idx="${idx}"][data-role="apikey"]`);
   const labelEl = $("keyGrid").querySelector(`[data-idx="${idx}"][data-role="label"]`);
   if(!card) return;
 
   const keyVal   = card.value.trim();
   const labelVal = (labelEl?.value || "").trim() || `Kulcs #${idx+1}`;
-  const keys     = loadKeys();
+  const keys     = await loadKeys();
 
   while(keys.length <= idx)
     keys.push({ key:"", label:`Kulcs #${keys.length+1}`, used:0, lastError:null });
 
-  const oldKey = keys[idx].key;          // ← Előbb eltároljuk a régit
-  keys[idx].key      = keyVal;
-  keys[idx].label    = labelVal;
+  const oldKey = keys[idx].key;
+  keys[idx].key       = keyVal;
+  keys[idx].label     = labelVal;
   keys[idx].lastError = null;
 
-  if(keyVal !== oldKey) keys[idx].used = 0;  // ← Utána hasonlítjuk
+  if(keyVal !== oldKey) keys[idx].used = 0;
 
-  saveKeys(keys);
+  await saveKeys(keys);
   addLog(keyVal ? "ok" : "info",
     keyVal ? `Kulcs #${idx+1} mentve (${labelVal}).` : `Kulcs #${idx+1} törölve.`);
-  renderKeyGrid();
+  await renderKeyGrid();
   updateStats();
 }
 
-function deleteSingleKey(idx){
+
+async function deleteSingleKey(idx){
   if(!confirm(`Biztosan törölni szeretnéd a(z) ${idx+1}. kulcsot?`)) return;
-  const keys=loadKeys();
-  if(keys[idx]) keys[idx]={key:"",label:`Kulcs #${idx+1}`,used:0,lastError:null};
-  saveKeys(keys);
-  addLog("warn",`Kulcs #${idx+1} törölve.`);
-  renderKeyGrid();
+  const keys = await loadKeys();
+  if(keys[idx]) keys[idx]={ key:"", label:`Kulcs #${idx+1}`, used:0, lastError:null };
+  await saveKeys(keys);
+  addLog("warn", `Kulcs #${idx+1} törölve.`);
+  await renderKeyGrid();
   updateStats();
 }
 
-$("addKeyBtn").onclick=()=>{
-  // Megkeresi az első üres slotot és fókuszál rá
-  const keys=loadKeys();
-  const emptyIdx=Array.from({length:10},(_,i)=>i).find(i=>!keys[i]?.key);
+
+$("addKeyBtn").onclick=async()=>{
+  const keys = await loadKeys();
+  const emptyIdx = Array.from({length:10},(_,i)=>i).find(i=>!keys[i]?.key);
   if(emptyIdx===undefined){
     addLog("warn","Már 10 kulcs van beállítva – maximum elérve.");
     return;
   }
   const card=$("keyGrid").querySelector(`[data-idx="${emptyIdx}"][data-role="apikey"]`);
   if(card){
-    card.type="text"; // láthatóvá teszi a beíráshoz
+    card.type="text";
     card.focus();
     card.type="password";
   }
 };
 
-$("saveAllBtn").onclick=()=>{
-  const grid=$("keyGrid");
-  const keys=loadKeys();
-  let changed=0;
+$("saveAllBtn").onclick=async()=>{
+  const grid = $("keyGrid");
+  const keys = await loadKeys();
+  let changed = 0;
   for(let i=0;i<10;i++){
-    const keyEl=grid.querySelector(`[data-idx="${i}"][data-role="apikey"]`);
-    const lblEl=grid.querySelector(`[data-idx="${i}"][data-role="label"]`);
+    const keyEl = grid.querySelector(`[data-idx="${i}"][data-role="apikey"]`);
+    const lblEl = grid.querySelector(`[data-idx="${i}"][data-role="label"]`);
     if(!keyEl) continue;
     while(keys.length<=i) keys.push({key:"",label:`Kulcs #${i+1}`,used:0,lastError:null});
-    const newKey=keyEl.value.trim();
-    const newLbl=(lblEl?.value||"").trim()||`Kulcs #${i+1}`;
+    const newKey = keyEl.value.trim();
+    const newLbl = (lblEl?.value||"").trim()||`Kulcs #${i+1}`;
     if(newKey!==keys[i].key){ keys[i].used=0; keys[i].lastError=null; changed++; }
-    keys[i].key=newKey;
-    keys[i].label=newLbl;
+    keys[i].key   = newKey;
+    keys[i].label = newLbl;
   }
-  saveKeys(keys);
-  addLog("ok",`Összes kulcs mentve (${changed} módosítás).`);
-  renderKeyGrid();
+  await saveKeys(keys);
+  addLog("ok", `Összes kulcs mentve (${changed} módosítás).`);
+  await renderKeyGrid();
   updateStats();
 };
 
-$("resetCountersBtn").onclick=()=>{
+$("resetCountersBtn").onclick=async()=>{
   if(!confirm("Valóban visszaállítod az összes napi számlálót nullára?")) return;
-  const keys=loadKeys();
+  const keys = await loadKeys();
   keys.forEach(k=>{ k.used=0; k.lastError=null; });
-  saveKeys(keys);
+  await saveKeys(keys);
   localStorage.setItem(RESET_KEY, todayStr());
   addLog("info","Napi számlálók manuálisan resetelve.");
-  renderKeyGrid();
+  await renderKeyGrid();
   updateStats();
 };
 
@@ -736,8 +764,8 @@ $("resetCountersBtn").onclick=()=>{
 //  STATS FRISSÍTÉS
 // ═══════════════════════════════════════════════════════════════════
 
-function updateStats(){
-  const keys=loadKeys();
+async function updateStats(){
+  const keys = await loadKeys();
   const activeKeys=keys.filter(k=>k.key&&k.used<DAILY_LIMIT);
   const totalUsed=keys.reduce((s,k)=>s+(k.used||0),0);
   const totalLimit=keys.filter(k=>k.key).length*DAILY_LIMIT;
@@ -747,7 +775,6 @@ function updateStats(){
   $("statRemaining").textContent=remaining;
   $("statActiveKeys").textContent=activeKeys.length;
 
-  // Minőség kártya
   const usingFallback=!activeKeys.length;
   $("statQuality").textContent=usingFallback?"MyMemory":"Groq AI";
   $("statQualitySub").textContent=usingFallback?"Gyengébb minőség":"Kiváló minőség";
@@ -762,8 +789,8 @@ function updateStats(){
 let pollTimer=null;
 
 async function pingGroq(){
-  const keys=loadKeys();
-  const activeKey=keys.find(k=>k.key&&k.used<DAILY_LIMIT);
+  const keys = await loadKeys();
+  const activeKey = keys.find(k=>k.key && k.used<DAILY_LIMIT);
 
   $("pingDot").className="ping-dot pinging";
   $("pingLabel").textContent="Pingelés…";
@@ -808,10 +835,10 @@ async function pingGroq(){
 
 function startPolling(){
   pingGroq();
-  pollTimer=setInterval(()=>{
-    maybeResetDaily();
-    pingGroq();
-    renderKeyGrid();
+  pollTimer=setInterval(async()=>{
+    await maybeResetDaily();
+    await pingGroq();
+    await renderKeyGrid();
     updateStats();
   },30000);
 }
