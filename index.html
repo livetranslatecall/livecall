@@ -2074,9 +2074,11 @@ async function setupChannel(code){
         presentPeerIds.add(p.peerId||pid);
         // Ha ez egy új peer, kapcsolódunk hozzá
         if(!peers.has(p.peerId||pid)){
-          console.log("   👤 Új peer felismerve:", p.peerId||pid, "név:", p.name, "nyelv:", p.lang);
-          initPeer(p.peerId||pid, p.name||"Partner", p.lang||"hu", true);
-        } else {
+  console.log("   👤 Új peer felismerve:", p.peerId||pid, "név:", p.name, "nyelv:", p.lang);
+  // Csak a nagyobb peerId kezdeményez, hogy elkerüljük a dupla offer-t
+  const weAreInitiator = myPeerId > (p.peerId||pid);
+  initPeer(p.peerId||pid, p.name||"Partner", p.lang||"hu", weAreInitiator);
+} else {
           // Frissítjük a nevet/nyelvet
           const existing = peers.get(p.peerId||pid);
           if(existing){
@@ -2158,25 +2160,33 @@ async function initPeer(peerId, name, lang, weAreInitiator){
 }
 
 async function handleSignal(payload){
-  // Csak nekünk szóló üzeneteket feldolgozzuk
   if(payload.to && payload.to !== myPeerId) return;
   const senderId = payload.from;
   if(!senderId) return;
 
-  // Ha ez egy offer és nincs még ilyen peerünk, létrehozzuk (nem mi vagyunk az initiator)
   if(payload.kind === "offer"){
     if(!peers.has(senderId)){
-      // Megvárjuk hogy legyen localStream mielőtt PC-t hozunk létre
       if(!localStream){
-        try{
-          await initMedia();
-        }catch(e){ console.error("Media init hiba offer előtt:", e); return; }
+        try{ await initMedia(); }
+        catch(e){ console.error("Media init hiba offer előtt:", e); return; }
       }
       const { cell: cellEl, video: videoEl } = addPeerCell(senderId, "Partner", "hu");
       const conn = createPeerConnectionForPeer(senderId, false);
       peers.set(senderId, { ...conn, name:"Partner", lang:"hu", cellEl, videoEl });
       updateParticipantsPanel();
       updateMultiGridLayout();
+    } else {
+      const existing = peers.get(senderId);
+      if(existing && existing.pc.signalingState !== "stable"){
+        console.warn("[Signal] nem stable állapot, peer újraindítása...");
+        try{ existing.pc.close(); }catch(_){}
+        peers.delete(senderId);
+        const { cell: cellEl, video: videoEl } = addPeerCell(senderId, "Partner", "hu");
+        const conn = createPeerConnectionForPeer(senderId, false);
+        peers.set(senderId, { ...conn, name:"Partner", lang:"hu", cellEl, videoEl });
+        updateParticipantsPanel();
+        updateMultiGridLayout();
+      }
     }
   }
 
