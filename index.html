@@ -3020,6 +3020,34 @@ if(enterRoomBtn){
   };
 }
 
+  // ── CSATLAKOZÁS GOMBBAL ──
+joinRoomBtn.onclick = async () => {
+  if (!validateName()) return;
+
+  const code = joinCodeInput.value.trim().toUpperCase();
+  if (!code || code.length < 4 || code.length > 6) {
+    setupStatus.textContent = t("noCode");
+    joinCodeInput.style.borderColor = "var(--danger)";
+    setTimeout(() => { joinCodeInput.style.borderColor = ""; }, 1500);
+    return;
+  }
+
+  myName      = myNameInput.value.trim();
+  myLang      = myLangSelect.value;
+  roomId      = code;
+  isInitiator = false;
+
+  createRoomBtn.disabled = true;
+  joinRoomBtn.disabled   = true;
+  setupStatus.textContent = t("joinMsg");
+
+  await beginCallFlow();
+
+  // Visszaállítás ha hiba volt
+  createRoomBtn.disabled = false;
+  joinRoomBtn.disabled   = false;
+};
+
 
 
 
