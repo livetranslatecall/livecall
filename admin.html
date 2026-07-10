@@ -380,12 +380,15 @@ const RESET_KEY   = "lt_reset_date";
 const SUPABASE_URL = "https://yyexlblyepkxyqqbgpvu.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZXhsYmx5ZXBreHlxcWJncHZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTE5MjAsImV4cCI6MjA5OTEyNzkyMH0.qG1iDFLarL_OCAuJVnpsb6uOUMRNvUyWdpxYw7C5TDs";
 
+// Csak EGYSZER deklaráljuk
 const supabaseClient = window.supabase
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
+
 window.supabaseClient = supabaseClient;
+
 if(!supabaseClient){
-  console.error("❌ Supabase nem töltődött be!");
+  console.error("❌ Supabase nem töltődött be! Ellenőrizd a CDN-t.");
 } else {
   console.log("✅ Supabase kliens kész");
 }
