@@ -15,6 +15,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- LiveKit Client -->
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
 <style>
 :root{
   --bg:#0d1420;--panel:#161f30;--panel-2:#1d2942;--line:#293349;
@@ -787,6 +789,10 @@ select{
    ========================================================================= */
 const SUPABASE_URL      = "https://yyexlblyepkxyqqbgpvu.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZXhsYmx5ZXBreHlxcWJncHZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTE5MjAsImV4cCI6MjA5OTEyNzkyMH0.qG1iDFLarL_OCAuJVnpsb6uOUMRNvUyWdpxYw7C5TDs";
+  // ─── LIVEKIT KONFIGURÁCIÓ ───
+const LIVEKIT_URL = "ws://192.168.1.168:7880";  // Ha más gépről éred el, írd át az IP-t!
+const LIVEKIT_API_KEY = "devkey";
+const LIVEKIT_API_SECRET = "secret";
 const ICE_SERVERS = [
   {urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"},
   {urls:"stun:freestun.net:3478"},
@@ -1377,6 +1383,95 @@ function nowTime(){
   return new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});
 }
 
+
+// ─── LIVEKIT TOKEN GENERÁLÁS (FEJLESZTŐI MÓD) ───
+async function generateLiveKitToken(apiKey, apiSecret, roomName, participantName) {
+  // Fejlesztői módban (--dev) csak egy egyszerű string
+  // A livekit-server.exe --dev parancshoz kell
+  return "devkey:secret";
+}
+
+// ─── LIVEKIT KAPCSOLAT ───
+let livekitRoom = null;
+let livekitConnected = false;
+
+async function connectToLiveKit() {
+  try {
+    console.log("🔄 LiveKit csatlakozás...");
+    
+    const token = await generateLiveKitToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, roomId, myName);
+    console.log("🔑 Token generálva");
+    
+    livekitRoom = new LivekitRoom();
+    
+    await livekitRoom.connect(LIVEKIT_URL, token);
+    livekitConnected = true;
+    console.log("✅ LiveKit csatlakozva!");
+
+    if (localStream) {
+      for (const track of localStream.getTracks()) {
+        try {
+          await livekitRoom.localParticipant.publishTrack(track);
+          console.log("📹 Track publikálva:", track.kind);
+        } catch (e) {
+          console.warn("Track publikálási hiba:", e);
+        }
+      }
+    }
+
+    livekitRoom.on("participantConnected", (participant) => {
+      console.log("👤 Új résztvevő:", participant.identity);
+      updateParticipantsPanel();
+    });
+
+    livekitRoom.on("participantDisconnected", (participant) => {
+      console.log("👤 Résztvevő kilépett:", participant.identity);
+      updateParticipantsPanel();
+    });
+
+    livekitRoom.on("trackSubscribed", (track, publication, participant) => {
+      console.log("📡 Track fogadva:", track.kind, "résztvevő:", participant.identity);
+      
+      if (track.kind === "video") {
+        const videoElement = document.getElementById("remoteVideo");
+        if (videoElement) {
+          track.attach(videoElement);
+          splitRemoteVideo.srcObject = videoElement.srcObject;
+          splitWaiting.style.display = "none";
+        }
+      }
+    });
+
+    livekitRoom.on("trackUnsubscribed", (track, publication, participant) => {
+      console.log("📡 Track eltűnt:", track.kind, "résztvevő:", participant.identity);
+    });
+
+    livekitRoom.on("connectionStateChanged", (state) => {
+      console.log("🔗 Kapcsolat állapot:", state);
+      if (state === "connected") {
+        setNetStatus("good");
+      } else if (state === "disconnected") {
+        setNetStatus("bad");
+        livekitConnected = false;
+      } else if (state === "connecting") {
+        setNetStatus("warn");
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ LiveKit kapcsolódási hiba:", error);
+    livekitConnected = false;
+    throw error;
+  }
+}
+
+
+  function setupFallbackWebRTC() {
+  // Ha a LiveKit nem működik, marad a régi WebRTC (a jelenlegi kód)
+  console.log("🔄 WebRTC fallback aktív");
+}
+  
+  
 /* =========================================================================
    FUNKCIÓ 7 — HÍVÁSLINK GENERÁLÁSA
    ========================================================================= */
@@ -2696,7 +2791,6 @@ async function beginCallFlow(){
   myPeerId = cryptoId();
   try{
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    // Supabase kliens globálisan elérhető a translator.js számára
     window.supabaseClient = supabaseClient;
     await initMedia();
     await setupChannel(roomId);
@@ -2720,12 +2814,26 @@ async function beginCallFlow(){
 
     // E2EE kulcs előgenerálás
     await generateE2eeKey();
+
+    // ─── LIVEKIT KAPCSOLÓDÁS ───
+    try {
+      await connectToLiveKit();
+      console.log("✅ LiveKit kapcsolódva!");
+    } catch (livekitErr) {
+      console.warn("⚠️ LiveKit nem elérhető, WebRTC fallback indul...", livekitErr);
+      // Ha LiveKit nem működik, a régi WebRTC marad (a meglévő signaling)
+      // A régi WebRTC kód továbbra is működik a háttérben
+    }
   }catch(err){
     console.error(err);
     setupStatus.textContent = t("errPerm");
     createRoomBtn.disabled=false; joinRoomBtn.disabled=false;
   }
 }
+
+
+
+
 
 /* =========================================================================
    SETUP UI EVENTS
