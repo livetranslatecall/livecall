@@ -2038,9 +2038,9 @@ async function setupChannel(code){
 
   console.log("📨 Eseményfigyelők beállítása...");
   
-  channel.on("broadcast", {event:"signal"}, ({payload})=> {
+ channel.on("broadcast", {event:"signal"}, async ({payload})=> {
     console.log("   📨 Signal üzenet érkezett:", payload.kind, "from:", payload.from);
-    handleSignal(payload);
+    await handleSignal(payload);
   });
   
   channel.on("broadcast", {event:"caption"}, ({payload})=> {
