@@ -2166,6 +2166,12 @@ async function handleSignal(payload){
   // Ha ez egy offer és nincs még ilyen peerünk, létrehozzuk (nem mi vagyunk az initiator)
   if(payload.kind === "offer"){
     if(!peers.has(senderId)){
+      // Megvárjuk hogy legyen localStream mielőtt PC-t hozunk létre
+      if(!localStream){
+        try{
+          await initMedia();
+        }catch(e){ console.error("Media init hiba offer előtt:", e); return; }
+      }
       const { cell: cellEl, video: videoEl } = addPeerCell(senderId, "Partner", "hu");
       const conn = createPeerConnectionForPeer(senderId, false);
       peers.set(senderId, { ...conn, name:"Partner", lang:"hu", cellEl, videoEl });
