@@ -1502,6 +1502,14 @@ function showShareLink(code){
   shareLinkBox.style.display = "block";
 }
 
+  copyCodeBtn.onclick = ()=>{
+  const code = bigRoomCode.textContent;
+  if(!code||code==="------") return;
+  navigator.clipboard.writeText(code)
+    .then(()=>{ copyCodeBtn.querySelector("span:last-child").textContent="✅ Másolva"; setTimeout(()=>{ copyCodeBtn.querySelector("span:last-child").textContent=t("btnCopy"); },1500); })
+    .catch(()=>{});
+};
+
 linkCopyBtn.onclick = ()=>{
   const link = shareLinkInput.value;
   if(!link) return;
