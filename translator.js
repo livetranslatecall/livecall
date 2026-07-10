@@ -329,38 +329,43 @@ export class TranslatorEngine {
     }
   }
 
-  _loadKeys() {
-    try {
-      const raw = localStorage.getItem("lt_groq_keys");
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      return parsed.map((item, i) => ({
-        key: item.key || "",
+  async _loadKeys() {
+  // 1. Először próbáljuk a Supabase-ból
+  try{
+    const { data, error } = await supabaseClient
+      .from("groq_keys")
+      .select("*")
+      .order("id", {ascending: true});
+    
+    if(!error && data && data.length > 0){
+      return data.map((item, i) => ({
+        key: item.key_text || "",
         label: item.label || `Kulcs #${i + 1}`,
         used: Number(item.used) || 0,
         limit: DAILY_LIMIT_PER_KEY,
         exhausted: (Number(item.used) || 0) >= DAILY_LIMIT_PER_KEY,
-        lastError: item.lastError || null,
+        lastError: null,
       }));
-    } catch {
-      return [];
     }
+  }catch(e){
+    console.warn("Supabase betöltés hiba:", e);
   }
-
-  _saveKeys() {
-    try {
-      const toSave = this._keys.map((k) => ({
-        key: k.key,
-        label: k.label,
-        used: k.used,
-        lastError: k.lastError,
-      }));
-      localStorage.setItem("lt_groq_keys", JSON.stringify(toSave));
-      // Reset dátumot is menti
-      localStorage.setItem("lt_reset_date", this._lastResetDate);
-    } catch (e) {
-      console.warn("[Translator] localStorage mentési hiba:", e);
-    }
+  
+  // 2. Ha nincs Supabase, jöhet a localStorage
+  try{
+    const raw = localStorage.getItem("lt_groq_keys");
+    if(!raw) return [];
+    const parsed = JSON.parse(raw);
+    if(!Array.isArray(parsed)) return [];
+    return parsed.map((item, i) => ({
+      key: item.key || "",
+      label: item.label || `Kulcs #${i + 1}`,
+      used: Number(item.used) || 0,
+      limit: DAILY_LIMIT_PER_KEY,
+      exhausted: (Number(item.used) || 0) >= DAILY_LIMIT_PER_KEY,
+      lastError: item.lastError || null,
+    }));
+  } catch {
+    return [];
   }
 }
