@@ -2696,6 +2696,8 @@ async function beginCallFlow(){
   myPeerId = cryptoId();
   try{
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Supabase kliens globálisan elérhető a translator.js számára
+    window.supabaseClient = supabaseClient;
     await initMedia();
     await setupChannel(roomId);
 
