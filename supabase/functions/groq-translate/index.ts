@@ -62,8 +62,13 @@ serve(async (req: Request) => {
   }
 
   const LANG_NAMES: Record<string, string> = {
-    hu: "Hungarian", en: "English", ru: "Russian",
-  };
+  hu: "Hungarian", en: "English", ru: "Russian",
+  de: "German",   fr: "French",  es: "Spanish",
+  it: "Italian",  pt: "Portuguese", pl: "Polish",
+  ro: "Romanian", uk: "Ukrainian",  zh: "Chinese",
+  ar: "Arabic",
+};
+
   const srcName = LANG_NAMES[src] || src;
   const tgtName = LANG_NAMES[tgt] || tgt;
 
