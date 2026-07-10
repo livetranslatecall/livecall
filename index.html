@@ -2532,9 +2532,7 @@ async function sendChat(){
   chatInput.value = "";
 }
 
-/* =========================================================================
-   FUNKCIÓ 3 — OCR FORDÍTÁS
-   ========================================================================= */
+
 /* =========================================================================
    FUNKCIÓ 3 — OCR FORDÍTÁS (asztali + mobil kamera + mobil képfeltöltés)
    ========================================================================= */
@@ -2553,11 +2551,9 @@ async function initOcrWorker(){
 async function processOcrCanvas(canvas){
   if(!ocrWorker) await initOcrWorker();
   if(!ocrWorker) return;
-
   const { data } = await ocrWorker.recognize(canvas);
   const text = (data.text || "").trim();
   if(!text || text.length < 3) return;
-
   const translated = await translateText(text, "en", myLang);
   ocrText.textContent = translated;
   ocrBox.style.display = "block";
@@ -2565,12 +2561,11 @@ async function processOcrCanvas(canvas){
   ocrBox._hideTimer = setTimeout(() => { ocrBox.style.display = "none"; }, 8000);
 }
 
-// ── 1. Asztali: képernyőmegosztásból ──
+// ── 1. Asztali: képernyőmegosztásból (2 másodpercenként automatikus scan) ──
 async function runOcr(){
   if(!ocrActive || !isSharing || !screenStream) return;
   const videoTrack = screenStream.getVideoTracks()[0];
   if(!videoTrack || videoTrack.readyState !== "live") return;
-
   try{
     const vSettings = videoTrack.getSettings();
     const w = Math.min(vSettings.width  || 1280, 1280);
@@ -2578,7 +2573,6 @@ async function runOcr(){
     const canvas = document.createElement("canvas");
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext("2d");
-
     let imageBitmap = null;
     if(typeof ImageCapture !== "undefined"){
       try{
@@ -2596,7 +2590,6 @@ async function runOcr(){
     } else {
       ctx.drawImage(imageBitmap, 0, 0, w, h);
     }
-
     await processOcrCanvas(canvas);
   }catch(e){
     console.warn("[OCR] asztali hiba:", e);
@@ -2623,36 +2616,26 @@ async function startMobileOcr(){
       video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
       audio: false
     });
-
     const video       = document.createElement("video");
     video.srcObject   = mobileStream;
     video.autoplay    = true;
     video.playsInline = true;
     video.muted       = true;
-
-    // Várunk amíg a kamera inicializálódik
     await new Promise((resolve, reject) => {
       video.onloadedmetadata = resolve;
       video.onerror          = reject;
-      setTimeout(reject, 8000); // 8 másodperc timeout
+      setTimeout(reject, 8000);
     });
     await video.play();
-
-    // Rövid szünet hogy a kamera élesedjen
     await new Promise(r => setTimeout(r, 800));
-
     const canvas  = document.createElement("canvas");
     canvas.width  = video.videoWidth  || 1280;
     canvas.height = video.videoHeight || 720;
     canvas.getContext("2d").drawImage(video, 0, 0);
-
-    // Kamera leállítása
     mobileStream.getTracks().forEach(t => t.stop());
-
     await processOcrCanvas(canvas);
   }catch(e){
     console.warn("[MobileOCR] kamera hiba:", e);
-    // Ha a kamera megtagadva vagy más hiba, átváltunk fájl alapúra
     ocrFromFileInput();
   }finally{
     ocrBtn.querySelector(".btn-icon").textContent = "🔍";
@@ -2675,13 +2658,11 @@ function ocrFromFileInput(){
       const img = new Image();
       img.src   = url;
       await img.decode();
-
       const canvas  = document.createElement("canvas");
       canvas.width  = img.naturalWidth;
       canvas.height = img.naturalHeight;
       canvas.getContext("2d").drawImage(img, 0, 0);
       URL.revokeObjectURL(url);
-
       await processOcrCanvas(canvas);
     }catch(e){
       console.warn("[OCR] fájl hiba:", e);
@@ -2696,9 +2677,7 @@ function ocrFromFileInput(){
 // ── OCR gomb: okos viselkedés asztali vs mobil ──
 ocrBtn.onclick = async () => {
   const isMobile = window.innerWidth < 720;
-
   if(isMobile){
-    // Mobil: kis menü a három lehetőség között
     const overlay = document.createElement("div");
     overlay.style.cssText = `
       position:fixed;inset:0;background:rgba(0,0,0,.7);
@@ -2706,7 +2685,6 @@ ocrBtn.onclick = async () => {
       align-items:center;justify-content:flex-end;
       padding-bottom:calc(env(safe-area-inset-bottom,0px)+20px);
     `;
-
     const menu = document.createElement("div");
     menu.style.cssText = `
       background:#161f30;border:1px solid #293349;border-radius:20px;
@@ -2729,7 +2707,6 @@ ocrBtn.onclick = async () => {
     `;
     overlay.appendChild(menu);
     document.body.appendChild(overlay);
-
     overlay.querySelector("#ocrCamBtn").onclick = () => {
       document.body.removeChild(overlay);
       startMobileOcr();
@@ -2744,9 +2721,7 @@ ocrBtn.onclick = async () => {
     overlay.onclick = e => {
       if(e.target === overlay) document.body.removeChild(overlay);
     };
-
   } else {
-    // Asztali: képernyőmegosztás alapú OCR (eredeti viselkedés)
     if(!isSharing){
       alert("Először indítsd el a képernyőmegosztást (🖥️ gomb)!");
       return;
@@ -2756,77 +2731,6 @@ ocrBtn.onclick = async () => {
     ocrBtn.querySelector(".btn-icon").textContent = ocrActive ? "🔎" : "🔍";
     if(ocrActive) startOcr(); else stopOcr();
   }
-};
-
-async function runOcr(){
-  if(!ocrActive||!isSharing||!screenStream) return;
-  const videoTrack = screenStream.getVideoTracks()[0];
-  if(!videoTrack||videoTrack.readyState!=="live") return;
-  try{
-    // Képkocka készítése canvas-szel
-    const vSettings = videoTrack.getSettings();
-    const w = Math.min(vSettings.width||1280, 1280);
-    const h = Math.min(vSettings.height||720, 720);
-    const canvas = document.createElement("canvas");
-    canvas.width=w; canvas.height=h;
-    const ctx = canvas.getContext("2d");
-    // ImageCapture API — böngészőfüggő; fallback: createImageBitmap
-    let imageBitmap = null;
-    if(typeof ImageCapture !== "undefined"){
-      try{
-        const ic = new ImageCapture(videoTrack);
-        const bitmap = await ic.grabFrame();
-        imageBitmap = bitmap;
-      }catch(_){}
-    }
-    if(!imageBitmap){
-      // Alternatív: a video elem használata ha elérhető
-      const videoEl = splitLocalVideo.srcObject === screenStream ? splitLocalVideo : localVideo;
-      if(!videoEl.videoWidth) return;
-      canvas.width = videoEl.videoWidth;
-      canvas.height = videoEl.videoHeight;
-      ctx.drawImage(videoEl, 0, 0);
-    } else {
-      ctx.drawImage(imageBitmap, 0, 0, w, h);
-    }
-
-    if(!ocrWorker) await initOcrWorker();
-    if(!ocrWorker) return;
-
-    const { data } = await ocrWorker.recognize(canvas);
-    const text = (data.text||"").trim();
-    if(!text||text.length<5) return;
-
-    // Fordítás
-    const translated = await translateText(text, "en", myLang);
-    ocrText.textContent = translated;
-    ocrBox.style.display = "block";
-
-    // 6 másodperc után eltűnik
-    clearTimeout(ocrBox._hideTimer);
-    ocrBox._hideTimer = setTimeout(()=>{ ocrBox.style.display="none"; },6000);
-  }catch(e){
-    console.warn("[OCR] hiba:", e);
-  }
-}
-
-function startOcr(){
-  if(ocrInterval) clearInterval(ocrInterval);
-  initOcrWorker();
-  ocrInterval = setInterval(runOcr, 2000);
-}
-
-function stopOcr(){
-  if(ocrInterval){ clearInterval(ocrInterval); ocrInterval=null; }
-  ocrBox.style.display="none";
-}
-
-ocrBtn.onclick = ()=>{
-  if(!isSharing){ alert("Először indítsd el a képernyőmegosztást!"); return; }
-  ocrActive = !ocrActive;
-  ocrBtn.classList.toggle("active-purple", ocrActive);
-  ocrBtn.querySelector(".btn-icon").textContent = ocrActive ? "🔎" : "🔍";
-  if(ocrActive) startOcr(); else stopOcr();
 };
 
 /* =========================================================================
