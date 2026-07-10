@@ -1,6 +1,4 @@
 // supabase/functions/groq-translate/index.ts
-// Deploy: supabase functions deploy groq-translate
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const CORS = {
@@ -9,7 +7,6 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Groq modellek — sorban próbálja ha egy megtelik
 const GROQ_MODELS = [
   "llama-3.3-70b-versatile",
   "llama-3.1-8b-instant",
@@ -17,12 +14,18 @@ const GROQ_MODELS = [
   "mixtral-8x7b-32768",
 ];
 
+const LANG_NAMES: Record<string, string> = {
+  hu: "Hungarian", en: "English",    ru: "Russian",
+  de: "German",    fr: "French",     es: "Spanish",
+  it: "Italian",   pt: "Portuguese", pl: "Polish",
+  ro: "Romanian",  uk: "Ukrainian",  zh: "Chinese",
+  ar: "Arabic",
+};
+
 serve(async (req: Request) => {
-  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: CORS });
   }
-
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405, headers: CORS });
   }
@@ -52,7 +55,6 @@ serve(async (req: Request) => {
     });
   }
 
-  // Az API kulcsot a kliens küldi a headerben (admin tárolta localStorage-ban)
   const groqKey = req.headers.get("x-groq-key");
   if (!groqKey) {
     return new Response(JSON.stringify({ error: "No API key provided" }), {
@@ -61,20 +63,10 @@ serve(async (req: Request) => {
     });
   }
 
-  const LANG_NAMES: Record<string, string> = {
-  hu: "Hungarian", en: "English", ru: "Russian",
-  de: "German",   fr: "French",  es: "Spanish",
-  it: "Italian",  pt: "Portuguese", pl: "Polish",
-  ro: "Romanian", uk: "Ukrainian",  zh: "Chinese",
-  ar: "Arabic",
-};
-
   const srcName = LANG_NAMES[src] || src;
   const tgtName = LANG_NAMES[tgt] || tgt;
-
   const prompt = `Translate the following text from ${srcName} to ${tgtName}. Output ONLY the translated text, no explanation, no quotes, no prefix.\n\nText: ${text}`;
 
-  // Modell prioritás: ha a kliens küld preferált modellt, azzal próbál először
   const modelOrder = model
     ? [model, ...GROQ_MODELS.filter((m) => m !== model)]
     : GROQ_MODELS;
@@ -96,11 +88,7 @@ serve(async (req: Request) => {
         }),
       });
 
-      if (groqRes.status === 429) {
-        // Rate limit ezen a modellen — következő modellre vált
-        lastError = "rate_limit";
-        continue;
-      }
+      if (groqRes.status === 429) { lastError = "rate_limit"; continue; }
 
       if (!groqRes.ok) {
         const errText = await groqRes.text();
@@ -111,13 +99,8 @@ serve(async (req: Request) => {
 
       const groqData = await groqRes.json();
       const translated = groqData?.choices?.[0]?.message?.content?.trim();
+      if (!translated) { lastError = "empty_response"; continue; }
 
-      if (!translated) {
-        lastError = "empty_response";
-        continue;
-      }
-
-      // Siker — visszaküldi a lefordított szöveget és a használt modellt
       return new Response(
         JSON.stringify({ translated, model: m, quality: "high" }),
         { headers: { ...CORS, "Content-Type": "application/json" } }
@@ -129,12 +112,8 @@ serve(async (req: Request) => {
     }
   }
 
-  // Minden modell megbukott ezen a kulcson
   return new Response(
     JSON.stringify({ error: "all_models_failed", detail: lastError }),
-    {
-      status: 503,
-      headers: { ...CORS, "Content-Type": "application/json" },
-    }
+    { status: 503, headers: { ...CORS, "Content-Type": "application/json" } }
   );
 });
