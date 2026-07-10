@@ -652,18 +652,24 @@ function saveSingleKey(idx){
   const card = $("keyGrid").querySelector(`[data-idx="${idx}"][data-role="apikey"]`);
   const labelEl = $("keyGrid").querySelector(`[data-idx="${idx}"][data-role="label"]`);
   if(!card) return;
+
   const keyVal   = card.value.trim();
-  const labelVal = (labelEl?.value||"").trim()||`Kulcs #${idx+1}`;
-  const keys = loadKeys();
-  // Feltölti ha szükséges
-  while(keys.length<=idx) keys.push({key:"",label:`Kulcs #${keys.length+1}`,used:0,lastError:null});
-  keys[idx].key   = keyVal;
-  keys[idx].label = labelVal;
-  // Csak ha kulcs módosult, reseteli a számlálót
-  if(keyVal !== keys[idx].key) keys[idx].used=0;
-  keys[idx].lastError=null;
+  const labelVal = (labelEl?.value || "").trim() || `Kulcs #${idx+1}`;
+  const keys     = loadKeys();
+
+  while(keys.length <= idx)
+    keys.push({ key:"", label:`Kulcs #${keys.length+1}`, used:0, lastError:null });
+
+  const oldKey = keys[idx].key;          // ← Előbb eltároljuk a régit
+  keys[idx].key      = keyVal;
+  keys[idx].label    = labelVal;
+  keys[idx].lastError = null;
+
+  if(keyVal !== oldKey) keys[idx].used = 0;  // ← Utána hasonlítjuk
+
   saveKeys(keys);
-  addLog(keyVal?"ok":"info", keyVal?`Kulcs #${idx+1} mentve (${labelVal}).`:`Kulcs #${idx+1} törölve.`);
+  addLog(keyVal ? "ok" : "info",
+    keyVal ? `Kulcs #${idx+1} mentve (${labelVal}).` : `Kulcs #${idx+1} törölve.`);
   renderKeyGrid();
   updateStats();
 }
