@@ -114,7 +114,7 @@ select{
   background:linear-gradient(to bottom,rgba(0,0,0,.75),transparent);
   display:flex;align-items:center;gap:10px;z-index:3;
 }
-.split-name-badge{background:rgba(79,209,197,.2);border:1px solid rgba(79,209,197,.5);color:var(--teal);font-weight:700;font-size:14px;padding:5px 14px;border-radius:20px;backdrop-filter:blur(4px);}
+.split-name-badge{background:rgba(79,209,197,.2);border:1px solid rgba(79,209,197,.5);color:var(--teal);font-weight:700;font-size:13px;padding:5px 12px;border-radius:20px;backdrop-filter:blur(4px);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .split-lang-badge{background:rgba(242,166,90,.15);border:1px solid rgba(242,166,90,.4);color:var(--amber);font-size:12px;font-weight:700;padding:4px 10px;border-radius:12px;}
 .split-caption{position:absolute;bottom:90px;left:0;right:0;padding:0 20px;z-index:4;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;}
 .split-waiting{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2;background:rgba(0,0,0,.6);gap:14px;}
@@ -142,7 +142,12 @@ select{
   border-radius:0 0 14px 0;
   padding:calc(env(safe-area-inset-top,0px)+10px) 16px 10px;
   display:flex;flex-direction:column;gap:1px;
+  max-width:180px;
 }
+.call-name-text{font-size:13px;font-weight:700;color:var(--teal);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.call-name-lang{font-size:11px;color:var(--text-dim);white-space:nowrap;}
+
+  
 .call-name-text{font-size:14px;font-weight:700;color:var(--teal);}
 .call-name-lang{font-size:11px;color:var(--text-dim);}
 
