@@ -1941,22 +1941,26 @@ function setupDataChannel(dc, peerId){
 
       // E2EE kulcs csere
       if(msg.type === "e2ee-key"){
-        try{
-          const peerKey = await importKeyFromBase64(msg.key);
-          e2eePeerKeys.set(peerId, peerKey);
-          // Ha mi nem vagyunk az initiator: küldünk vissza egy kulcsot
-          if(!e2eeCryptoKey){
-            await generateE2eeKey();
-          }
-          await sendE2eeKey(peerId);
-          e2eeReady = true;
-          statE2ee.textContent = t("e2eeActive");
-          console.log("[E2EE] kulcs csere kész, peerId:", peerId);
-        }catch(err){
-          console.warn("[E2EE] kulcs import hiba:", err);
-        }
-        return;
-      }
+  // Ha már van kulcsunk ettől a peertől, ne csináljunk semmit (loop megelőzés)
+  if(e2eePeerKeys.has(peerId)){
+    return;
+  }
+  try{
+    const peerKey = await importKeyFromBase64(msg.key);
+    e2eePeerKeys.set(peerId, peerKey);
+    // Csak akkor küldünk vissza kulcsot, ha mi még nem küldtünk
+    if(!e2eeCryptoKey){
+      await generateE2eeKey();
+      await sendE2eeKey(peerId);
+    }
+    e2eeReady = true;
+    statE2ee.textContent = t("e2eeActive");
+    console.log("[E2EE] kulcs csere kész, peerId:", peerId);
+  }catch(err){
+    console.warn("[E2EE] kulcs import hiba:", err);
+  }
+  return;
+}
 
       // Titkosított chat üzenet
       if(msg.type === "e2ee-chat"){
