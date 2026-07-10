@@ -792,7 +792,10 @@ select{
 </div>
 
 <!-- Fordítás státusz banner -->
-<div id="translationStatusBanner"></div>
+<div id="translationStatusBanner">
+  <button id="bannerCloseBtn" onclick="this.parentElement.className=''" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:inherit;font-size:18px;font-weight:700;cursor:pointer;opacity:0.7;line-height:1;">✕</button>
+  <span id="bannerText"></span>
+</div>
 
 <script type="module">
 /* =========================================================================
@@ -1357,7 +1360,7 @@ let bannerHideTimer = null;
 
 function showStatusBanner(type, message){
   if(bannerHideTimer) clearTimeout(bannerHideTimer);
-  statusBanner.textContent = message;
+  document.getElementById("bannerText").textContent = message;
   statusBanner.className = `show ${type}`;
   if(type === "restored"){
     bannerHideTimer = setTimeout(()=>{ statusBanner.className=""; }, 5000);
