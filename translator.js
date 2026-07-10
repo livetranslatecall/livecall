@@ -36,7 +36,7 @@ const GROQ_RESTORED_MESSAGES = {
 export class TranslatorEngine {
   constructor({ onStatusChange, onKeyUpdate, getCurrentLang }) {
     /** @type {KeySlot[]} */
-    this._keys = this._loadKeys();
+    this._keys = [];
     this._currentKeyIndex = 0;
     this._groqAvailable = false; // konzervatívan indul — polling dönti el
     this._usingFallback = false;
@@ -47,6 +47,12 @@ export class TranslatorEngine {
     this._onKeyUpdate = onKeyUpdate || (() => {});
     this._getCurrentLang = getCurrentLang || (() => "hu");
 
+    // Aszinkron inicializálás
+    this._initKeys();
+  }
+
+  async _initKeys() {
+    this._keys = await this._loadKeys();
     this._maybeResetDaily();
     this._startPolling();
   }
@@ -124,7 +130,7 @@ export class TranslatorEngine {
   }
 
   /** Admin: kulcsok beállítása (10 slot) */
-  setKeys(keysArray) {
+  async setKeys(keysArray) {
     // keysArray: [{ key, label }] max 10 elem
     this._keys = keysArray.slice(0, 10).map((item, i) => ({
       key: item.key || "",
@@ -135,26 +141,26 @@ export class TranslatorEngine {
       lastError: null,
     }));
     this._currentKeyIndex = 0;
-    this._saveKeys();
+    await this._saveKeys();
     this._onKeyUpdate(this._keys);
     // Azonnal pingel
     this.pingGroq();
   }
 
   /** Admin: egyetlen kulcs törlése index alapján */
-  removeKey(index) {
+  async removeKey(index) {
     if (index < 0 || index >= this._keys.length) return;
     this._keys.splice(index, 1);
     this._currentKeyIndex = Math.min(
       this._currentKeyIndex,
       Math.max(0, this._keys.length - 1)
     );
-    this._saveKeys();
+    await this._saveKeys();
     this._onKeyUpdate(this._keys);
   }
 
   /** Admin: egyetlen kulcs hozzáadása vagy frissítése */
-  upsertKey(index, keyStr, label) {
+  async upsertKey(index, keyStr, label) {
     if (index < 0 || index > 9) return;
     if (!this._keys[index]) {
       this._keys[index] = {
@@ -171,7 +177,7 @@ export class TranslatorEngine {
       this._keys[index].exhausted = this._keys[index].used >= DAILY_LIMIT_PER_KEY;
       this._keys[index].lastError = null;
     }
-    this._saveKeys();
+    await this._saveKeys();
     this._onKeyUpdate(this._keys);
   }
 
@@ -218,7 +224,7 @@ export class TranslatorEngine {
           // Rate limit — ez a kulcs kimerült, következőre vált
           slot.exhausted = true;
           slot.lastError = "rate_limited";
-          this._saveKeys();
+          await this._saveKeys();
           this._onKeyUpdate(this._keys);
           this._currentKeyIndex = (idx + 1) % total;
           continue;
@@ -226,7 +232,7 @@ export class TranslatorEngine {
 
         if (!res.ok) {
           slot.lastError = `http_${res.status}`;
-          this._saveKeys();
+          await this._saveKeys();
           this._onKeyUpdate(this._keys);
           continue;
         }
@@ -235,7 +241,7 @@ export class TranslatorEngine {
         if (data?.error === "all_models_failed") {
           slot.exhausted = true;
           slot.lastError = "all_models_failed";
-          this._saveKeys();
+          await this._saveKeys();
           this._onKeyUpdate(this._keys);
           this._currentKeyIndex = (idx + 1) % total;
           continue;
@@ -252,13 +258,13 @@ export class TranslatorEngine {
           } else {
             this._currentKeyIndex = idx;
           }
-          this._saveKeys();
+          await this._saveKeys();
           this._onKeyUpdate(this._keys);
           return data.translated;
         }
       } catch (err) {
         slot.lastError = String(err).slice(0, 60);
-        this._saveKeys();
+        await this._saveKeys();
         this._onKeyUpdate(this._keys);
         // Timeout / network hiba → következő kulcs
         continue;
@@ -325,47 +331,83 @@ export class TranslatorEngine {
       this._currentKeyIndex = 0;
       this._saveKeys();
       this._onKeyUpdate(this._keys);
-      console.log("[Translator] Napi limitekek visszaállítva:", today);
+      console.log("[Translator] Napi limitek visszaállítva:", today);
     }
   }
 
   async _loadKeys() {
-  // 1. Először próbáljuk a Supabase-ból
-  try{
-    const { data, error } = await supabaseClient
-      .from("groq_keys")
-      .select("*")
-      .order("id", {ascending: true});
-    
-    if(!error && data && data.length > 0){
-      return data.map((item, i) => ({
-        key: item.key_text || "",
+    // 1. Először próbáljuk a Supabase-ból
+    try {
+      const { data, error } = await supabaseClient
+        .from("groq_keys")
+        .select("*")
+        .order("id", { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        return data.map((item, i) => ({
+          key: item.key_text || "",
+          label: item.label || `Kulcs #${i + 1}`,
+          used: Number(item.used) || 0,
+          limit: DAILY_LIMIT_PER_KEY,
+          exhausted: (Number(item.used) || 0) >= DAILY_LIMIT_PER_KEY,
+          lastError: null,
+        }));
+      }
+    } catch (e) {
+      console.warn("Supabase betöltés hiba:", e);
+    }
+
+    // 2. Ha nincs Supabase, jöhet a localStorage
+    try {
+      const raw = localStorage.getItem("lt_groq_keys");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((item, i) => ({
+        key: item.key || "",
         label: item.label || `Kulcs #${i + 1}`,
         used: Number(item.used) || 0,
         limit: DAILY_LIMIT_PER_KEY,
         exhausted: (Number(item.used) || 0) >= DAILY_LIMIT_PER_KEY,
-        lastError: null,
+        lastError: item.lastError || null,
       }));
+    } catch {
+      return [];
     }
-  }catch(e){
-    console.warn("Supabase betöltés hiba:", e);
   }
-  
-  // 2. Ha nincs Supabase, jöhet a localStorage
-  try{
-    const raw = localStorage.getItem("lt_groq_keys");
-    if(!raw) return [];
-    const parsed = JSON.parse(raw);
-    if(!Array.isArray(parsed)) return [];
-    return parsed.map((item, i) => ({
-      key: item.key || "",
-      label: item.label || `Kulcs #${i + 1}`,
-      used: Number(item.used) || 0,
-      limit: DAILY_LIMIT_PER_KEY,
-      exhausted: (Number(item.used) || 0) >= DAILY_LIMIT_PER_KEY,
-      lastError: item.lastError || null,
-    }));
-  } catch {
-    return [];
+
+  async _saveKeys() {
+    // 1. LocalStorage mentés (megmarad)
+    try {
+      const toSave = this._keys.map((k) => ({
+        key: k.key,
+        label: k.label,
+        used: k.used,
+        lastError: k.lastError,
+      }));
+      localStorage.setItem("lt_groq_keys", JSON.stringify(toSave));
+      localStorage.setItem("lt_reset_date", this._lastResetDate);
+    } catch (e) {
+      console.warn("[Translator] localStorage mentési hiba:", e);
+    }
+
+    // 2. Supabase mentés (központi)
+    try {
+      // Töröljük a régieket
+      await supabaseClient.from("groq_keys").delete().neq("id", 0);
+      // Beszúrjuk az újakat
+      for (const k of this._keys) {
+        if (k.key) {
+          await supabaseClient.from("groq_keys").insert({
+            key_text: k.key,
+            label: k.label,
+            used: k.used || 0,
+            daily_limit: 1000,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Supabase mentés hiba:", e);
+    }
   }
 }
