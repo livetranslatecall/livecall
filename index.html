@@ -321,16 +321,22 @@ select{
   opacity:0;z-index:12;display:flex;flex-direction:column;overflow:hidden;pointer-events:none;
 }
 #chatPanel.open{transform:translateX(0);opacity:1;pointer-events:auto;}
-.chat-head{padding:12px 14px 8px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.2);}
-.chat-head h2{font-size:14px;margin:0;color:var(--text);}
-  .chat-opacity-wrap{
-  opacity:0;transition:opacity .2s;display:flex;align-items:center;
+.chat-head{
+  padding:12px 14px 8px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  display:flex;justify-content:space-between;align-items:center;
+  background:rgba(0,0,0,.2);gap:8px;
+}
+.chat-head h2{font-size:14px;margin:0;color:var(--text);flex-shrink:0;}
+.chat-opacity-wrap{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .25s;
 }
 .chat-head:hover .chat-opacity-wrap{opacity:1;}
 #chatOpacitySlider{
-  width:80px;height:4px;cursor:pointer;accent-color:var(--teal);
+  width:100%;height:4px;cursor:pointer;accent-color:var(--teal);
 }
-.chat-close{background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:6px;}
+.chat-close{background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:6px;flex-shrink:0;}
 .chat-close:hover{background:rgba(255,255,255,.1);color:var(--text);}
 #chatMessages{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent;}
 #chatMessages::-webkit-scrollbar{width:4px;}
@@ -351,7 +357,6 @@ select{
 .chat-icon-btn:hover{color:var(--text);}
 .chat-send{background:var(--teal);border:none;width:34px;height:34px;border-radius:50%;color:#08221f;font-size:14px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 .chat-e2ee-badge{font-size:10px;color:var(--green);text-align:center;padding:4px;opacity:.7;}
-
 /* Caption history panel */
 #historyPanel{position:absolute;left:0;top:0;bottom:0;width:min(320px,88vw);background:var(--panel);transform:translateX(-100%);transition:transform .25s ease;z-index:12;display:flex;flex-direction:column;border-right:1px solid var(--line);}
 #historyPanel.open{transform:translateX(0);}
