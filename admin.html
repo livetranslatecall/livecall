@@ -591,14 +591,48 @@ $("logoutBtn").onclick=()=>{
 // ═══════════════════════════════════════════════════════════════════
 
 async function maybeResetDaily(){
+  const today = todayStr();
+
+  // Supabase reset_date ellenőrzés
+  if(supabaseClient){
+    try{
+      const { data, error } = await supabaseClient
+        .from("groq_keys")
+        .select("keys, reset_date")
+        .eq("id", 1)
+        .single();
+
+      if(error) throw error;
+
+      if(data && data.reset_date !== today){
+        const keys = (data.keys || []).map(k=>({...k, used:0, lastError:null}));
+        const { error: updateError } = await supabaseClient
+          .from("groq_keys")
+          .update({ keys, reset_date: today, updated_at: new Date().toISOString() })
+          .eq("id", 1);
+        if(updateError) throw updateError;
+        localStorage.setItem(RESET_KEY, today);
+        addLog("info", `Napi számlálók visszaállítva (Supabase): ${today}`);
+        return;
+      }
+
+      // Supabase szerint már resetelt ma
+      localStorage.setItem(RESET_KEY, today);
+      return;
+
+    }catch(e){
+      console.warn("maybeResetDaily Supabase hiba:", e?.message || e);
+    }
+  }
+
+  // localStorage fallback
   const stored = localStorage.getItem(RESET_KEY);
-  const today  = todayStr();
   if(stored === today) return;
   localStorage.setItem(RESET_KEY, today);
   const keys = await loadKeys();
   keys.forEach(k=>{ k.used=0; k.lastError=null; });
   await saveKeys(keys);
-  addLog("info", `Napi számlálók visszaállítva: ${today}`);
+  addLog("info", `Napi számlálók visszaállítva (localStorage): ${today}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════
