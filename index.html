@@ -141,31 +141,25 @@ select{
   border-right:2px solid rgba(79,209,197,.4);
   border-bottom:2px solid rgba(79,209,197,.4);
   border-radius:0 0 14px 0;
-  padding:calc(env(safe-area-inset-top,0px)+8px) 12px 8px;
-  display:flex;flex-direction:column;gap:2px;
-  max-width:140px;
+  padding:calc(env(safe-area-inset-top,0px)+10px) 14px 10px;
+  display:flex;flex-direction:column;gap:4px;
+  min-width:100px;max-width:160px;
   backdrop-filter:blur(8px);
 }
 .call-name-text{
-  font-size:13px;font-weight:700;color:var(--teal);
+  font-size:14px;font-weight:700;color:var(--teal);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  line-height:1.3;
+  line-height:1.4;
 }
 .call-name-lang{
-  font-size:10px;color:var(--text-dim);
-  white-space:nowrap;line-height:1.3;
+  font-size:11px;color:var(--text-dim);
+  white-space:nowrap;line-height:1.4;
+  background:rgba(79,209,197,.1);
+  border:1px solid rgba(79,209,197,.25);
+  border-radius:6px;padding:2px 7px;
+  display:inline-block;width:fit-content;
 }
-@media(min-width:720px){
-  #callNameBanner{ display:none; }
-  #partnerNameBanner{ display:none; }
-}
-.call-name-text{font-size:13px;font-weight:700;color:var(--teal);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.call-name-lang{font-size:11px;color:var(--text-dim);white-space:nowrap;}
-
   
-.call-name-text{font-size:14px;font-weight:700;color:var(--teal);}
-.call-name-lang{font-size:11px;color:var(--text-dim);}
-
 /* Draggable video windows */
 .vid-wrap{
   position:absolute;border-radius:16px;overflow:hidden;
@@ -598,10 +592,9 @@ select{
   <span class="call-name-lang" id="callNameLang">Magyar</span>
 </div>
 
-<!-- Partner neve jobb felül -->
-<div class="call-name-banner" id="partnerNameBanner" style="left:auto;right:0;border-radius:0 0 0 14px;border-left:2px solid rgba(242,166,90,.4);border-right:none;background:linear-gradient(135deg,rgba(242,166,90,.05),rgba(242,166,90,.2));">
+<div class="call-name-banner" id="partnerNameBanner" style="left:auto;right:0;border-radius:0 0 0 14px;border-left:2px solid rgba(242,166,90,.4);border-right:none;border-bottom:2px solid rgba(242,166,90,.4);background:rgba(13,20,32,.82);">
   <span class="call-name-text" id="partnerNameText" style="color:var(--amber);">—</span>
-  <span class="call-name-lang" id="partnerNameLang" style="color:var(--text-dim);">--</span>
+  <span class="call-name-lang" id="partnerNameLang" style="color:var(--amber);background:rgba(242,166,90,.1);border-color:rgba(242,166,90,.25);">--</span>
 </div>
 
   <!-- Remote video (mobile) -->
