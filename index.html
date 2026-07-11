@@ -3295,6 +3295,40 @@ statsBtn.onclick = e=>{ e.stopPropagation(); statsOverlay.classList.toggle("open
 
 chatBtn.onclick   = ()=> chatPanel.classList.toggle("open");
 chatCloseBtn.onclick= ()=> chatPanel.classList.remove("open");
+  // Chat panel drag
+(()=>{
+  let dragging=false, startX=0, startY=0, origX=0, origY=0;
+  const header = document.querySelector(".chat-head");
+  header.style.cursor = "grab";
+  header.addEventListener("pointerdown", e=>{
+    if(e.target.id==="chatOpacitySlider"||e.target.classList.contains("chat-close")) return;
+    dragging=true;
+    header.style.cursor="grabbing";
+    const rect = chatPanel.getBoundingClientRect();
+    startX = e.clientX;
+    startY = e.clientY;
+    origX = rect.left;
+    origY = rect.top;
+    chatPanel.style.transition = "none";
+    chatPanel.style.right = "auto";
+    chatPanel.style.bottom = "auto";
+    chatPanel.style.left = origX+"px";
+    chatPanel.style.top = origY+"px";
+    header.setPointerCapture(e.pointerId);
+  });
+  header.addEventListener("pointermove", e=>{
+    if(!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    chatPanel.style.left = (origX+dx)+"px";
+    chatPanel.style.top  = (origY+dy)+"px";
+  });
+  header.addEventListener("pointerup", ()=>{
+    dragging=false;
+    header.style.cursor="grab";
+    chatPanel.style.transition="";
+  });
+})();
 chatSendBtn.onclick = sendChat;
   document.getElementById("chatOpacitySlider").addEventListener("input", e=>{
   const val = parseFloat(e.target.value);
