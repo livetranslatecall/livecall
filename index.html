@@ -770,14 +770,7 @@ select{
     </button>
   </div>
 
-  <!-- Caption history panel -->
-  <div id="historyPanel">
-    <div class="hist-head">
-      <h2 data-i18n="histTitle">Felirat előzmények</h2>
-      <button class="chat-close" id="histCloseBtn">✕</button>
-    </div>
-    <div id="historyList"></div>
-  </div>
+  
 
   <!-- Chat panel -->
   <div id="chatPanel">
@@ -2956,22 +2949,40 @@ function toggleMirror(){
    PICTURE IN PICTURE
    ========================================================================= */
 async function togglePiP(){
+  console.log("═══════════════════════════════════════════════════");
+  console.log("⧉ PiP GOMB MEGNYOMVA");
+  console.log("   peers.size:", peers.size);
+  console.log("   isLaptop:", isLaptop());
+  console.log("   document.pictureInPictureElement:", document.pictureInPictureElement);
   try{
     if(document.pictureInPictureElement){
+      console.log("   → PiP bezárása...");
       await document.exitPictureInPicture();
       pipBtn.classList.remove("active-teal");
+      console.log("   ✅ PiP bezárva");
     }else{
-      const targetVideo = peers.size>0
-        ? (peers.values().next().value.videoEl||remoteVideo)
-        : remoteVideo;
+      const targetVideo = isLaptop()
+  ? splitRemoteVideo
+  : (peers.size>0
+      ? (peers.values().next().value.videoEl||remoteVideo)
+      : remoteVideo);
+      console.log("   → targetVideo:", targetVideo?.id || "dinamikus elem");
+      console.log("   → targetVideo.srcObject:", targetVideo?.srcObject ? "van stream" : "NINCS stream");
+      console.log("   → targetVideo.readyState:", targetVideo?.readyState);
       if(targetVideo.srcObject){
+        console.log("   → PiP indítása...");
         await targetVideo.requestPictureInPicture();
         pipBtn.classList.add("active-teal");
+        console.log("   ✅ PiP elindítva");
+      } else {
+        console.warn("   ❌ Nincs srcObject a videón, PiP nem indítható");
       }
     }
-  }catch(e){ console.warn("PiP hiba:",e); }
+  }catch(e){ 
+    console.error("   ❌ PiP hiba:", e.message || e);
+  }
+  console.log("═══════════════════════════════════════════════════");
 }
-
 /* =========================================================================
    HÍVÁS VÉGE
    ========================================================================= */
@@ -3082,6 +3093,7 @@ function doHangup(){
   hangupModal.classList.remove("open");
   statsGraphOverlay.classList.remove("open");
   participantsPanel.classList.remove("open");
+  histPanel.classList.remove("open");
   console.log("   ✅ UI elemek visszaállítva");
 
   // URL paraméter eltávolítása
