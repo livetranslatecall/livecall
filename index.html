@@ -717,14 +717,7 @@ select{
       <span class="btn-icon">📷</span>
       <span class="btn-label" data-i18n="ctrlCam">Kamera</span>
     </button>
-    <button class="ctrl-btn" id="mirrorBtn">
-      <span class="btn-icon">🔀</span>
-      <span class="btn-label" data-i18n="ctrlMirror">Tükör</span>
-    </button>
-    <button class="ctrl-btn" id="screenBtn">
-      <span class="btn-icon">🖥️</span>
-      <span class="btn-label" data-i18n="ctrlScreen">Képernyő</span>
-    </button>
+    
     <button class="ctrl-btn" id="ocrBtn">
       <span class="btn-icon">🔍</span>
       <span class="btn-label" data-i18n="ctrlOcr">OCR</span>
@@ -736,18 +729,12 @@ select{
       <span class="btn-icon">⏺</span>
       <span class="btn-label" data-i18n="ctrlRec">Felvétel</span>
     </button>
-    <button class="ctrl-btn" id="reactBtn">
-      <span class="btn-icon">😊</span>
-      <span class="btn-label" data-i18n="ctrlReact">Reakció</span>
-    </button>
+    
     <button class="ctrl-btn" id="langBtn">
       <span class="btn-icon">🌐</span>
       <span class="btn-label" data-i18n="ctrlLang">Nyelv</span>
     </button>
-    <button class="ctrl-btn" id="histBtn">
-      <span class="btn-icon">📜</span>
-      <span class="btn-label" data-i18n="ctrlHist">Előzmény</span>
-    </button>
+   
     <button class="ctrl-btn" id="chatBtn">
       <span class="btn-icon">💬</span>
       <span class="btn-label" data-i18n="ctrlChat">Chat</span>
@@ -1312,8 +1299,8 @@ const langMenu=el("langMenu");
 const chatPanel=el("chatPanel"),chatCloseBtn=el("chatCloseBtn");
 const chatMessages=el("chatMessages"),chatInput=el("chatInput"),chatSendBtn=el("chatSendBtn");
 const fileBtn=el("fileBtn"),fileInput=el("fileInput");
-const histBtn=el("histBtn"),histPanel=el("historyPanel"),histCloseBtn=el("histCloseBtn"),histList=el("historyList");
-const mirrorBtn=el("mirrorBtn"),pipBtn=el("pipBtn");
+const histList=el("historyList");
+const pipBtn=el("pipBtn");
 const statsBtn=el("statsBtn"),statsOverlay=el("statsOverlay");
 const netDot=el("netDot"),netLabel=el("netLabel"),recPill=el("recPill");
 const emojiOverlay=el("emojiOverlay");
@@ -3265,15 +3252,11 @@ camBtn.onclick = ()=>{
   camBtn.querySelector(".btn-icon").textContent = camOn?"📷":"🚫";
 };
 
-mirrorBtn.onclick = toggleMirror;
-screenBtn.onclick = toggleScreenShare;
+
 recBtn.onclick    = toggleRecording;
 pipBtn.onclick    = togglePiP;
 
-reactBtn.onclick = e=>{ e.stopPropagation(); reactBar.classList.toggle("open"); };
-reactBar.querySelectorAll(".react-emoji").forEach(btn=>{
-  btn.onclick = ()=>{ showEmojiFloat(btn.dataset.emoji,true); reactBar.classList.remove("open"); };
-});
+
 
 langBtn.onclick = e=>{ e.stopPropagation(); langMenu.classList.toggle("open"); };
 langMenu.querySelectorAll("button").forEach(btn=>{
@@ -3292,8 +3275,7 @@ langMenu.querySelectorAll("button").forEach(btn=>{
 
 statsBtn.onclick = e=>{ e.stopPropagation(); statsOverlay.classList.toggle("open"); };
 
-histBtn.onclick  = ()=> histPanel.classList.add("open");
-histCloseBtn.onclick = ()=> histPanel.classList.remove("open");
+
 
 chatBtn.onclick   = ()=> chatPanel.classList.toggle("open");
 chatCloseBtn.onclick= ()=> chatPanel.classList.remove("open");
@@ -3310,7 +3292,7 @@ peersBtn.onclick = e=>{ e.stopPropagation(); participantsPanel.classList.toggle(
 
 document.addEventListener("click",e=>{
   if(!langMenu.contains(e.target)&&e.target!==langBtn)               langMenu.classList.remove("open");
-  if(!reactBar.contains(e.target)&&e.target!==reactBtn)              reactBar.classList.remove("open");
+  
   if(!statsOverlay.contains(e.target)&&e.target!==statsBtn)          statsOverlay.classList.remove("open");
   if(!participantsPanel.contains(e.target)&&e.target!==peersBtn)     participantsPanel.classList.remove("open");
   if(!statsGraphOverlay.contains(e.target)&&e.target!==netPill&&e.target!==statsGraphClose)
