@@ -2961,12 +2961,9 @@ async function togglePiP(){
       await document.exitPictureInPicture();
       pipBtn.classList.remove("active-teal");
     }else{
-      // Laptopon a splitRemoteVideo-t használjuk
-      const targetVideo = isLaptop()
-        ? splitRemoteVideo
-        : (peers.size>0
-            ? (peers.values().next().value.videoEl||remoteVideo)
-            : remoteVideo);
+      const targetVideo = peers.size>0
+        ? (peers.values().next().value.videoEl||remoteVideo)
+        : remoteVideo;
       if(targetVideo.srcObject){
         await targetVideo.requestPictureInPicture();
         pipBtn.classList.add("active-teal");
