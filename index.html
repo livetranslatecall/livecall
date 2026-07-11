@@ -325,31 +325,30 @@ select{
   padding:12px 14px 8px;
   border-bottom:1px solid rgba(255,255,255,.08);
   display:flex;justify-content:space-between;align-items:center;
-  background:rgba(0,0,0,.2);gap:8px;
+  background:rgba(0,0,0,.2);gap:8px;cursor:grab;
 }
 .chat-head h2{font-size:14px;margin:0;color:var(--text);flex-shrink:0;}
 .chat-opacity-wrap{
   flex:1;display:flex;align-items:center;justify-content:center;
-  gap:6px;opacity:0;transition:opacity .25s;position:relative;
+  gap:6px;transition:opacity .25s;position:relative;
 }
-.chat-opacity-wrap::before{
-  content:"";position:absolute;
-  width:32px;height:3px;border-radius:3px;
-  background:rgba(79,209,197,.35);
-  top:50%;left:50%;transform:translate(-50%,-50%);
-  transition:opacity .25s;
+.slider-hint{
+  font-size:12px;color:rgba(79,209,197,.6);
+  pointer-events:none;transition:opacity .25s;
   animation:sliderHint 2s ease-in-out infinite;
-}
-.chat-head:hover .chat-opacity-wrap,
-.chat-head:active .chat-opacity-wrap{opacity:1;}
-.chat-head:hover .chat-opacity-wrap::before,
-.chat-head:active .chat-opacity-wrap::before{display:none;}
-@keyframes sliderHint{
-  0%,100%{opacity:.2;width:24px;}
-  50%{opacity:.6;width:36px;}
+  flex-shrink:0;
 }
 #chatOpacitySlider{
   width:100%;height:4px;cursor:pointer;accent-color:var(--teal);
+  opacity:0;transition:opacity .25s;position:absolute;
+}
+.chat-head:hover #chatOpacitySlider,
+.chat-head:active #chatOpacitySlider{opacity:1;}
+.chat-head:hover .slider-hint,
+.chat-head:active .slider-hint{opacity:0;}
+@keyframes sliderHint{
+  0%,100%{opacity:.3;}
+  50%{opacity:.9;}
 }
 .chat-close{background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:6px;flex-shrink:0;}
 .chat-close:hover{background:rgba(255,255,255,.1);color:var(--text);}
@@ -372,18 +371,6 @@ select{
 .chat-icon-btn:hover{color:var(--text);}
 .chat-send{background:var(--teal);border:none;width:34px;height:34px;border-radius:50%;color:#08221f;font-size:14px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 .chat-e2ee-badge{font-size:10px;color:var(--green);text-align:center;padding:4px;opacity:.7;}
-/* Caption history panel */
-#historyPanel{position:absolute;left:0;top:0;bottom:0;width:min(320px,88vw);background:var(--panel);transform:translateX(-100%);transition:transform .25s ease;z-index:12;display:flex;flex-direction:column;border-right:1px solid var(--line);}
-#historyPanel.open{transform:translateX(0);}
-.hist-head{padding:calc(env(safe-area-inset-top,0px)+14px) 16px 12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
-.hist-head h2{font-size:16px;margin:0;}
-#historyList{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px;}
-.hist-item{background:var(--panel-2);border-radius:12px;padding:10px 12px;font-size:13px;border-left:3px solid var(--teal);}
-.hist-item.partner{border-left-color:var(--amber);}
-.hist-time{font-size:10px;color:var(--text-dim);margin-bottom:3px;}
-.hist-text{font-weight:600;margin-bottom:2px;}
-.hist-orig{font-size:11px;color:var(--text-dim);font-style:italic;}
-
 /* Stats text overlay */
 #statsOverlay{
   position:absolute;top:70px;left:14px;background:rgba(13,20,32,.88);
@@ -795,8 +782,9 @@ select{
     <div class="chat-head">
   <h2 data-i18n="chatTitle">💬 Chat</h2>
   <div class="chat-opacity-wrap">
-    <input type="range" id="chatOpacitySlider" min="0.05" max="1" step="0.05" value="0.55">
-  </div>
+  <span class="slider-hint">◈</span>
+  <input type="range" id="chatOpacitySlider" min="0.05" max="1" step="0.05" value="0.55">
+</div>
   <button class="chat-close" id="chatCloseBtn">✕</button>
 </div>
     <div class="chat-e2ee-badge">🔐 End-to-end encrypted</div>
@@ -3310,8 +3298,9 @@ statsBtn.onclick = e=>{ e.stopPropagation(); statsOverlay.classList.toggle("open
 
 chatBtn.onclick   = ()=> chatPanel.classList.toggle("open");
 chatCloseBtn.onclick= ()=> chatPanel.classList.remove("open");
-  // Chat panel drag
+  // Chat panel drag — csak laptopon
 (()=>{
+  if(window.innerWidth < 720) return;
   let dragging=false, startX=0, startY=0, origX=0, origY=0;
   const header = document.querySelector(".chat-head");
   header.style.cursor = "grab";
