@@ -349,14 +349,28 @@ export class TranslatorEngine {
       try {
         console.log("[Translator] Kulcsok betöltése Supabase-ből...");
         const { data, error } = await client
-          .from("groq_keys")
-          .select("keys")
-          .eq("id", 1)
-          .single();
+  .from("groq_keys")
+  .select("keys, reset_date")
+  .eq("id", 1)
+  .single();
 
         if (error) throw error;
 
         if (data?.keys && Array.isArray(data.keys) && data.keys.length > 0) {
+
+          const today = this._todayStr();
+if (data.reset_date !== today) {
+  console.log("[Translator] Supabase reset_date régi, napi reset szükséges...");
+  data.keys.forEach(k => {
+    k.used      = 0;
+    k.lastError = null;
+  });
+  this._lastResetDate = today;
+  await client
+    .from("groq_keys")
+    .update({ reset_date: today })
+    .eq("id", 1);
+}
           console.log("[Translator] ✅ Supabase betöltés sikeres:", data.keys.filter(k => k.key).length, "kulcs.");
           return data.keys.map((item, i) => ({
             key:       item.key       || "",
@@ -497,9 +511,24 @@ export class TranslatorEngine {
       });
       this._currentKeyIndex = 0;
       this._saveKeys();
-      this._scheduleSyncToSupabase();
+      this._syncResetDateToSupabase(today);
       this._onKeyUpdate(this._keys);
       console.log("[Translator] ✅ Napi limitek visszaállítva:", today);
+    }
+  }
+
+  async _syncResetDateToSupabase(date) {
+    const client = window.supabaseClient;
+    if (!client) return;
+    try {
+      const { error } = await client
+        .from("groq_keys")
+        .update({ reset_date: date })
+        .eq("id", 1);
+      if (error) throw error;
+      console.log("[Translator] ✅ reset_date szinkronizálva Supabase-be:", date);
+    } catch (e) {
+      console.warn("[Translator] reset_date sync hiba:", e?.message || e);
     }
   }
 
