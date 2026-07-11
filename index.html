@@ -330,9 +330,24 @@ select{
 .chat-head h2{font-size:14px;margin:0;color:var(--text);flex-shrink:0;}
 .chat-opacity-wrap{
   flex:1;display:flex;align-items:center;justify-content:center;
-  opacity:0;transition:opacity .25s;
+  gap:6px;opacity:0;transition:opacity .25s;position:relative;
 }
-.chat-head:hover .chat-opacity-wrap{opacity:1;}
+.chat-opacity-wrap::before{
+  content:"";position:absolute;
+  width:32px;height:3px;border-radius:3px;
+  background:rgba(79,209,197,.35);
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  transition:opacity .25s;
+  animation:sliderHint 2s ease-in-out infinite;
+}
+.chat-head:hover .chat-opacity-wrap,
+.chat-head:active .chat-opacity-wrap{opacity:1;}
+.chat-head:hover .chat-opacity-wrap::before,
+.chat-head:active .chat-opacity-wrap::before{display:none;}
+@keyframes sliderHint{
+  0%,100%{opacity:.2;width:24px;}
+  50%{opacity:.6;width:36px;}
+}
 #chatOpacitySlider{
   width:100%;height:4px;cursor:pointer;accent-color:var(--teal);
 }
