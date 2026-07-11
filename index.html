@@ -3300,11 +3300,11 @@ chatBtn.onclick   = ()=> chatPanel.classList.toggle("open");
 chatCloseBtn.onclick= ()=> chatPanel.classList.remove("open");
   // Chat panel drag — csak laptopon
 (()=>{
-  if(window.innerWidth < 720) return;
   let dragging=false, startX=0, startY=0, origX=0, origY=0;
   const header = document.querySelector(".chat-head");
-  header.style.cursor = "grab";
+
   header.addEventListener("pointerdown", e=>{
+    if(window.innerWidth < 720) return;
     if(e.target.id==="chatOpacitySlider"||e.target.classList.contains("chat-close")) return;
     dragging=true;
     header.style.cursor="grabbing";
@@ -3321,15 +3321,16 @@ chatCloseBtn.onclick= ()=> chatPanel.classList.remove("open");
     header.setPointerCapture(e.pointerId);
   });
   header.addEventListener("pointermove", e=>{
-    if(!dragging) return;
+    if(!dragging||window.innerWidth < 720) return;
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
     chatPanel.style.left = (origX+dx)+"px";
     chatPanel.style.top  = (origY+dy)+"px";
   });
   header.addEventListener("pointerup", ()=>{
+    if(!dragging) return;
     dragging=false;
-    header.style.cursor="grab";
+    header.style.cursor= window.innerWidth >= 720 ? "grab" : "default";
     chatPanel.style.transition="";
   });
 })();
