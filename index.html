@@ -822,18 +822,10 @@ select{
 const SUPABASE_URL      = "https://yyexlblyepkxyqqbgpvu.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZXhsYmx5ZXBreHlxcWJncHZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTE5MjAsImV4cCI6MjA5OTEyNzkyMH0.qG1iDFLarL_OCAuJVnpsb6uOUMRNvUyWdpxYw7C5TDs";
   // ─── LIVEKIT KONFIGURÁCIÓ ───
-let LIVEKIT_URL = "";
-async function getLiveKitUrl() {
-  try {
-    const res = await fetch("/tunnel-url");
-    const { url } = await res.json();
-    if (url) LIVEKIT_URL = url.replace("https://", "wss://");
-  } catch(e) {
-    console.warn("Tunnel URL lekérés sikertelen");
-  }
-}
-const LIVEKIT_API_KEY = "devkey";
-const LIVEKIT_API_SECRET = "secret";
+const LIVEKIT_URL = "wss://videolive-d0o40xt9.livekit.cloud";
+
+const LIVEKIT_API_KEY = "APIcLw87PacUdGh";
+const LIVEKIT_API_SECRET = "7tfbtC274OMDT3pj9rKBpKB4K9tbKvNemPFfVtDrchkA";
 const ICE_SERVERS = [
   {urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"},
   {urls:"stun:freestun.net:3478"},
@@ -3134,7 +3126,7 @@ if(histList) histList.innerHTML="";
    HÍVÁS INDÍTÁSA
    ========================================================================= */
 async function beginCallFlow(){
-  await getLiveKitUrl();
+ 
   console.log("═══════════════════════════════════════════════════");
   console.log("📞 HÍVÁS INDÍTÁSA");
   console.log("═══════════════════════════════════════════════════");
