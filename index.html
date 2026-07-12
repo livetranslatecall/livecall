@@ -2575,7 +2575,6 @@ function startRecognition(){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){ console.warn("Web Speech API nem támogatott"); return; }
 
-  // Előző példány biztonságos leállítása
   if(recognition){
     recognition.onstart  = null;
     recognition.onresult = null;
@@ -2603,6 +2602,10 @@ function startRecognition(){
 
     recognition.onaudiostart = () => {
       console.log("[STT] audio input érkező");
+    };
+
+    recognition.onsoundstart = () => {
+      console.log("[STT] hang érzékelve ✅");
     };
 
     recognition.onresult = async e => {
@@ -2637,21 +2640,27 @@ function startRecognition(){
     recognition.onerror = e => {
       console.warn("[STT] hiba:", e.error);
       micBtn.style.outline = "";
+
       if(e.error === "not-allowed" || e.error === "service-not-allowed"){
         recognitionShouldRun = false;
         return;
       }
+
+      // Android Chrome-on "no-speech" után rögtön újraindítunk
+      // de csak ha tényleg hallható volt audio input
       if(e.error === "network"){
         micBtn.style.outline = "2px solid var(--amber)";
         return;
       }
+
+      // no-speech, audio-capture, aborted — onend kezeli
     };
 
     recognition.onend = () => {
       micBtn.style.outline = "";
       if(!recognitionShouldRun || !micOn || callEnded) return;
-      const delay = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 150 : 300;
-      setTimeout(createAndStart, delay);
+      // Android Chrome-on 150ms delay elég
+      setTimeout(createAndStart, 150);
     };
 
     try{
