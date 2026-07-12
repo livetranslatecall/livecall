@@ -1444,12 +1444,14 @@ async function generateLiveKitToken(apiKey, apiSecret, roomName, participantName
 // ─── LIVEKIT KAPCSOLAT ───
 let livekitRoom = null;
 let livekitConnected = false;
+window._livekitRoom = null; // debug célra
 
 async function connectToLiveKit() {
   console.log("🔗 LIVEKIT KAPCSOLAT INDÍTÁSA, szoba:", roomId, "felhasználó:", myName);
   try {
     const token = await generateLiveKitToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, roomId, myName);
     livekitRoom = new LivekitClient.Room();
+
 
     // ── Hívás közbeni megszakadás figyelése ──
     livekitRoom.on("disconnected", (reason) => {
@@ -1542,10 +1544,65 @@ async function activateWebRTCFallback() {
   }
   livekitConnected = false;
 
-  // Ha már vannak WebRTC peer kapcsolatok, nem kell újraindítani
+  // Ha már vannak WebRTC peer kapcsolatok, csak a streamet kell frissíteni
   if (peers.size > 0) {
-    console.log("✅ WebRTC peer kapcsolatok már aktívak, fallback kész.");
-    setNetStatus("warn");
+    console.log("✅ WebRTC peer kapcsolatok már aktívak, stream visszaállítása...");
+
+    // LiveKit által dinamikusan létrehozott audio elemek törlése
+    document.querySelectorAll("audio[autoplay]").forEach(a => {
+      a.srcObject = null;
+      a.remove();
+    });
+
+    // Saját stream újraindítása ha a trackok leálltak
+    const tracksEnded = !localStream || localStream.getTracks().every(t => t.readyState === "ended");
+    if (tracksEnded) {
+      console.log("🎥 Saját stream újraindítása...");
+      try {
+        await initMedia();
+        window._localStream = localStream;
+        // WebRTC peer senderek frissítése az új trackekkel
+        peers.forEach((p) => {
+          const senders = p.pc?.getSenders() || [];
+          localStream.getTracks().forEach(track => {
+            const sender = senders.find(s => s.track?.kind === track.kind);
+            if (sender) sender.replaceTrack(track).catch(() => {});
+          });
+        });
+        console.log("✅ Saját stream újraindítva.");
+      } catch(e) {
+        console.error("❌ Stream újraindítás hiba:", e);
+      }
+    }
+
+    peers.forEach((p) => {
+      let stream = p.videoEl?.srcObject;
+
+      if (!stream) {
+        const receivers = p.pc?.getReceivers() || [];
+        const videoTrack = receivers.find(r => r.track?.kind === "video")?.track;
+        const audioTrack = receivers.find(r => r.track?.kind === "audio")?.track;
+        if (videoTrack) {
+          const tracks = [videoTrack];
+          if (audioTrack) tracks.push(audioTrack);
+          stream = new MediaStream(tracks);
+          if (p.videoEl) p.videoEl.srcObject = stream;
+        }
+      }
+
+      if (stream) {
+        remoteVideo.srcObject = stream;
+        splitRemoteVideo.srcObject = stream;
+        splitWaiting.style.display = "none";
+        remoteVideo.play().catch(() => {});
+        splitRemoteVideo.play().catch(() => {});
+        console.log("✅ Stream visszaállítva PC receiver-ből.");
+      } else {
+        console.warn("⚠️ Nem találtunk streamet a peer-nél.");
+      }
+    });
+
+    setNetStatus("good");
     return;
   }
 
@@ -1554,7 +1611,6 @@ async function activateWebRTCFallback() {
   setNetStatus("bad");
 
   try {
-    // Jelenlét frissítése – a másik fél újra látja és offer-t küld
     if (channel) {
       await channel.track({
         name: myName || "Guest",
@@ -1573,7 +1629,6 @@ async function activateWebRTCFallback() {
     setNetStatus("bad");
   }
 }
-  
   
 /* =========================================================================
    FUNKCIÓ 7 — HÍVÁSLINK GENERÁLÁSA
@@ -2430,6 +2485,7 @@ async function initMedia(){
     localStream = await navigator.mediaDevices.getUserMedia({video:videoConstraint,audio:true});
     localVideo.srcObject   = localStream;
     splitLocalVideo.srcObject = localStream;
+    window._localStream = localStream;
   }catch(err){
     console.error("Média hiba:", err);
     setupStatus.textContent = t("errPerm");
