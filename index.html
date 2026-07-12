@@ -1306,8 +1306,8 @@ const incomingMain=el("incomingMain"),incomingSub=el("incomingSub");
 const ownBox=el("ownCaptionBox"),ownMain=el("ownMain");
 const micBtn=el("micBtn"),camBtn=el("camBtn"),langBtn=el("langBtn");
 const hangupBtn=el("hangupBtn"),chatBtn=el("chatBtn");
-const screenBtn=el("screenBtn"),recBtn=el("recBtn");
-const reactBtn=el("reactBtn"),reactBar=el("reactBar");
+const recBtn=el("recBtn");
+const reactBar=el("reactBar");
 const langMenu=el("langMenu");
 const chatPanel=el("chatPanel"),chatCloseBtn=el("chatCloseBtn");
 const chatMessages=el("chatMessages"),chatInput=el("chatInput"),chatSendBtn=el("chatSendBtn");
@@ -1341,6 +1341,8 @@ const statE2ee=el("statE2ee");
    ÁLLAPOT
    ========================================================================= */
 let supabaseClient, channel, localStream, screenStream;
+let _callDbId = null;
+let _translationCount = 0;
 let myLang="hu", myName="", roomId="", isInitiator=false;
 let micOn=true, camOn=true, mirrored=false, isSharing=false, isRecording=false;
 let recognition, recognitionShouldRun=false;
@@ -1393,7 +1395,12 @@ const translator = new TranslatorEngine({
 });
 
 async function translateText(text, src, tgt){
-  return translator.translate(text, src, tgt);
+  const result = await translator.translate(text, src, tgt);
+  // Fordítás számláló növelése
+  if(result && result !== text && roomId && myPeerId){
+    incrementTranslationCount(roomId, myPeerId);
+  }
+  return result;
 }
 
 /* =========================================================================
@@ -1529,9 +1536,7 @@ async function connectToLiveKit() {
 }
 
 
-  function setupFallbackWebRTC() {
-  console.log("🔄 WebRTC fallback aktív");
-}
+  
 
 async function activateWebRTCFallback() {
   if (callEnded) return;
@@ -2225,6 +2230,18 @@ async function setupChannel(code){
   // Csak a nagyobb peerId kezdeményez, hogy elkerüljük a dupla offer-t
   const weAreInitiator = myPeerId > (p.peerId||pid);
   initPeer(p.peerId||pid, p.name||"Partner", p.lang||"hu", weAreInitiator);
+  // Partner csatlakozás mentése Supabase-be
+  saveParticipantJoin(roomId, p.peerId||pid, p.name||"Partner", p.lang||"hu");
+  // Résztvevők számának frissítése
+  if(supabaseClient && _callDbId){
+    supabaseClient.from("calls").update({
+      participant_count: peers.size + 1
+    }).eq("id", _callDbId).then(()=>{
+      console.log("✅ [STATS] Résztvevők száma frissítve:", peers.size + 1);
+    }).catch(e=>{
+      console.warn("[STATS] Résztvevők száma frissítési hiba:", e?.message || e);
+    });
+  }
           updateSplitPartnerPresence(p.name||"Partner", p.lang||"hu");
 const pnb = document.getElementById("partnerNameText");
 if(pnb) pnb.textContent = p.name||"Partner";
@@ -2604,6 +2621,7 @@ async function handleIncomingCaption(payload){
 }
 
 function addHistoryItem(main, orig, isOwn){
+  if(!histList) return;
   const item = document.createElement("div");
   item.className = "hist-item"+(isOwn?"":" partner");
   item.innerHTML = `<div class="hist-time">${nowTime()}</div><div class="hist-text">${escHtml(main)}</div>`
@@ -2752,46 +2770,6 @@ async function processOcrCanvas(canvas){
   ocrBox._hideTimer = setTimeout(() => { ocrBox.style.display = "none"; }, 8000);
 }
 
-// ── 1. Asztali: képernyőmegosztásból (2 másodpercenként automatikus scan) ──
-async function runOcr(){
-  if(!ocrActive || !isSharing || !screenStream) return;
-  const videoTrack = screenStream.getVideoTracks()[0];
-  if(!videoTrack || videoTrack.readyState !== "live") return;
-  try{
-    const vSettings = videoTrack.getSettings();
-    const w = Math.min(vSettings.width  || 1280, 1280);
-    const h = Math.min(vSettings.height || 720,  720);
-    const canvas = document.createElement("canvas");
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    let imageBitmap = null;
-    if(typeof ImageCapture !== "undefined"){
-      try{
-        const ic = new ImageCapture(videoTrack);
-        imageBitmap = await ic.grabFrame();
-      }catch(_){}
-    }
-    if(!imageBitmap){
-      const videoEl = splitLocalVideo.srcObject === screenStream
-        ? splitLocalVideo : localVideo;
-      if(!videoEl.videoWidth) return;
-      canvas.width  = videoEl.videoWidth;
-      canvas.height = videoEl.videoHeight;
-      ctx.drawImage(videoEl, 0, 0);
-    } else {
-      ctx.drawImage(imageBitmap, 0, 0, w, h);
-    }
-    await processOcrCanvas(canvas);
-  }catch(e){
-    console.warn("[OCR] asztali hiba:", e);
-  }
-}
-
-function startOcr(){
-  if(ocrInterval) clearInterval(ocrInterval);
-  initOcrWorker();
-  ocrInterval = setInterval(runOcr, 2000);
-}
 
 function stopOcr(){
   if(ocrInterval){ clearInterval(ocrInterval); ocrInterval = null; }
@@ -2866,6 +2844,11 @@ function ocrFromFileInput(){
 }
 
 // ── OCR gomb: okos viselkedés asztali vs mobil ──
+
+
+
+
+
 ocrBtn.onclick = async () => {
   const isMobile = window.innerWidth < 720;
   if(isMobile){
@@ -2913,55 +2896,37 @@ ocrBtn.onclick = async () => {
       if(e.target === overlay) document.body.removeChild(overlay);
     };
   } else {
-    if(!isSharing){
-      alert("Először indítsd el a képernyőmegosztást (🖥️ gomb)!");
-      return;
-    }
+    // Asztali: videó alapú OCR a saját vagy remote streamből
     ocrActive = !ocrActive;
     ocrBtn.classList.toggle("active-purple", ocrActive);
     ocrBtn.querySelector(".btn-icon").textContent = ocrActive ? "🔎" : "🔍";
-    if(ocrActive) startOcr(); else stopOcr();
+    if(ocrActive){
+      initOcrWorker().then(() => {
+        if(ocrInterval) clearInterval(ocrInterval);
+        ocrInterval = setInterval(async () => {
+          // Megpróbálja a remote videót, ha nincs, a lokálist
+          const videoEl = (splitRemoteVideo.srcObject && splitRemoteVideo.videoWidth > 0)
+            ? splitRemoteVideo
+            : (remoteVideo.srcObject && remoteVideo.videoWidth > 0)
+              ? remoteVideo
+              : (splitLocalVideo.srcObject && splitLocalVideo.videoWidth > 0)
+                ? splitLocalVideo
+                : null;
+          if(!videoEl) return;
+          const canvas = document.createElement("canvas");
+          canvas.width  = videoEl.videoWidth;
+          canvas.height = videoEl.videoHeight;
+          canvas.getContext("2d").drawImage(videoEl, 0, 0);
+          await processOcrCanvas(canvas);
+        }, 2000);
+      });
+    } else {
+      stopOcr();
+    }
   }
 };
 
-/* =========================================================================
-   KÉPERNYŐMEGOSZTÁS (kibővítve OCR-rel)
-   ========================================================================= */
-async function toggleScreenShare(){
-  if(!isSharing){
-    try{
-      screenStream = await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});
-      const videoTrack = screenStream.getVideoTracks()[0];
-      const sender = peers.values().next().value?.pc?.getSenders()?.find(s=>s.track?.kind==="video");
-      if(sender) await sender.replaceTrack(videoTrack);
-      localVideo.srcObject = screenStream;
-      splitLocalVideo.srcObject = screenStream;
-      isSharing = true;
-      screenBtn.classList.add("active-teal");
-      screenBtn.querySelector(".btn-icon").textContent="🛑";
-      videoTrack.onended = ()=> stopScreenShare();
-    }catch(e){ console.warn("Screen share hiba:", e); }
-  }else{
-    stopScreenShare();
-  }
-}
 
-async function stopScreenShare(){
-  if(!isSharing) return;
-  isSharing = false;
-  screenBtn.classList.remove("active-teal");
-  screenBtn.querySelector(".btn-icon").textContent="🖥️";
-  // OCR leállítása
-  if(ocrActive){ ocrActive=false; stopOcr(); ocrBtn.classList.remove("active-purple"); ocrBtn.querySelector(".btn-icon").textContent="🔍"; }
-  if(screenStream){ screenStream.getTracks().forEach(t=>t.stop()); screenStream=null; }
-  const camTrack = localStream?.getVideoTracks()[0];
-  if(camTrack){
-    const sender = peers.values().next().value?.pc?.getSenders()?.find(s=>s.track?.kind==="video");
-    if(sender) await sender.replaceTrack(camTrack);
-    localVideo.srcObject = localStream;
-    splitLocalVideo.srcObject = localStream;
-  }
-}
 
 /* =========================================================================
    FELVÉTEL
@@ -3057,15 +3022,7 @@ function showEmojiFloat(emoji, sendToChannel){
   }
 }
 
-/* =========================================================================
-   KAMERA TÜKRÖZÉS
-   ========================================================================= */
-function toggleMirror(){
-  mirrored = !mirrored;
-  localVideo.style.transform      = mirrored?"scaleX(-1)":"scaleX(1)";
-  splitLocalVideo.style.transform = mirrored?"scaleX(-1)":"scaleX(1)";
-  mirrorBtn.classList.toggle("active-teal", mirrored);
-}
+
 
 /* =========================================================================
    PICTURE IN PICTURE
@@ -3105,6 +3062,114 @@ async function togglePiP(){
   }
   console.log("═══════════════════════════════════════════════════");
 }
+
+
+
+async function saveCallStart(roomId){
+  if(!supabaseClient) return null;
+  try{
+    const { data, error } = await supabaseClient
+      .from("calls")
+      .insert({
+        room_id:           roomId,
+        started_at:        new Date().toISOString(),
+        participant_count: 1,
+      })
+      .select()
+      .single();
+    if(error) throw error;
+    console.log("✅ [STATS] Hívás mentve, id:", data.id);
+    return data.id;
+  }catch(e){
+    console.warn("[STATS] Hívás mentési hiba:", e?.message || e);
+    return null;
+  }
+}
+
+async function saveParticipantJoin(roomId, peerId, name, lang){
+  if(!supabaseClient) return;
+  try{
+    const { error } = await supabaseClient
+      .from("call_participants")
+      .insert({
+        room_id:           roomId,
+        peer_id:           peerId,
+        name:              name,
+        lang:              lang,
+        joined_at:         new Date().toISOString(),
+        translation_count: 0,
+      });
+    if(error) throw error;
+    console.log("✅ [STATS] Résztvevő mentve:", name, lang);
+  }catch(e){
+    console.warn("[STATS] Résztvevő mentési hiba:", e?.message || e);
+  }
+}
+
+async function saveParticipantLeave(roomId, peerId, translationCount){
+  if(!supabaseClient) return;
+  try{
+    const { error } = await supabaseClient
+      .from("call_participants")
+      .update({
+        left_at:           new Date().toISOString(),
+        translation_count: translationCount,
+      })
+      .eq("room_id", roomId)
+      .eq("peer_id", peerId);
+    if(error) throw error;
+    console.log("✅ [STATS] Kilépés mentve, fordítások:", translationCount);
+  }catch(e){
+    console.warn("[STATS] Kilépés mentési hiba:", e?.message || e);
+  }
+}
+
+async function saveCallEnd(callId, roomId){
+  if(!supabaseClient || !callId) return;
+  try{
+    const { data: participants } = await supabaseClient
+      .from("call_participants")
+      .select("joined_at")
+      .eq("room_id", roomId)
+      .order("joined_at", { ascending: true })
+      .limit(1);
+    const startedAt = participants?.[0]?.joined_at
+      ? new Date(participants[0].joined_at)
+      : new Date();
+    const durationSeconds = Math.round((Date.now() - startedAt.getTime()) / 1000);
+    const { error } = await supabaseClient
+      .from("calls")
+      .update({
+        ended_at:         new Date().toISOString(),
+        duration_seconds: durationSeconds,
+      })
+      .eq("id", callId);
+    if(error) throw error;
+    console.log("✅ [STATS] Hívás vége mentve, hossz:", durationSeconds, "mp");
+  }catch(e){
+    console.warn("[STATS] Hívás vége mentési hiba:", e?.message || e);
+  }
+}
+
+async function incrementTranslationCount(roomId, peerId){
+  if(!supabaseClient) return;
+  _translationCount++;
+  if(_translationCount % 10 === 0){
+    try{
+      await supabaseClient
+        .from("call_participants")
+        .update({ translation_count: _translationCount })
+        .eq("room_id", roomId)
+        .eq("peer_id", peerId);
+      console.log("[STATS] Fordítás számláló frissítve:", _translationCount);
+    }catch(e){
+      console.warn("[STATS] Fordítás számláló hiba:", e?.message || e);
+    }
+  }
+}
+
+
+
 /* =========================================================================
    HÍVÁS VÉGE
    ========================================================================= */
@@ -3114,6 +3179,9 @@ async function doHangup(){
   console.log("═══════════════════════════════════════════════════");
   
   callEnded = true;
+  // ─── HÍVÁS VÉGE MENTÉSE SUPABASE-BE ─────────────────────────
+await saveParticipantLeave(roomId, myPeerId, _translationCount);
+await saveCallEnd(_callDbId, roomId);
   console.log("✅ callEnded = true");
   
   console.log("🛑 Hangfelismerés leállítása...");
@@ -3134,18 +3202,20 @@ async function doHangup(){
   }
   
   if(isSharing){ 
-    console.log("🖥️ Képernyőmegosztás leállítása...");
-    stopScreenShare(); 
-    console.log("   ✅ Képernyőmegosztás leállítva");
+  isSharing = false;
+  if(screenStream){ 
+    screenStream.getTracks().forEach(t=>t.stop()); 
+    screenStream=null; 
   }
+}
   
-  console.log("🔍 OCR leállítása...");
-  stopOcr();
-  if(ocrWorker){ 
-    try{ ocrWorker.terminate(); }catch(_){} 
-    ocrWorker=null; 
-  }
-  console.log("   ✅ OCR leállítva");
+console.log("🔍 OCR leállítása...");
+stopOcr();
+if(ocrWorker){ 
+  try{ ocrWorker.terminate(); }catch(_){} 
+  ocrWorker=null; 
+}
+console.log("   ✅ OCR leállítva");
 
   // Minden peer lezárása
   console.log("👥 Peerek lezárása (" + peers.size + " db)...");
@@ -3224,7 +3294,7 @@ if(histList) histList.innerHTML="";
   hangupModal.classList.remove("open");
   statsGraphOverlay.classList.remove("open");
   participantsPanel.classList.remove("open");
-  histPanel.classList.remove("open");
+
   console.log("   ✅ UI elemek visszaállítva");
 
   // URL paraméter eltávolítása
@@ -3237,6 +3307,13 @@ if(histList) histList.innerHTML="";
   console.log("✅ HÍVÁS BEFEJEZVE!");
   console.log("═══════════════════════════════════════════════════");
 }
+
+
+
+
+
+
+
 
 /* =========================================================================
    HÍVÁS INDÍTÁSA
@@ -3255,6 +3332,7 @@ async function beginCallFlow(){
   
   callEnded = false;
   myPeerId = cryptoId();
+  
   try{
     console.log("🔌 Supabase kapcsolat inicializálása...");
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -3277,6 +3355,13 @@ translator._initKeys(); // újratölti a kulcsokat Supabase-ből
     callNameLang.textContent= LANG_LABEL[myLang]||myLang;
     splitMyName.textContent = myName||"Te";
     splitMyLang.textContent = LANG_TAG[myLang]||"HU";
+
+
+
+
+// Hívás indítása — mentés Supabase-be
+_callDbId = await saveCallStart(roomId);
+await saveParticipantJoin(roomId, myPeerId, myName, myLang);
 
     setupScreen.classList.remove("active");
     callScreen.classList.add("active");
