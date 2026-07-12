@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
   <!-- LiveKit Client -->
 <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
 <style>
@@ -245,19 +245,7 @@ select{
 .caption-sub{font-size:12px;color:var(--text-dim);margin-top:4px;font-style:italic;}
 .caption-tag{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--amber);font-weight:700;margin-bottom:4px;}
 
-/* OCR overlay */
-#ocrOverlay{
-  position:absolute;bottom:160px;left:0;right:0;
-  padding:0 20px;z-index:8;pointer-events:none;
-  display:flex;flex-direction:column;align-items:center;
-}
-#ocrBox{
-  max-width:90%;background:rgba(159,122,234,.2);backdrop-filter:blur(8px);
-  border:1px solid rgba(159,122,234,.5);border-radius:14px;
-  padding:10px 16px;text-align:center;display:none;
-}
-#ocrBox .ocr-label{font-size:10px;color:var(--purple);letter-spacing:1px;text-transform:uppercase;font-weight:700;margin-bottom:4px;}
-#ocrBox .ocr-text{font-size:15px;font-weight:600;color:var(--text);}
+
 
 /* Emoji overlay */
 #emojiOverlay{position:absolute;inset:0;z-index:8;pointer-events:none;overflow:hidden;}
@@ -317,6 +305,7 @@ select{
   border:1px solid rgba(255,255,255,.08);border-radius:20px;
   transform:translateX(calc(100% + 20px));transition:transform .28s cubic-bezier(.4,0,.2,1),opacity .28s;
   opacity:0;z-index:12;display:flex;flex-direction:column;overflow:hidden;pointer-events:none;
+  height:55vh;
 }
 #chatPanel.open{transform:translateX(0);opacity:1;pointer-events:auto;}
 .chat-head{
@@ -350,8 +339,7 @@ select{
 }
 .chat-close{background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:6px;flex-shrink:0;}
 .chat-close:hover{background:rgba(255,255,255,.1);color:var(--text);}
-#chatMessages{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent;}
-#chatMessages::-webkit-scrollbar{width:4px;}
+#chatMessages{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent;min-height:0;max-height:100%;overscroll-behavior:contain;}#chatMessages::-webkit-scrollbar{width:4px;}
 #chatMessages::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px;}
 .msg{max-width:100%;}
 .msg.me{align-self:flex-end;text-align:right;}
@@ -459,8 +447,7 @@ select{
   .split-view{display:none!important;}
   #remoteWrap,#localWrap{display:block!important;}
   #localWrap{width:110px;height:150px;}
-  #chatPanel{right:0!important;bottom:0!important;left:auto!important;top:auto!important;width:100%;max-height:60vh;border-radius:20px 20px 0 0;transform:translateY(100%);}
-  #chatPanel.open{transform:translateY(0);}
+#chatPanel{right:0!important;bottom:0!important;left:auto!important;top:auto!important;width:100%;max-height:60vh;height:60vh;border-radius:20px 20px 0 0;transform:translateY(100%);}  #chatPanel.open{transform:translateY(0);}
   .chat-head{cursor:default!important;touch-action:none!important;pointer-events:none!important;}
   .chat-head h2,.chat-head .chat-close,#chatOpacitySlider,.slider-hint{pointer-events:auto!important;}
   .call-code-value{font-size:20px;letter-spacing:5px;}
@@ -653,13 +640,7 @@ select{
     </div>
   </div>
 
-  <!-- OCR overlay -->
-  <div id="ocrOverlay">
-    <div id="ocrBox">
-      <div class="ocr-label">🔍 OCR FORDÍTÁS</div>
-      <div class="ocr-text" id="ocrText"></div>
-    </div>
-  </div>
+  
 
   <!-- Emoji overlay -->
   <div id="emojiOverlay"></div>
@@ -733,10 +714,7 @@ select{
       <span class="btn-label" data-i18n="ctrlCam">Kamera</span>
     </button>
     
-    <button class="ctrl-btn" id="ocrBtn">
-      <span class="btn-icon">🔍</span>
-      <span class="btn-label" data-i18n="ctrlOcr">OCR</span>
-    </button>
+    
     <button class="ctrl-btn end" id="hangupBtn">
       <span class="btn-icon">✖</span>
     </button>
@@ -1328,7 +1306,7 @@ const callCodeValue=el("callCodeValue");
 const callNameText=el("callNameText"),callNameLang=el("callNameLang");
 const shareLinkBox=el("shareLinkBox"),shareLinkInput=el("shareLinkInput");
 const linkCopyBtn=el("linkCopyBtn"),linkShareBtn=el("linkShareBtn");
-const ocrBtn=el("ocrBtn"),ocrBox=el("ocrBox"),ocrText=el("ocrText");
+
 const statsGraphOverlay=el("statsGraphOverlay"),statsGraphClose=el("statsGraphClose");
 const rttCanvas=el("rttCanvas"),bwCanvas=el("bwCanvas");
 const graphRttVal=el("graphRttVal"),graphBwVal=el("graphBwVal");
@@ -1360,10 +1338,7 @@ let e2eeCryptoKey = null;       // CryptoKey (AES-GCM)
 let e2eePeerKeys = new Map();   // peerId → CryptoKey
 let e2eeReady = false;
 
-// ── OCR állapot ──
-let ocrActive = false;
-let ocrInterval = null;
-let ocrWorker = null;
+
 
 // ── Stats graph állapot ──
 const RTT_HISTORY = [];
@@ -2155,16 +2130,54 @@ function setupDataChannel(dc, peerId){
       }
 
       // Fájl metaadatok
+// Fájl metaadatok
       if(msg.type === "file-meta"){
-        incomingMeta = msg; incomingChunks = [];
+        incomingMeta = msg;
+        incomingChunks = [];
+        // Progress buborék létrehozása fogadó oldalon
+        const wrap = document.createElement("div");
+        wrap.className = "msg";
+        wrap.id = "incoming-file-"+peerId;
+        const label = document.createElement("div");
+        label.className = "msg-bubble";
+        label.textContent = "📥 "+escHtml(msg.name)+" ("+formatBytes(msg.size)+")";
+        wrap.appendChild(label);
+        const progressWrap = document.createElement("div");
+        progressWrap.style.cssText = "margin-top:6px;background:rgba(255,255,255,.08);border-radius:6px;height:6px;overflow:hidden;width:100%;";
+        const progressBar = document.createElement("div");
+        progressBar.style.cssText = "height:100%;width:0%;background:var(--teal);border-radius:6px;transition:width .15s;";
+        progressBar.id = "incoming-bar-"+peerId;
+        progressWrap.appendChild(progressBar);
+        wrap.appendChild(progressWrap);
+        const progressLabel = document.createElement("div");
+        progressLabel.className = "msg-time";
+        progressLabel.textContent = "0%";
+        progressLabel.id = "incoming-pct-"+peerId;
+        wrap.appendChild(progressLabel);
+        chatMessages.appendChild(wrap);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
       } else if(msg.type === "file-end" && incomingMeta){
         const blob = new Blob(incomingChunks, {type: incomingMeta.mime||"application/octet-stream"});
         const url = URL.createObjectURL(blob);
-        addFileBubble(incomingMeta.name, incomingMeta.size, url, false);
-        incomingMeta = null; incomingChunks = [];
+        // Régi progress buborék eltávolítása
+        const oldWrap = document.getElementById("incoming-file-"+peerId);
+        if(oldWrap) oldWrap.remove();
+        // Végleges buborék megjelenítése
+        const detectedImage = incomingMeta.isImage || /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(incomingMeta.name);
+        addFileBubble(incomingMeta.name, incomingMeta.size, url, false, detectedImage);
+        incomingMeta = null;
+        incomingChunks = [];
       }
-    } else if(e.data instanceof ArrayBuffer){
+} else if(e.data instanceof ArrayBuffer){
       incomingChunks.push(e.data);
+      if(incomingMeta){
+        const received = incomingChunks.reduce((s,c)=>s+c.byteLength, 0);
+        const pct = Math.min(100, Math.round((received/incomingMeta.size)*100));
+        const bar = document.getElementById("incoming-bar-"+peerId);
+        const lbl = document.getElementById("incoming-pct-"+peerId);
+        if(bar) bar.style.width = pct+"%";
+        if(lbl) lbl.textContent = pct+"%";
+      }
     }
   };
 
@@ -2489,105 +2502,165 @@ function startStatsLoop(){
    ========================================================================= */
 async function initMedia(){
   try{
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const cameras = devices.filter(d=>d.kind==="videoinput");
-    const preferred = cameras.find(d=>
-      d.label.toLowerCase().includes("integrated")||
-      d.label.toLowerCase().includes("webcam")||
-      d.label.toLowerCase().includes("beépített")
-    );
-    const videoConstraint = preferred
-      ? {deviceId:{exact:preferred.deviceId}}
-      : {facingMode:"user"};
-    localStream = await navigator.mediaDevices.getUserMedia({video:videoConstraint,audio:true});
-    localVideo.srcObject   = localStream;
-    splitLocalVideo.srcObject = localStream;
-    window._localStream = localStream;
-  }catch(err){
-    console.error("Média hiba:", err);
+    // Mobilon az enumerateDevices() engedély előtt üres — ezért először
+    // egyszerű getUserMedia-val kérünk engedélyt, majd utána választunk eszközt
+    let stream;
+    try{
+      // Első próba: preferált kamera keresése
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cameras = devices.filter(d => d.kind === "videoinput");
+      const preferred = cameras.find(d =>
+        d.label.toLowerCase().includes("integrated") ||
+        d.label.toLowerCase().includes("webcam") ||
+        d.label.toLowerCase().includes("beépített")
+      );
+      const videoConstraint = (preferred && preferred.deviceId)
+        ? { deviceId: { exact: preferred.deviceId } }
+        : { facingMode: "user" };
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: videoConstraint,
+        audio: true
+      });
+    } catch(firstErr){
+      console.warn("Média (preferált kamera) hiba, egyszerű fallback:", firstErr);
+      // Mobilon fallback: csak facingMode user + audio
+      try{
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: true
+        });
+      } catch(secondErr){
+        console.warn("Videó+hang fallback hiba, csak hang próba:", secondErr);
+        // Végső fallback: csak mikrofon (ha a kamera tiltott)
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: true
+        });
+      }
+    }
+
+    localStream = stream;
+    localVideo.srcObject        = stream;
+    splitLocalVideo.srcObject   = stream;
+    window._localStream         = stream;
+
+    // Mobilon a video elem autoplay-hez user gesture kell — kényszerítjük
+    localVideo.play().catch(() => {});
+
+  } catch(err){
+    console.error("Média hiba (minden fallback sikertelen):", err);
     setupStatus.textContent = t("errPerm");
     throw err;
   }
 }
 
-/* =========================================================================
-   HANGFELISMERÉS (STT)
-   ========================================================================= */
 function startRecognition(){
   if(!micOn || callEnded) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){ console.warn("Web Speech API nem támogatott"); return; }
 
+  // Előző példány biztonságos leállítása
   if(recognition){
-    recognition.onstart=null; recognition.onresult=null;
-    recognition.onerror=null; recognition.onend=null;
+    recognition.onstart  = null;
+    recognition.onresult = null;
+    recognition.onerror  = null;
+    recognition.onend    = null;
     try{ recognition.abort(); }catch(_){}
-    recognition=null;
+    recognition = null;
   }
+
   recognitionShouldRun = true;
 
   function createAndStart(){
-    if(!recognitionShouldRun||!micOn||callEnded) return;
+    if(!recognitionShouldRun || !micOn || callEnded) return;
+
     recognition = new SR();
-    recognition.lang = STT_LOCALE[myLang]||"hu-HU";
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.lang            = STT_LOCALE[myLang] || "hu-HU";
+    recognition.continuous      = false;
+    recognition.interimResults  = true;
+    recognition.maxAlternatives = 1;
 
-    recognition.onstart = ()=>{ micBtn.style.outline="2px solid var(--teal)"; };
+    recognition.onstart = () => {
+      micBtn.style.outline = "2px solid var(--teal)";
+      console.log("[STT] started, lang:", recognition.lang);
+    };
 
-    recognition.onresult = async e=>{
-      let final="";
-      for(let i=e.resultIndex;i<e.results.length;i++){
-        const r=e.results[i];
-        if(r.isFinal) final+=r[0].transcript;
-        else{
-          ownBox.style.display="block";
-          ownMain.textContent=r[0].transcript;
-          setSplitOwnCaption(r[0].transcript);
-        }
+    recognition.onaudiostart = () => {
+      console.log("[STT] audio input érkező");
+    };
+
+    recognition.onresult = async e => {
+      let interim = "", final = "";
+      for(let i = e.resultIndex; i < e.results.length; i++){
+        const r = e.results[i];
+        if(r.isFinal) final += r[0].transcript;
+        else          interim += r[0].transcript;
+      }
+      if(interim){
+        ownBox.style.display = "block";
+        ownMain.textContent  = interim;
+        setSplitOwnCaption(interim);
       }
       if(final.trim()){
-        ownBox.style.display="block";
-        ownMain.textContent=final.trim();
+        ownBox.style.display = "block";
+        ownMain.textContent  = final.trim();
         setSplitOwnCaption(final.trim());
         if(channel) channel.send({
-          type:"broadcast", event:"caption",
-          payload:{ text:final.trim(), sourceLang:myLang, name:myName||LANG_LABEL[myLang] }
+          type:    "broadcast",
+          event:   "caption",
+          payload: { text: final.trim(), sourceLang: myLang, name: myName || LANG_LABEL[myLang] }
         });
-        addHistoryItem(final.trim(),"",true);
-        setTimeout(()=>{ ownBox.style.display="none"; setSplitOwnCaption(""); },4000);
+        addHistoryItem(final.trim(), "", true);
+        setTimeout(() => {
+          ownBox.style.display = "none";
+          setSplitOwnCaption("");
+        }, 4000);
       }
     };
 
-    recognition.onerror = e=>{
-      console.warn("STT hiba:",e.error);
-      micBtn.style.outline="2px solid var(--danger)";
-      if(e.error==="not-allowed"||e.error==="service-not-allowed"){
-        recognitionShouldRun=false;
-        micBtn.style.outline="";
+    recognition.onerror = e => {
+      console.warn("[STT] hiba:", e.error);
+      micBtn.style.outline = "";
+      if(e.error === "not-allowed" || e.error === "service-not-allowed"){
+        recognitionShouldRun = false;
+        return;
+      }
+      if(e.error === "network"){
+        micBtn.style.outline = "2px solid var(--amber)";
+        return;
       }
     };
 
-    recognition.onend = ()=>{
-      micBtn.style.outline="";
-      if(!recognitionShouldRun||!micOn||callEnded) return;
-      setTimeout(createAndStart,500);
+    recognition.onend = () => {
+      micBtn.style.outline = "";
+      if(!recognitionShouldRun || !micOn || callEnded) return;
+      const delay = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 150 : 300;
+      setTimeout(createAndStart, delay);
     };
 
-    try{ recognition.start(); }
-    catch(e){ console.warn("STT start() hiba:",e); setTimeout(createAndStart,1000); }
+    try{
+      recognition.start();
+    }catch(e){
+      console.warn("[STT] start() hiba:", e);
+      setTimeout(createAndStart, 1000);
+    }
   }
+
   createAndStart();
 }
 
+
+
 function stopRecognition(){
-  recognitionShouldRun=false;
-  micBtn.style.outline="";
+  recognitionShouldRun = false;
+  micBtn.style.outline = "";
   if(recognition){
-    recognition.onstart=null; recognition.onresult=null;
-    recognition.onerror=null; recognition.onend=null;
+    recognition.onstart  = null;
+    recognition.onresult = null;
+    recognition.onerror  = null;
+    recognition.onend    = null;
     try{ recognition.abort(); }catch(_){}
-    recognition=null;
+    recognition = null;
   }
 }
 
@@ -2689,15 +2762,27 @@ function addChatBubble(text, sub, isMe, time){
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-function addFileBubble(name, size, url, isMe){
+function addFileBubble(name, size, url, isMe, isImage){
   const wrap = document.createElement("div");
   wrap.className = "msg"+(isMe?" me":"");
-  const f = document.createElement("a");
-  f.className="msg-file"; f.href=url; f.download=name; f.target="_blank";
-  f.innerHTML=`📎 <span>${escHtml(name)}</span><span style="color:var(--text-dim);font-size:11px">${formatBytes(size)}</span>`;
-  wrap.appendChild(f);
+  if(isImage && url){
+    const img = document.createElement("img");
+    img.src = url;
+    img.style.cssText = "max-width:220px;max-height:180px;border-radius:12px;display:block;cursor:pointer;border:1px solid rgba(255,255,255,.15);margin-top:4px;";
+    img.onclick = ()=>{ window.open(url,"_blank"); };
+    wrap.appendChild(img);
+  } else {
+    const f = document.createElement("a");
+    f.className="msg-file"; f.href=url||"#"; f.download=name; f.target="_blank";
+    f.innerHTML=`📎 <span>${escHtml(name)}</span><span style="color:var(--text-dim);font-size:11px">${formatBytes(size)}</span>`;
+    wrap.appendChild(f);
+  }
+  const ts = document.createElement("div");
+  ts.className="msg-time"; ts.textContent=nowTime();
+  wrap.appendChild(ts);
   chatMessages.appendChild(wrap);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+  return wrap;
 }
 
 // Fallback broadcast chat (ha nincs E2EE DataChannel, pl. 3. fél)
@@ -2740,192 +2825,6 @@ async function sendChat(){
 
   chatInput.value = "";
 }
-
-
-/* =========================================================================
-   FUNKCIÓ 3 — OCR FORDÍTÁS (asztali + mobil kamera + mobil képfeltöltés)
-   ========================================================================= */
-
-async function initOcrWorker(){
-  if(ocrWorker) return;
-  try{
-    ocrWorker = await Tesseract.createWorker(["hun","eng","rus","deu","fra","spa"]);
-  }catch(e){
-    console.warn("[OCR] worker init hiba:", e);
-    ocrWorker = null;
-  }
-}
-
-// ── Közös feldolgozó: canvas → OCR → fordítás → megjelenítés ──
-async function processOcrCanvas(canvas){
-  if(!ocrWorker) await initOcrWorker();
-  if(!ocrWorker) return;
-  const { data } = await ocrWorker.recognize(canvas);
-  const text = (data.text || "").trim();
-  if(!text || text.length < 3) return;
-  const translated = await translateText(text, "en", myLang);
-  ocrText.textContent = translated;
-  ocrBox.style.display = "block";
-  clearTimeout(ocrBox._hideTimer);
-  ocrBox._hideTimer = setTimeout(() => { ocrBox.style.display = "none"; }, 8000);
-}
-
-
-function stopOcr(){
-  if(ocrInterval){ clearInterval(ocrInterval); ocrInterval = null; }
-  ocrBox.style.display = "none";
-}
-
-// ── 2. Mobil: hátsó kamera snapshot ──
-async function startMobileOcr(){
-  ocrBtn.querySelector(".btn-icon").textContent = "⏳";
-  ocrBtn.disabled = true;
-  try{
-    const mobileStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
-      audio: false
-    });
-    const video       = document.createElement("video");
-    video.srcObject   = mobileStream;
-    video.autoplay    = true;
-    video.playsInline = true;
-    video.muted       = true;
-    await new Promise((resolve, reject) => {
-      video.onloadedmetadata = resolve;
-      video.onerror          = reject;
-      setTimeout(reject, 8000);
-    });
-    await video.play();
-    await new Promise(r => setTimeout(r, 800));
-    const canvas  = document.createElement("canvas");
-    canvas.width  = video.videoWidth  || 1280;
-    canvas.height = video.videoHeight || 720;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-    mobileStream.getTracks().forEach(t => t.stop());
-    await processOcrCanvas(canvas);
-  }catch(e){
-    console.warn("[MobileOCR] kamera hiba:", e);
-    ocrFromFileInput();
-  }finally{
-    ocrBtn.querySelector(".btn-icon").textContent = "🔍";
-    ocrBtn.disabled = false;
-  }
-}
-
-// ── 3. Fájl/galéria alapú OCR ──
-function ocrFromFileInput(){
-  const input  = document.createElement("input");
-  input.type   = "file";
-  input.accept = "image/*";
-  input.onchange = async e => {
-    const file = e.target.files[0];
-    if(!file) return;
-    ocrBtn.querySelector(".btn-icon").textContent = "⏳";
-    ocrBtn.disabled = true;
-    try{
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.src   = url;
-      await img.decode();
-      const canvas  = document.createElement("canvas");
-      canvas.width  = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      canvas.getContext("2d").drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      await processOcrCanvas(canvas);
-    }catch(e){
-      console.warn("[OCR] fájl hiba:", e);
-    }finally{
-      ocrBtn.querySelector(".btn-icon").textContent = "🔍";
-      ocrBtn.disabled = false;
-    }
-  };
-  input.click();
-}
-
-// ── OCR gomb: okos viselkedés asztali vs mobil ──
-
-
-
-
-
-ocrBtn.onclick = async () => {
-  const isMobile = window.innerWidth < 720;
-  if(isMobile){
-    const overlay = document.createElement("div");
-    overlay.style.cssText = `
-      position:fixed;inset:0;background:rgba(0,0,0,.7);
-      z-index:999;display:flex;flex-direction:column;
-      align-items:center;justify-content:flex-end;
-      padding-bottom:calc(env(safe-area-inset-bottom,0px)+20px);
-    `;
-    const menu = document.createElement("div");
-    menu.style.cssText = `
-      background:#161f30;border:1px solid #293349;border-radius:20px;
-      padding:20px;width:90%;max-width:360px;display:flex;
-      flex-direction:column;gap:10px;
-    `;
-    menu.innerHTML = `
-      <div style="font-size:13px;color:#8b96ab;text-align:center;margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">
-        📷 OCR szövegfelismerés
-      </div>
-      <button id="ocrCamBtn" style="padding:14px;border-radius:12px;border:none;background:#4fd1c5;color:#08221f;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;">
-        📷 Kamera — fotózz szöveget
-      </button>
-      <button id="ocrFileBtn" style="padding:14px;border-radius:12px;border:none;background:#1d2942;color:#eef2f8;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid #293349;">
-        🖼️ Képet töltök fel galériából
-      </button>
-      <button id="ocrCancelBtn" style="padding:12px;border-radius:12px;border:none;background:transparent;color:#8b96ab;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">
-        Mégse
-      </button>
-    `;
-    overlay.appendChild(menu);
-    document.body.appendChild(overlay);
-    overlay.querySelector("#ocrCamBtn").onclick = () => {
-      document.body.removeChild(overlay);
-      startMobileOcr();
-    };
-    overlay.querySelector("#ocrFileBtn").onclick = () => {
-      document.body.removeChild(overlay);
-      ocrFromFileInput();
-    };
-    overlay.querySelector("#ocrCancelBtn").onclick = () => {
-      document.body.removeChild(overlay);
-    };
-    overlay.onclick = e => {
-      if(e.target === overlay) document.body.removeChild(overlay);
-    };
-  } else {
-    // Asztali: videó alapú OCR a saját vagy remote streamből
-    ocrActive = !ocrActive;
-    ocrBtn.classList.toggle("active-purple", ocrActive);
-    ocrBtn.querySelector(".btn-icon").textContent = ocrActive ? "🔎" : "🔍";
-    if(ocrActive){
-      initOcrWorker().then(() => {
-        if(ocrInterval) clearInterval(ocrInterval);
-        ocrInterval = setInterval(async () => {
-          // Megpróbálja a remote videót, ha nincs, a lokálist
-          const videoEl = (splitRemoteVideo.srcObject && splitRemoteVideo.videoWidth > 0)
-            ? splitRemoteVideo
-            : (remoteVideo.srcObject && remoteVideo.videoWidth > 0)
-              ? remoteVideo
-              : (splitLocalVideo.srcObject && splitLocalVideo.videoWidth > 0)
-                ? splitLocalVideo
-                : null;
-          if(!videoEl) return;
-          const canvas = document.createElement("canvas");
-          canvas.width  = videoEl.videoWidth;
-          canvas.height = videoEl.videoHeight;
-          canvas.getContext("2d").drawImage(videoEl, 0, 0);
-          await processOcrCanvas(canvas);
-        }, 2000);
-      });
-    } else {
-      stopOcr();
-    }
-  }
-};
-
 
 
 /* =========================================================================
@@ -2974,38 +2873,83 @@ function toggleRecording(){
    FÁJLKÜLDÉS (DataChannel)
    ========================================================================= */
 async function sendFile(file){
+  const isImage = file.type.startsWith("image/");
+  const url = URL.createObjectURL(file);
+
+  // Saját buborék azonnal megjelenik progress bar-ral
+  const wrap = document.createElement("div");
+  wrap.className = "msg me";
+  if(isImage){
+    const img = document.createElement("img");
+    img.src = url;
+    img.style.cssText = "max-width:220px;max-height:180px;border-radius:12px;display:block;cursor:pointer;border:1px solid rgba(255,255,255,.15);margin-top:4px;";
+    img.onclick = ()=>{ window.open(url,"_blank"); };
+    wrap.appendChild(img);
+  } else {
+    const f = document.createElement("a");
+    f.className="msg-file"; f.href=url; f.download=file.name; f.target="_blank";
+    f.innerHTML=`📎 <span>${escHtml(file.name)}</span><span style="color:var(--text-dim);font-size:11px">${formatBytes(file.size)}</span>`;
+    wrap.appendChild(f);
+  }
+
+  // Progress bar
+  const progressWrap = document.createElement("div");
+  progressWrap.style.cssText = "margin-top:6px;background:rgba(255,255,255,.08);border-radius:6px;height:6px;overflow:hidden;width:100%;";
+  const progressBar = document.createElement("div");
+  progressBar.style.cssText = "height:100%;width:0%;background:var(--teal);border-radius:6px;transition:width .15s;";
+  progressWrap.appendChild(progressBar);
+  wrap.appendChild(progressWrap);
+
+  const progressLabel = document.createElement("div");
+  progressLabel.className = "msg-time";
+  progressLabel.textContent = "0%";
+  wrap.appendChild(progressLabel);
+
+  chatMessages.appendChild(wrap);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // Küldés DataChannel-en
   let sentToAny = false;
   for(const [pid, p] of peers){
     const dc = p.dataChannel||p.remoteDataChannel;
     if(!dc||dc.readyState!=="open") continue;
-    const meta = {type:"file-meta", name:file.name, size:file.size, mime:file.type};
+
+    const meta = {type:"file-meta", name:file.name, size:file.size, mime:file.type, isImage};
     dc.send(JSON.stringify(meta));
+
     const CHUNK = 16384;
     let offset = 0;
-    const url = URL.createObjectURL(file);
-    addFileBubble(file.name, file.size, url, true);
-    sentToAny = true;
+
     await new Promise((resolve)=>{
       const reader = new FileReader();
       reader.onload = e=>{
         dc.send(e.target.result);
         offset += e.target.result.byteLength;
-        if(offset<file.size){
-          reader.readAsArrayBuffer(file.slice(offset,offset+CHUNK));
-        }else{
+        const pct = Math.round((offset/file.size)*100);
+        progressBar.style.width = pct+"%";
+        progressLabel.textContent = pct+"%";
+        if(offset < file.size){
+          reader.readAsArrayBuffer(file.slice(offset, offset+CHUNK));
+        } else {
           dc.send(JSON.stringify({type:"file-end"}));
+          progressWrap.style.display = "none";
+          progressLabel.textContent = nowTime();
           resolve();
         }
       };
       reader.readAsArrayBuffer(file.slice(0, CHUNK));
     });
-    break; // Első nyitott DC-re küldjük (egyszerűség)
+
+    sentToAny = true;
+    break;
   }
+
   if(!sentToAny){
-    addChatBubble("⚠️ DataChannel nem elérhető","",true,nowTime());
+    progressWrap.style.display = "none";
+    progressLabel.textContent = "⚠️ DataChannel nem elérhető";
+    progressLabel.style.color = "var(--danger)";
   }
 }
-
 /* =========================================================================
    EMOJI REAKCIÓK
    ========================================================================= */
@@ -3070,15 +3014,31 @@ async function saveCallStart(roomId){
   try{
     const { data, error } = await supabaseClient
       .from("calls")
-      .insert({
+      .upsert({
         room_id:           roomId,
         started_at:        new Date().toISOString(),
         participant_count: 1,
+        last_seen:         new Date().toISOString(),
+      }, {
+        onConflict: "room_id",
+        ignoreDuplicates: false
       })
       .select()
       .single();
     if(error) throw error;
-    console.log("✅ [STATS] Hívás mentve, id:", data.id);
+    console.log("✅ [STATS] Hívás mentve/frissítve, id:", data.id);
+
+    // last_seen frissítése 30 másodpercenként
+    setInterval(async()=>{
+      if(callEnded) return;
+      try{
+        await supabaseClient
+          .from("calls")
+          .update({ last_seen: new Date().toISOString() })
+          .eq("id", data.id);
+      }catch(_){}
+    }, 30000);
+
     return data.id;
   }catch(e){
     console.warn("[STATS] Hívás mentési hiba:", e?.message || e);
@@ -3091,13 +3051,16 @@ async function saveParticipantJoin(roomId, peerId, name, lang){
   try{
     const { error } = await supabaseClient
       .from("call_participants")
-      .insert({
+      .upsert({
         room_id:           roomId,
         peer_id:           peerId,
         name:              name,
         lang:              lang,
         joined_at:         new Date().toISOString(),
         translation_count: 0,
+      }, {
+        onConflict: "room_id,peer_id",
+        ignoreDuplicates: true
       });
     if(error) throw error;
     console.log("✅ [STATS] Résztvevő mentve:", name, lang);
@@ -3209,13 +3172,7 @@ await saveCallEnd(_callDbId, roomId);
   }
 }
   
-console.log("🔍 OCR leállítása...");
-stopOcr();
-if(ocrWorker){ 
-  try{ ocrWorker.terminate(); }catch(_){} 
-  ocrWorker=null; 
-}
-console.log("   ✅ OCR leállítva");
+
 
   // Minden peer lezárása
   console.log("👥 Peerek lezárása (" + peers.size + " db)...");
@@ -3290,7 +3247,7 @@ if(histList) histList.innerHTML="";
   isRecording=false; 
   isSharing=false; 
   mirrored=false;
-  ocrActive=false;
+
   hangupModal.classList.remove("open");
   statsGraphOverlay.classList.remove("open");
   participantsPanel.classList.remove("open");
@@ -3360,7 +3317,19 @@ translator._initKeys(); // újratölti a kulcsokat Supabase-ből
 
 
 // Hívás indítása — mentés Supabase-be
-_callDbId = await saveCallStart(roomId);
+if(isInitiator){
+  _callDbId = await saveCallStart(roomId);
+} else {
+  const { data } = await supabaseClient
+    .from("calls")
+    .select("id")
+    .eq("room_id", roomId)
+    .is("ended_at", null)
+    .order("started_at", {ascending: false})
+    .limit(1)
+    .single();
+  _callDbId = data?.id || null;
+}
 await saveParticipantJoin(roomId, myPeerId, myName, myLang);
 
     setupScreen.classList.remove("active");
