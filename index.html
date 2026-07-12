@@ -1446,72 +1446,81 @@ let livekitRoom = null;
 let livekitConnected = false;
 
 async function connectToLiveKit() {
-  console.log("───────────────────────────────────────────────────");
-  console.log("🔗 LIVEKIT KAPCSOLAT INDÍTÁSA");
-  console.log("───────────────────────────────────────────────────");
-  console.log("🌐 LiveKit URL:", LIVEKIT_URL);
-  console.log("🔑 API Key:", LIVEKIT_API_KEY);
-  console.log("🏠 Szoba:", roomId);
-  console.log("👤 Felhasználó:", myName);
-  console.log("───────────────────────────────────────────────────");
-  
+  console.log("🔗 LIVEKIT KAPCSOLAT INDÍTÁSA, szoba:", roomId, "felhasználó:", myName);
   try {
-    console.log("🔄 Token generálás...");
     const token = await generateLiveKitToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, roomId, myName);
-    console.log("✅ Token generálva:", token);
-    
-    console.log("🔄 LiveKit room létrehozása...");
     livekitRoom = new LivekitClient.Room();
 
-    console.log("✅ Room objektum kész");
-    
-    console.log("🔄 Kapcsolódás a LiveKit szerverhez...");
-    await livekitRoom.connect(LIVEKIT_URL, token);
-    livekitConnected = true;
-    console.log("✅✅✅ LIVEKIT KAPCSOLAT SIKERES! ✅✅✅");
-    console.log("───────────────────────────────────────────────────");
-    
-    if (localStream) {
-      console.log("📹 Saját track-ek publikálása...");
-      for (const track of localStream.getTracks()) {
-        try {
-          await livekitRoom.localParticipant.publishTrack(track);
-          console.log("   ✅ Track publikálva:", track.kind, "(aktív)");
-        } catch (e) {
-          console.warn("   ⚠️ Track publikálási hiba:", track.kind, e);
-        }
+    // ── Hívás közbeni megszakadás figyelése ──
+    livekitRoom.on("disconnected", (reason) => {
+      console.warn("⚠️ LiveKit kapcsolat megszakadt, ok:", reason);
+      livekitConnected = false;
+      if (!callEnded) {
+        console.log("🔄 WebRTC fallback aktiválása...");
+        activateWebRTCFallback();
       }
-    }
-    
-    // Események logolása
-    livekitRoom.on("participantConnected", (participant) => {
-      console.log("👤 Új résztvevő csatlakozott:", participant.identity);
     });
-    
+
+    livekitRoom.on("reconnecting", () => {
+      console.log("🔄 LiveKit újracsatlakozás folyamatban...");
+      setNetStatus("warn");
+    });
+
+    livekitRoom.on("reconnected", () => {
+      console.log("✅ LiveKit újracsatlakozás sikeres.");
+      livekitConnected = true;
+      setNetStatus("good");
+    });
+
+    livekitRoom.on("participantConnected", (participant) => {
+      console.log("👤 Új résztvevő:", participant.identity);
+    });
+
     livekitRoom.on("participantDisconnected", (participant) => {
       console.log("👤 Résztvevő kilépett:", participant.identity);
     });
-    
+
     livekitRoom.on("trackSubscribed", (track, publication, participant) => {
       console.log("📡 Track fogadva:", track.kind, "résztvevő:", participant.identity);
       if (track.kind === "video") {
-        console.log("   📹 Videó track csatolva a remoteVideo elemhez");
+        const mediaStream = new MediaStream([track.mediaStreamTrack]);
+        remoteVideo.srcObject = mediaStream;
+        splitRemoteVideo.srcObject = mediaStream;
+        splitWaiting.style.display = "none";
+        remoteVideo.play().catch(() => {});
+        splitRemoteVideo.play().catch(() => {});
+      }
+      if (track.kind === "audio") {
+        const audioStream = new MediaStream([track.mediaStreamTrack]);
+        const audioEl = document.createElement("audio");
+        audioEl.srcObject = audioStream;
+        audioEl.autoplay = true;
+        audioEl.style.display = "none";
+        document.body.appendChild(audioEl);
       }
     });
-    
-    livekitRoom.on("trackUnsubscribed", (track, publication, participant) => {
-      console.log("📡 Track eltűnt:", track.kind, "résztvevő:", participant.identity);
-    });
-    
+
     livekitRoom.on("connectionStateChanged", (state) => {
-      console.log("🔗 LiveKit kapcsolat állapot:", state);
+      console.log("🔗 LiveKit állapot:", state);
     });
-    
+
+    await livekitRoom.connect(LIVEKIT_URL, token);
+    livekitConnected = true;
+    console.log("✅ LiveKit kapcsolat sikeres.");
+
+    if (localStream) {
+      for (const track of localStream.getTracks()) {
+        try {
+          await livekitRoom.localParticipant.publishTrack(track);
+          console.log("✅ Track publikálva:", track.kind);
+        } catch (e) {
+          console.warn("⚠️ Track publikálási hiba:", track.kind, e);
+        }
+      }
+    }
+
   } catch (error) {
-    console.error("❌❌❌ LIVEKIT KAPCSOLATI HIBA ❌❌❌");
-    console.error("   Hibakód:", error.code || "ismeretlen");
-    console.error("   Üzenet:", error.message || error);
-    console.error("   Részletek:", error);
+    console.error("❌ LiveKit kapcsolati hiba:", error.message || error);
     livekitConnected = false;
     throw error;
   }
@@ -1519,8 +1528,50 @@ async function connectToLiveKit() {
 
 
   function setupFallbackWebRTC() {
-  // Ha a LiveKit nem működik, marad a régi WebRTC (a jelenlegi kód)
   console.log("🔄 WebRTC fallback aktív");
+}
+
+async function activateWebRTCFallback() {
+  if (callEnded) return;
+  console.log("🔄 activateWebRTCFallback indul...");
+
+  // LiveKit szoba lezárása ha még él
+  if (livekitRoom) {
+    try { await livekitRoom.disconnect(); } catch (_) {}
+    livekitRoom = null;
+  }
+  livekitConnected = false;
+
+  // Ha már vannak WebRTC peer kapcsolatok, nem kell újraindítani
+  if (peers.size > 0) {
+    console.log("✅ WebRTC peer kapcsolatok már aktívak, fallback kész.");
+    setNetStatus("warn");
+    return;
+  }
+
+  // Nincs még peer – újra jelzünk a csatornán keresztül
+  console.log("📡 WebRTC peer újraépítés indul a Supabase csatornán...");
+  setNetStatus("bad");
+
+  try {
+    // Jelenlét frissítése – a másik fél újra látja és offer-t küld
+    if (channel) {
+      await channel.track({
+        name: myName || "Guest",
+        lang: myLang,
+        peerId: myPeerId,
+        initiator: isInitiator,
+        fallback: true,
+      });
+      console.log("✅ Presence újraküldve, WebRTC tárgyalás indul...");
+    } else {
+      console.warn("⚠️ Nincs aktív Supabase csatorna, újracsatlakozás...");
+      await setupChannel(roomId);
+    }
+  } catch (e) {
+    console.error("❌ WebRTC fallback hiba:", e);
+    setNetStatus("bad");
+  }
 }
   
   
@@ -3060,6 +3111,15 @@ function doHangup(){
   ownGridCell = null;
   console.log("   ✅ MultiGrid törölve");
 
+// LiveKit szoba lezárása
+  if (livekitRoom) {
+    console.log("🔗 LiveKit szoba lezárása...");
+    try { await livekitRoom.disconnect(); } catch (_) {}
+    livekitRoom = null;
+    livekitConnected = false;
+    console.log("   ✅ LiveKit szoba lezárva");
+  }
+
   if(channel){ 
     console.log("📡 Supabase csatorna eltávolítása...");
     supabaseClient.removeChannel(channel); 
@@ -3174,14 +3234,21 @@ translator._initKeys(); // újratölti a kulcsokat Supabase-ből
     // E2EE kulcs előgenerálás
     await generateE2eeKey();
 
-    // ─── LIVEKIT KAPCSOLÓDÁS ───
+// ─── LIVEKIT KAPCSOLÓDÁS ───
     try {
       await connectToLiveKit();
       console.log("✅ LiveKit kapcsolódva!");
     } catch (livekitErr) {
       console.warn("⚠️ LiveKit nem elérhető, WebRTC fallback indul...", livekitErr);
-      // Ha LiveKit nem működik, a régi WebRTC marad (a meglévő signaling)
-      // A régi WebRTC kód továbbra is működik a háttérben
+      // A Supabase csatorna és a WebRTC peer kapcsolatok
+      // már felépültek a setupChannel() hívásban fentebb,
+      // tehát a hívás WebRTC-n keresztül folytatódik automatikusan.
+      // Explicit fallback jelzés a hálózati státuszban:
+      setNetStatus("warn");
+      // Rövid késleltetés után good-ra állítjuk ha peer kapcsolódott
+      setTimeout(() => {
+        if (peers.size > 0 && !callEnded) setNetStatus("good");
+      }, 5000);
     }
   }catch(err){
     console.error(err);
