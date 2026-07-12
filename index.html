@@ -1434,8 +1434,6 @@ async function connectToLiveKit() {
     const token = await generateLiveKitToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, roomId, myName);
     livekitRoom = new LivekitClient.Room();
 
-
-    // ── Hívás közbeni megszakadás figyelése ──
     livekitRoom.on("disconnected", (reason) => {
       console.warn("⚠️ LiveKit kapcsolat megszakadt, ok:", reason);
       livekitConnected = false;
@@ -1492,13 +1490,31 @@ async function connectToLiveKit() {
     livekitConnected = true;
     console.log("✅ LiveKit kapcsolat sikeres.");
 
+    // Csak a VIDEO trackot publikáljuk LiveKit-en keresztül!
+    // Az audio trackot NEM adjuk át LiveKit-nek, mert a Web Speech API
+    // mobilon nem tud párhuzamosan hozzáférni a mikrofon streamhez.
+    // A hang a WebRTC peer connection-ön keresztül megy (localStream).
     if (localStream) {
-      for (const track of localStream.getTracks()) {
+      const videoTracks = localStream.getVideoTracks();
+      for (const track of videoTracks) {
         try {
           await livekitRoom.localParticipant.publishTrack(track);
-          console.log("✅ Track publikálva:", track.kind);
+          console.log("✅ Video track publikálva LiveKit-en");
         } catch (e) {
-          console.warn("⚠️ Track publikálási hiba:", track.kind, e);
+          console.warn("⚠️ Video track publikálási hiba:", e);
+        }
+      }
+      // Audio trackot külön, klónozott streamből publikáljuk
+      // hogy az eredeti mic stream szabad maradjon az STT-nek
+      const audioTracks = localStream.getAudioTracks();
+      for (const track of audioTracks) {
+        try {
+          // Klónozzuk a track-et hogy az STT is hozzáférjen az eredetihez
+          const clonedTrack = track.clone();
+          await livekitRoom.localParticipant.publishTrack(clonedTrack);
+          console.log("✅ Audio track klónozva és publikálva LiveKit-en");
+        } catch (e) {
+          console.warn("⚠️ Audio track publikálási hiba:", e);
         }
       }
     }
