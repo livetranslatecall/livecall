@@ -256,34 +256,107 @@ h1,h2,h3,.brand{font-family:'Space Grotesk',system-ui,sans-serif;}
     </div>
 
     <!-- STATUS KÁRTYÁK -->
-    <div class="section">
-      <div class="section-head">
-        <h2>📊 Valós idejű összesítő</h2>
-        <span class="badge" id="lastPingBadge">–</span>
-      </div>
-      <div class="status-grid">
-        <div class="stat-card teal-card">
-          <div class="s-label">Groq fordítások ma</div>
-          <div class="s-val" id="statTodayTotal">0</div>
-          <div class="s-sub">összes kulcson</div>
-        </div>
-        <div class="stat-card green-card">
-          <div class="s-label">Elérhető kérések</div>
-          <div class="s-val" id="statRemaining">0</div>
-          <div class="s-sub">mai nap végéig</div>
-        </div>
-        <div class="stat-card">
-          <div class="s-label">Aktív kulcsok</div>
-          <div class="s-val" id="statActiveKeys">0</div>
-          <div class="s-sub">10-ből</div>
-        </div>
-        <div class="stat-card" id="qualityCard">
-          <div class="s-label">Fordítás minősége</div>
-          <div class="s-val" id="statQuality">–</div>
-          <div class="s-sub" id="statQualitySub">–</div>
-        </div>
-      </div>
+<div class="section">
+  <div class="section-head">
+    <h2>📊 Valós idejű összesítő</h2>
+    <span class="badge" id="lastPingBadge">–</span>
+  </div>
+  <div class="status-grid">
+    <div class="stat-card teal-card">
+      <div class="s-label">Groq fordítások ma</div>
+      <div class="s-val" id="statTodayTotal">0</div>
+      <div class="s-sub">összes kulcson</div>
     </div>
+    <div class="stat-card green-card">
+      <div class="s-label">Elérhető kérések</div>
+      <div class="s-val" id="statRemaining">0</div>
+      <div class="s-sub">mai nap végéig</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Aktív kulcsok</div>
+      <div class="s-val" id="statActiveKeys">0</div>
+      <div class="s-sub">10-ből</div>
+    </div>
+    <div class="stat-card" id="qualityCard">
+      <div class="s-label">Fordítás minősége</div>
+      <div class="s-val" id="statQuality">–</div>
+      <div class="s-sub" id="statQualitySub">–</div>
+    </div>
+  </div>
+</div>
+
+<!-- ÉLŐ STATISZTIKÁK -->
+<div class="section">
+  <div class="section-head">
+    <h2>📞 Hívás statisztikák</h2>
+    <button class="icon-btn" id="refreshStatsBtn">🔄 Frissítés</button>
+  </div>
+  <div class="status-grid">
+    <div class="stat-card teal-card">
+      <div class="s-label">Aktív hívások most</div>
+      <div class="s-val" id="statActiveCalls">0</div>
+      <div class="s-sub">jelenleg online</div>
+    </div>
+    <div class="stat-card green-card">
+      <div class="s-label">Hívások ma</div>
+      <div class="s-val" id="statCallsToday">0</div>
+      <div class="s-sub">mai nap</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Összes hívás</div>
+      <div class="s-val" id="statCallsTotal">0</div>
+      <div class="s-sub">minden idők</div>
+    </div>
+    <div class="stat-card amber-card">
+      <div class="s-label">Átlagos hívás hossz</div>
+      <div class="s-val" id="statAvgDuration">–</div>
+      <div class="s-sub">percben</div>
+    </div>
+    <div class="stat-card green-card">
+      <div class="s-label">Összes résztvevő</div>
+      <div class="s-val" id="statTotalParticipants">0</div>
+      <div class="s-sub">minden idők</div>
+    </div>
+    <div class="stat-card teal-card">
+      <div class="s-label">Összes fordítás</div>
+      <div class="s-val" id="statTotalTranslations">0</div>
+      <div class="s-sub">minden idők</div>
+    </div>
+  </div>
+</div>
+
+<!-- AKTÍV HÍVÁSOK -->
+<div class="section">
+  <div class="section-head">
+    <h2>🟢 Aktív hívások</h2>
+    <span class="badge" id="activeCallsBadge">0 aktív</span>
+  </div>
+  <div id="activeCallsList" style="display:flex;flex-direction:column;gap:10px;">
+    <div style="color:var(--text-dim);font-size:13px;padding:12px;">Nincs aktív hívás.</div>
+  </div>
+</div>
+
+<!-- LEGUTÓBBI HÍVÁSOK -->
+<div class="section">
+  <div class="section-head">
+    <h2>📋 Legutóbbi hívások</h2>
+    <span class="badge" id="recentCallsBadge">–</span>
+  </div>
+  <div id="recentCallsList" style="display:flex;flex-direction:column;gap:10px;">
+    <div style="color:var(--text-dim);font-size:13px;padding:12px;">Betöltés...</div>
+  </div>
+</div>
+
+<!-- NYELV STATISZTIKÁK -->
+<div class="section">
+  <div class="section-head">
+    <h2>🌍 Legnépszerűbb nyelvek</h2>
+  </div>
+  <div id="langStatsList" style="display:flex;flex-direction:column;gap:8px;">
+    <div style="color:var(--text-dim);font-size:13px;padding:12px;">Betöltés...</div>
+  </div>
+</div>
+
 
     <!-- GROQ API KULCSOK -->
     <div class="section">
@@ -577,6 +650,7 @@ async function openAdmin(){
   updateStats();
   renderLog();
   startPolling();
+  startStatsRefresh();
 }
 
 $("logoutBtn").onclick=()=>{
@@ -584,6 +658,7 @@ $("logoutBtn").onclick=()=>{
   $("loginScreen").style.display="flex";
   $("pwInput").value="";
   stopPolling();
+  stopStatsRefresh();
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -919,6 +994,241 @@ $("clearLogBtn").onclick=()=>{
 // ═══════════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════════
+
+
+// ═══════════════════════════════════════════════════════════════════
+//  HÍVÁS STATISZTIKÁK
+// ═══════════════════════════════════════════════════════════════════
+
+function formatDuration(seconds){
+  if(!seconds) return "–";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if(m === 0) return `${s}mp`;
+  return `${m}p ${s}mp`;
+}
+
+function formatTime(isoStr){
+  if(!isoStr) return "–";
+  return new Date(isoStr).toLocaleTimeString([], {
+    hour:"2-digit", minute:"2-digit", second:"2-digit"
+  });
+}
+
+function formatDate(isoStr){
+  if(!isoStr) return "–";
+  return new Date(isoStr).toLocaleDateString("hu-HU", {
+    month:"short", day:"numeric", hour:"2-digit", minute:"2-digit"
+  });
+}
+
+function getLangFlag(lang){
+  const flags = {
+    hu:"🇭🇺", en:"🇬🇧", ru:"🇷🇺", de:"🇩🇪", fr:"🇫🇷",
+    es:"🇪🇸", it:"🇮🇹", pt:"🇵🇹", pl:"🇵🇱",
+    ro:"🇷🇴", uk:"🇺🇦", zh:"🇨🇳", ar:"🇸🇦"
+  };
+  return flags[lang] || "🌐";
+}
+
+async function loadCallStats(){
+  if(!supabaseClient){
+    console.warn("[ADMIN] Supabase nem elérhető");
+    return;
+  }
+
+  try{
+    const today = new Date().toISOString().slice(0,10);
+
+    // ─── Összes hívás ───────────────────────────────────────────
+    const { data: allCalls, error: e1 } = await supabaseClient
+      .from("calls")
+      .select("*")
+      .order("started_at", { ascending: false });
+
+    if(e1) throw e1;
+
+    const totalCalls    = allCalls?.length || 0;
+    const todayCalls    = allCalls?.filter(c =>
+      c.started_at?.startsWith(today)
+    ).length || 0;
+    const activeCalls   = allCalls?.filter(c => !c.ended_at) || [];
+    const finishedCalls = allCalls?.filter(c => c.ended_at)  || [];
+
+    const avgDuration = finishedCalls.length > 0
+      ? Math.round(
+          finishedCalls.reduce((s, c) => s + (c.duration_seconds || 0), 0)
+          / finishedCalls.length
+        )
+      : 0;
+
+    // ─── Összes résztvevő és fordítás ──────────────────────────
+    const { data: allParticipants, error: e2 } = await supabaseClient
+      .from("call_participants")
+      .select("*");
+
+    if(e2) throw e2;
+
+    const totalParticipants  = allParticipants?.length || 0;
+    const totalTranslations  = allParticipants?.reduce(
+      (s, p) => s + (p.translation_count || 0), 0
+    ) || 0;
+
+    // ─── Statisztika kártyák frissítése ────────────────────────
+    $("statActiveCalls").textContent       = activeCalls.length;
+    $("statCallsToday").textContent        = todayCalls;
+    $("statCallsTotal").textContent        = totalCalls;
+    $("statAvgDuration").textContent       = formatDuration(avgDuration);
+    $("statTotalParticipants").textContent = totalParticipants;
+    $("statTotalTranslations").textContent = totalTranslations;
+    $("activeCallsBadge").textContent      = `${activeCalls.length} aktív`;
+    $("recentCallsBadge").textContent      = `${totalCalls} összes`;
+
+    // ─── Aktív hívások lista ────────────────────────────────────
+    const activeList = $("activeCallsList");
+    if(activeCalls.length === 0){
+      activeList.innerHTML = `<div style="color:var(--text-dim);font-size:13px;padding:12px;">Nincs aktív hívás.</div>`;
+    } else {
+      activeList.innerHTML = activeCalls.map(call => {
+        const parts = allParticipants?.filter(p =>
+          p.room_id === call.room_id && !p.left_at
+        ) || [];
+        const startedAgo = Math.round(
+          (Date.now() - new Date(call.started_at).getTime()) / 1000
+        );
+        return `
+          <div class="key-card active-key" style="padding:16px 18px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div style="width:10px;height:10px;border-radius:50%;background:var(--green);
+                box-shadow:0 0 8px var(--green);flex-shrink:0;animation:recpulse 1.2s infinite;"></div>
+              <span style="font-size:14px;font-weight:700;color:var(--teal);">
+                Szoba: ${escHtml(call.room_id)}
+              </span>
+              <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">
+                ⏱ ${formatDuration(startedAgo)} óta
+              </span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              ${parts.map(p => `
+                <div style="background:var(--panel-2);border:1px solid var(--line);
+                  border-radius:10px;padding:6px 12px;font-size:12px;">
+                  ${getLangFlag(p.lang)} <b>${escHtml(p.name||"–")}</b>
+                  <span style="color:var(--text-dim);margin-left:4px;">${p.lang?.toUpperCase()||"–"}</span>
+                  <span style="color:var(--teal);margin-left:6px;">🔄 ${p.translation_count||0}</span>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // ─── Legutóbbi hívások lista ────────────────────────────────
+    const recentList  = $("recentCallsList");
+    const recentCalls = finishedCalls.slice(0, 20);
+
+    if(recentCalls.length === 0){
+      recentList.innerHTML = `<div style="color:var(--text-dim);font-size:13px;padding:12px;">Még nincs befejezett hívás.</div>`;
+    } else {
+      recentList.innerHTML = recentCalls.map(call => {
+        const parts = allParticipants?.filter(p =>
+          p.room_id === call.room_id
+        ) || [];
+        const callTranslations = parts.reduce(
+          (s, p) => s + (p.translation_count || 0), 0
+        );
+        return `
+          <div class="key-card" style="padding:14px 18px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <span style="font-size:13px;font-weight:700;color:var(--text);">
+                📞 ${escHtml(call.room_id)}
+              </span>
+              <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">
+                ${formatDate(call.started_at)}
+              </span>
+            </div>
+            <div style="display:flex;gap:16px;font-size:12px;color:var(--text-dim);margin-bottom:8px;">
+              <span>⏱ ${formatDuration(call.duration_seconds)}</span>
+              <span>👥 ${call.participant_count||0} fő</span>
+              <span>🔄 ${callTranslations} fordítás</span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              ${parts.map(p => `
+                <div style="background:var(--panel-2);border:1px solid var(--line);
+                  border-radius:8px;padding:4px 10px;font-size:11px;">
+                  ${getLangFlag(p.lang)} ${escHtml(p.name||"–")}
+                  <span style="color:var(--text-dim);margin-left:3px;">${p.lang?.toUpperCase()||"–"}</span>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // ─── Nyelv statisztikák ─────────────────────────────────────
+    const langCount = {};
+    allParticipants?.forEach(p => {
+      if(p.lang) langCount[p.lang] = (langCount[p.lang] || 0) + 1;
+    });
+
+    const sortedLangs = Object.entries(langCount)
+      .sort((a, b) => b[1] - a[1]);
+
+    const maxCount = sortedLangs[0]?.[1] || 1;
+
+    const langList = $("langStatsList");
+    if(sortedLangs.length === 0){
+      langList.innerHTML = `<div style="color:var(--text-dim);font-size:13px;padding:12px;">Még nincs adat.</div>`;
+    } else {
+      langList.innerHTML = sortedLangs.map(([lang, count]) => {
+        const pct = Math.round((count / maxCount) * 100);
+        return `
+          <div style="background:var(--panel);border:1px solid var(--line);
+            border-radius:12px;padding:12px 16px;">
+            <div style="display:flex;justify-content:space-between;
+              align-items:center;margin-bottom:6px;">
+              <span style="font-size:14px;font-weight:700;">
+                ${getLangFlag(lang)} ${lang.toUpperCase()}
+              </span>
+              <span style="font-size:13px;color:var(--teal);font-weight:700;">
+                ${count} felhasználó
+              </span>
+            </div>
+            <div style="height:6px;background:var(--panel-2);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;
+                background:linear-gradient(90deg,var(--teal),var(--green));
+                border-radius:3px;transition:width .4s ease;"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    addLog("info", `Statisztikák frissítve: ${totalCalls} hívás, ${totalParticipants} résztvevő`);
+    console.log("[ADMIN] ✅ Statisztikák betöltve.");
+
+  }catch(e){
+    console.warn("[ADMIN] Statisztika betöltési hiba:", e?.message || e);
+    addLog("err", "Statisztika betöltési hiba: " + (e?.message || e));
+  }
+}
+
+// Frissítés gomb
+$("refreshStatsBtn").onclick = loadCallStats;
+
+// Auto frissítés 30 másodpercenként
+let statsRefreshTimer = null;
+
+function startStatsRefresh(){
+  loadCallStats();
+  statsRefreshTimer = setInterval(loadCallStats, 30000);
+}
+
+function stopStatsRefresh(){
+  if(statsRefreshTimer){ clearInterval(statsRefreshTimer); statsRefreshTimer = null; }
+}
+
 
 initLogin();
 </script>
