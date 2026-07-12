@@ -1434,6 +1434,8 @@ async function connectToLiveKit() {
     const token = await generateLiveKitToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, roomId, myName);
     livekitRoom = new LivekitClient.Room();
 
+
+    // ── Hívás közbeni megszakadás figyelése ──
     livekitRoom.on("disconnected", (reason) => {
       console.warn("⚠️ LiveKit kapcsolat megszakadt, ok:", reason);
       livekitConnected = false;
@@ -1490,31 +1492,13 @@ async function connectToLiveKit() {
     livekitConnected = true;
     console.log("✅ LiveKit kapcsolat sikeres.");
 
-    // Csak a VIDEO trackot publikáljuk LiveKit-en keresztül!
-    // Az audio trackot NEM adjuk át LiveKit-nek, mert a Web Speech API
-    // mobilon nem tud párhuzamosan hozzáférni a mikrofon streamhez.
-    // A hang a WebRTC peer connection-ön keresztül megy (localStream).
     if (localStream) {
-      const videoTracks = localStream.getVideoTracks();
-      for (const track of videoTracks) {
+      for (const track of localStream.getTracks()) {
         try {
           await livekitRoom.localParticipant.publishTrack(track);
-          console.log("✅ Video track publikálva LiveKit-en");
+          console.log("✅ Track publikálva:", track.kind);
         } catch (e) {
-          console.warn("⚠️ Video track publikálási hiba:", e);
-        }
-      }
-      // Audio trackot külön, klónozott streamből publikáljuk
-      // hogy az eredeti mic stream szabad maradjon az STT-nek
-      const audioTracks = localStream.getAudioTracks();
-      for (const track of audioTracks) {
-        try {
-          // Klónozzuk a track-et hogy az STT is hozzáférjen az eredetihez
-          const clonedTrack = track.clone();
-          await livekitRoom.localParticipant.publishTrack(clonedTrack);
-          console.log("✅ Audio track klónozva és publikálva LiveKit-en");
-        } catch (e) {
-          console.warn("⚠️ Audio track publikálási hiba:", e);
+          console.warn("⚠️ Track publikálási hiba:", track.kind, e);
         }
       }
     }
@@ -2518,174 +2502,105 @@ function startStatsLoop(){
    ========================================================================= */
 async function initMedia(){
   try{
-    // Mobilon az enumerateDevices() engedély előtt üres — ezért először
-    // egyszerű getUserMedia-val kérünk engedélyt, majd utána választunk eszközt
-    let stream;
-    try{
-      // Első próba: preferált kamera keresése
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const cameras = devices.filter(d => d.kind === "videoinput");
-      const preferred = cameras.find(d =>
-        d.label.toLowerCase().includes("integrated") ||
-        d.label.toLowerCase().includes("webcam") ||
-        d.label.toLowerCase().includes("beépített")
-      );
-      const videoConstraint = (preferred && preferred.deviceId)
-        ? { deviceId: { exact: preferred.deviceId } }
-        : { facingMode: "user" };
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: videoConstraint,
-        audio: true
-      });
-    } catch(firstErr){
-      console.warn("Média (preferált kamera) hiba, egyszerű fallback:", firstErr);
-      // Mobilon fallback: csak facingMode user + audio
-      try{
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" },
-          audio: true
-        });
-      } catch(secondErr){
-        console.warn("Videó+hang fallback hiba, csak hang próba:", secondErr);
-        // Végső fallback: csak mikrofon (ha a kamera tiltott)
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: false,
-          audio: true
-        });
-      }
-    }
-
-    localStream = stream;
-    localVideo.srcObject        = stream;
-    splitLocalVideo.srcObject   = stream;
-    window._localStream         = stream;
-
-    // Mobilon a video elem autoplay-hez user gesture kell — kényszerítjük
-    localVideo.play().catch(() => {});
-
-  } catch(err){
-    console.error("Média hiba (minden fallback sikertelen):", err);
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cameras = devices.filter(d=>d.kind==="videoinput");
+    const preferred = cameras.find(d=>
+      d.label.toLowerCase().includes("integrated")||
+      d.label.toLowerCase().includes("webcam")||
+      d.label.toLowerCase().includes("beépített")
+    );
+    const videoConstraint = preferred
+      ? {deviceId:{exact:preferred.deviceId}}
+      : {facingMode:"user"};
+    localStream = await navigator.mediaDevices.getUserMedia({video:videoConstraint,audio:true});
+    localVideo.srcObject   = localStream;
+    splitLocalVideo.srcObject = localStream;
+    window._localStream = localStream;
+  }catch(err){
+    console.error("Média hiba:", err);
     setupStatus.textContent = t("errPerm");
     throw err;
   }
 }
 
+/* =========================================================================
+   HANGFELISMERÉS (STT)
+   ========================================================================= */
 function startRecognition(){
-  console.log("[STT] Eszköz info — userAgent:", navigator.userAgent, "| isMobile:", /Android|iPhone|iPad/i.test(navigator.userAgent), "| platform:", navigator.platform);
   if(!micOn || callEnded) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ console.warn("Web Speech API nem támogatott"); return; }
 
   if(recognition){
-    recognition.onstart  = null;
-    recognition.onresult = null;
-    recognition.onerror  = null;
-    recognition.onend    = null;
+    recognition.onstart=null; recognition.onresult=null;
+    recognition.onerror=null; recognition.onend=null;
     try{ recognition.abort(); }catch(_){}
-    recognition = null;
+    recognition=null;
   }
-
   recognitionShouldRun = true;
 
   function createAndStart(){
-    if(!recognitionShouldRun || !micOn || callEnded) return;
-
+    if(!recognitionShouldRun||!micOn||callEnded) return;
     recognition = new SR();
-    recognition.lang            = STT_LOCALE[myLang] || "hu-HU";
-    recognition.continuous      = false;
-    recognition.interimResults  = true;
-    recognition.maxAlternatives = 1;
+    recognition.lang = STT_LOCALE[myLang]||"hu-HU";
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
-    recognition.onstart = () => {
-      micBtn.style.outline = "2px solid var(--teal)";
-      console.log("[STT] started, lang:", recognition.lang);
-    };
+    recognition.onstart = ()=>{ micBtn.style.outline="2px solid var(--teal)"; };
 
-    recognition.onaudiostart = () => {
-      console.log("[STT] audio input érkező");
-    };
-
-    recognition.onsoundstart = () => {
-      console.log("[STT] hang érzékelve ✅");
-    };
-
-    recognition.onresult = async e => {
-      let interim = "", final = "";
-      for(let i = e.resultIndex; i < e.results.length; i++){
-        const r = e.results[i];
-        if(r.isFinal) final += r[0].transcript;
-        else          interim += r[0].transcript;
-      }
-      if(interim){
-        ownBox.style.display = "block";
-        ownMain.textContent  = interim;
-        setSplitOwnCaption(interim);
+    recognition.onresult = async e=>{
+      let final="";
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const r=e.results[i];
+        if(r.isFinal) final+=r[0].transcript;
+        else{
+          ownBox.style.display="block";
+          ownMain.textContent=r[0].transcript;
+          setSplitOwnCaption(r[0].transcript);
+        }
       }
       if(final.trim()){
-        ownBox.style.display = "block";
-        ownMain.textContent  = final.trim();
+        ownBox.style.display="block";
+        ownMain.textContent=final.trim();
         setSplitOwnCaption(final.trim());
         if(channel) channel.send({
-          type:    "broadcast",
-          event:   "caption",
-          payload: { text: final.trim(), sourceLang: myLang, name: myName || LANG_LABEL[myLang] }
+          type:"broadcast", event:"caption",
+          payload:{ text:final.trim(), sourceLang:myLang, name:myName||LANG_LABEL[myLang] }
         });
-        addHistoryItem(final.trim(), "", true);
-        setTimeout(() => {
-          ownBox.style.display = "none";
-          setSplitOwnCaption("");
-        }, 4000);
+        addHistoryItem(final.trim(),"",true);
+        setTimeout(()=>{ ownBox.style.display="none"; setSplitOwnCaption(""); },4000);
       }
     };
 
-    recognition.onerror = e => {
-      console.warn("[STT] hiba:", e.error);
-      micBtn.style.outline = "";
-
-      if(e.error === "not-allowed" || e.error === "service-not-allowed"){
-        recognitionShouldRun = false;
-        return;
+    recognition.onerror = e=>{
+      console.warn("STT hiba:",e.error);
+      micBtn.style.outline="2px solid var(--danger)";
+      if(e.error==="not-allowed"||e.error==="service-not-allowed"){
+        recognitionShouldRun=false;
+        micBtn.style.outline="";
       }
-
-      // Android Chrome-on "no-speech" után rögtön újraindítunk
-      // de csak ha tényleg hallható volt audio input
-      if(e.error === "network"){
-        micBtn.style.outline = "2px solid var(--amber)";
-        return;
-      }
-
-      // no-speech, audio-capture, aborted — onend kezeli
     };
 
-    recognition.onend = () => {
-      micBtn.style.outline = "";
-      if(!recognitionShouldRun || !micOn || callEnded) return;
-      // Android Chrome-on 150ms delay elég
-      setTimeout(createAndStart, 150);
+    recognition.onend = ()=>{
+      micBtn.style.outline="";
+      if(!recognitionShouldRun||!micOn||callEnded) return;
+      setTimeout(createAndStart,500);
     };
 
-    try{
-      recognition.start();
-    }catch(e){
-      console.warn("[STT] start() hiba:", e);
-      setTimeout(createAndStart, 1000);
-    }
+    try{ recognition.start(); }
+    catch(e){ console.warn("STT start() hiba:",e); setTimeout(createAndStart,1000); }
   }
-
   createAndStart();
 }
 
-
-
 function stopRecognition(){
-  recognitionShouldRun = false;
-  micBtn.style.outline = "";
+  recognitionShouldRun=false;
+  micBtn.style.outline="";
   if(recognition){
-    recognition.onstart  = null;
-    recognition.onresult = null;
-    recognition.onerror  = null;
-    recognition.onend    = null;
+    recognition.onstart=null; recognition.onresult=null;
+    recognition.onerror=null; recognition.onend=null;
     try{ recognition.abort(); }catch(_){}
-    recognition = null;
+    recognition=null;
   }
 }
 
