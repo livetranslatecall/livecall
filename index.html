@@ -10,8 +10,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://yyexlblyepkxyqqbgpvu.supabase.co; worker-src 'self' blob:; connect-src 'self' https://yyexlblyepkxyqqbgpvu.supabase.co wss://yyexlblyepkxyqqbgpvu.supabase.co https://api.mymemory.translated.net https://cdn.jsdelivr.net;">
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -824,7 +822,16 @@ select{
 const SUPABASE_URL      = "https://yyexlblyepkxyqqbgpvu.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZXhsYmx5ZXBreHlxcWJncHZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTE5MjAsImV4cCI6MjA5OTEyNzkyMH0.qG1iDFLarL_OCAuJVnpsb6uOUMRNvUyWdpxYw7C5TDs";
   // ─── LIVEKIT KONFIGURÁCIÓ ───
-const LIVEKIT_URL = "wss://livetranslate.nport.link";
+let LIVEKIT_URL = "";
+async function getLiveKitUrl() {
+  try {
+    const res = await fetch("/tunnel-url");
+    const { url } = await res.json();
+    if (url) LIVEKIT_URL = url.replace("https://", "wss://");
+  } catch(e) {
+    console.warn("Tunnel URL lekérés sikertelen");
+  }
+}
 const LIVEKIT_API_KEY = "devkey";
 const LIVEKIT_API_SECRET = "secret";
 const ICE_SERVERS = [
@@ -1420,12 +1427,27 @@ function nowTime(){
 }
 
 
-// ─── LIVEKIT TOKEN GENERÁLÁS (FEJLESZTŐI MÓD) ───
+const LIVEKIT_TOKEN_URL = 
+  "https://yyexlblyepkxyqqbgpvu.supabase.co/functions/v1/livekit-token";
+
 async function generateLiveKitToken(apiKey, apiSecret, roomName, participantName) {
-  // Fejlesztői módban (--dev) csak egy egyszerű string
-  // A livekit-server.exe --dev parancshoz kell
-  return "devkey:secret";
+  const res = await fetch(LIVEKIT_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      roomId:   roomName,
+      userName: participantName,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Token generálás sikertelen: ${res.status}`);
+  }
+
+  const { token } = await res.json();
+  return token;
 }
+
 
 // ─── LIVEKIT KAPCSOLAT ───
 let livekitRoom = null;
@@ -1447,7 +1469,8 @@ async function connectToLiveKit() {
     console.log("✅ Token generálva:", token);
     
     console.log("🔄 LiveKit room létrehozása...");
-    livekitRoom = new LivekitRoom();
+    livekitRoom = new LivekitClient.Room();
+
     console.log("✅ Room objektum kész");
     
     console.log("🔄 Kapcsolódás a LiveKit szerverhez...");
@@ -3111,6 +3134,7 @@ if(histList) histList.innerHTML="";
    HÍVÁS INDÍTÁSA
    ========================================================================= */
 async function beginCallFlow(){
+  await getLiveKitUrl();
   console.log("═══════════════════════════════════════════════════");
   console.log("📞 HÍVÁS INDÍTÁSA");
   console.log("═══════════════════════════════════════════════════");
