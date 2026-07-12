@@ -2571,9 +2571,9 @@ async function initMedia(){
 }
 
 function startRecognition(){
+  console.log("[STT] Eszköz info — userAgent:", navigator.userAgent, "| isMobile:", /Android|iPhone|iPad/i.test(navigator.userAgent), "| platform:", navigator.platform);
   if(!micOn || callEnded) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SR){ console.warn("Web Speech API nem támogatott"); return; }
 
   if(recognition){
     recognition.onstart  = null;
