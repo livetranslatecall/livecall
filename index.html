@@ -2557,15 +2557,30 @@ async function initMedia(){
       ? {deviceId:{exact:preferred.deviceId}}
       : {facingMode:"user"};
     await dbLog("initMedia_getUserMedia", "indul, videoConstraint: "+JSON.stringify(videoConstraint));
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: videoConstraint,
-      audio: {
+    
+    // MOBILON NEM KÉRÜNK AUDIO TRACK-ET, HOGY A SPEECHRECOGNITION HASZNÁLHASSA A MIKROFONT
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
+    let audioConstraint;
+    if (isMobile) {
+      // Mobilon: NINCS audio track a getUserMedia-ben
+      audioConstraint = false;
+      await dbLog("initMedia_mobile_audio_off", "Mobil: audio track NEM kérve, SpeechRecognition fogja használni a mikrofont");
+    } else {
+      // Laptopon: audio track bekapcsolva
+      audioConstraint = {
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true,
         channelCount: 1,
         sampleRate: 16000,
-      }
+      };
+      await dbLog("initMedia_desktop_audio_on", "Laptop: audio track kérve");
+    }
+    
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: videoConstraint,
+      audio: audioConstraint
     });
     await dbLog("initMedia_stream_ok", "audio trackok: "+localStream.getAudioTracks().length+" video trackok: "+localStream.getVideoTracks().length);
     localVideo.srcObject = localStream;
@@ -2581,6 +2596,12 @@ async function initMedia(){
       await dbLog("initMedia_audioContext", "state: "+window._sharedAudioContext.state);
     } else {
       await dbLog("initMedia_audioTrack_MISSING", "nincs audio track!");
+      // Mobilon ez normális, mert nem kértünk audio track-et
+      if (!isMobile) {
+        console.warn("⚠️ Nincs audio track (laptop)");
+      } else {
+        console.log("📱 Mobil: audio track szándékosan nincs, SpeechRecognition fogja használni");
+      }
     }
   }catch(err){
     await dbLog("initMedia_ERROR", err.message||String(err));
@@ -2589,6 +2610,7 @@ async function initMedia(){
     throw err;
   }
 }
+
 
 /* =========================================================================
    HANGFELISMERÉS (STT)
@@ -2629,18 +2651,20 @@ function startRecognition(){
     }
     isStarting = true;
 
-    if(isAndroid && window._sharedAudioContext){
-      try{
-        dbLog("STT_audioContext_state_before_resume", window._sharedAudioContext.state);
-        if(window._sharedAudioContext.state === "suspended"){
-          await window._sharedAudioContext.resume();
-          dbLog("STT_audioContext_resumed", window._sharedAudioContext.state);
-        }
-      }catch(e){
-        dbLog("STT_audioContext_resume_ERROR", e.message||String(e));
-        console.warn("[STT] AudioContext resume hiba:", e.message);
-      }
+    // Csak asztali gépen használjuk az AudioContext-et
+// Mobilon ez összezavarja a SpeechRecognition API-t
+if (!isAndroid && window._sharedAudioContext) {
+  try{
+    dbLog("STT_audioContext_state_before_resume", window._sharedAudioContext.state);
+    if(window._sharedAudioContext.state === "suspended"){
+      await window._sharedAudioContext.resume();
+      dbLog("STT_audioContext_resumed", window._sharedAudioContext.state);
     }
+  }catch(e){
+    dbLog("STT_audioContext_resume_ERROR", e.message||String(e));
+    console.warn("[STT] AudioContext resume hiba:", e.message);
+  }
+}
 
     const r = new SR();
     r.lang = STT_LOCALE[myLang] || "hu-HU";
