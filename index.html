@@ -2654,6 +2654,7 @@ async function handleIncomingCaption(payload){
 function addHistoryItem(main, orig, isOwn){
   const histList = document.getElementById("historyList");
   if(!histList) return;
+  const panel = document.getElementById("historyPanel");
   const item = document.createElement("div");
   item.style.cssText = "padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);";
   const timeEl = document.createElement("div");
@@ -2670,8 +2671,15 @@ function addHistoryItem(main, orig, isOwn){
     origEl.textContent = "„"+orig+"\"";
     item.appendChild(origEl);
   }
-  histList.appendChild(item);
+histList.appendChild(item);
+  // Scroll: mind a historyList-et, mind a historyPanel-t görgetjük
   histList.scrollTop = histList.scrollHeight;
+  if(panel) panel.scrollTop = panel.scrollHeight;
+  // Kis késleltetés után is, ha a DOM még renderel
+  setTimeout(()=>{
+    histList.scrollTop = histList.scrollHeight;
+    if(panel) panel.scrollTop = panel.scrollHeight;
+  }, 50);
 }
 
 /* =========================================================================
@@ -3601,6 +3609,16 @@ document.addEventListener("click",e=>{
   const histBtnEl = document.getElementById("histBtn");
   if(histPanel && histBtnEl && !histPanel.contains(e.target) && e.target!==histBtnEl && !histBtnEl.contains(e.target)){
     histPanel.style.display = "none";
+  }
+  // Chat panel bezárása mobilon kívülre kattintáskor
+  if(window.innerWidth < 720){
+    const chatPanelEl = document.getElementById("chatPanel");
+    const chatBtnEl   = document.getElementById("chatBtn");
+    if(chatPanelEl && chatPanelEl.classList.contains("open")){
+      if(!chatPanelEl.contains(e.target) && e.target!==chatBtnEl && !chatBtnEl.contains(e.target)){
+        chatPanelEl.classList.remove("open");
+      }
+    }
   }
 });
 
