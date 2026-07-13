@@ -58,6 +58,7 @@ async translate(text, src, tgt) {
     }
 
     const cacheKey = `${src}|${tgt}|${text.trim()}`;
+    console.log("[Cache] translate hívás:", src, "→", tgt, "szöveg:", text.slice(0,20));
     const cached = this._getCache(cacheKey);
     if (cached !== undefined) {
       return cached;
@@ -94,7 +95,7 @@ async translate(text, src, tgt) {
     return fallback;
   }
 
-  
+
   async pingGroq() {
     const activeKey = this._getActiveKey();
     if (!activeKey) {
@@ -553,6 +554,7 @@ if (data.reset_date !== today) {
     }
     obj[key] = value;
     localStorage.setItem("lt_translate_cache", JSON.stringify(obj));
+    console.log("[Cache] Írás sikeres, kulcsok száma:", Object.keys(obj).length);
   } catch(e) {
     // localStorage tele vagy nem elérhető — csak memória cache marad
     console.warn("[Translator] localStorage cache írási hiba:", e);
