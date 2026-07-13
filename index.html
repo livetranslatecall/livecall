@@ -1341,6 +1341,7 @@ let _translationCount = 0;
 let myLang="hu", myName="", roomId="", isInitiator=false;
 let micOn=true, camOn=true, mirrored=false, isSharing=false, isRecording=false;
 let recognition, recognitionShouldRun=false;
+let sttStream = null;
 let captionHideTimer=null, callEnded=false;
 let mediaRecorder=null, recordedChunks=[];
 let statsInterval=null;
@@ -2556,8 +2557,7 @@ function startRecognition(){
   }
   recognitionShouldRun = true;
 
-  // ── ÚJ: külön STT mikrofon stream ──
-  let sttStream = null;
+  
 
   async function createAndStart(){
     if(!recognitionShouldRun||!micOn||callEnded) return;
@@ -2676,6 +2676,12 @@ function stopRecognition(){
     recognition.onerror=null; recognition.onend=null;
     try{ recognition.abort(); }catch(_){}
     recognition=null;
+  }
+  // ── ÚJ: STT stream lezárása ──
+  if(sttStream){
+    sttStream.getTracks().forEach(t=>t.stop());
+    sttStream=null;
+    console.log("[STT] Külön audio stream lezárva");
   }
 }
 
