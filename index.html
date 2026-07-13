@@ -2549,56 +2549,45 @@ function startRecognition(){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){ console.warn("Web Speech API nem támogatott"); return; }
 
-  if(recognition){
-    recognition.onstart=null; recognition.onresult=null;
-    recognition.onerror=null; recognition.onend=null;
-    try{ recognition.abort(); }catch(_){}
-    recognition=null;
-  }
   recognitionShouldRun = true;
 
-  // ── WATCHDOG: ha 8 sec múlva sem indult el újra, kényszerítjük ──
-  let watchdogTimer = null;
-  function resetWatchdog(){
-    clearTimeout(watchdogTimer);
-    watchdogTimer = setTimeout(()=>{
-      if(recognitionShouldRun && micOn && !callEnded){
-        console.warn("[STT] Watchdog: recognition látszólag leállt, újraindítás...");
-        try{ if(recognition) recognition.abort(); }catch(_){}
-        setTimeout(createAndStart, 300);
-      }
-    }, 8000);
-  }
+  // Ha már fut valami, csak flag-et állítunk és kilépünk
+  if(recognition) return;
+
+  let isStarting = false; // mutex
 
   async function createAndStart(){
     if(!recognitionShouldRun || !micOn || callEnded) return;
+    if(isStarting) return; // mutex: ne induljon párhuzamosan
+    if(recognition) return; // már fut egy példány
 
-    recognition = new SR();
-    recognition.lang = STT_LOCALE[myLang] || "hu-HU";
-    recognition.continuous = false;        // ← KULCS: false Androidon
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
+    isStarting = true;
 
-    recognition.onstart = ()=>{
+    const r = new SR();
+    r.lang = STT_LOCALE[myLang] || "hu-HU";
+    r.continuous = false;
+    r.interimResults = true;
+    r.maxAlternatives = 1;
+
+    r.onstart = ()=>{
+      isStarting = false;
       micBtn.style.outline = "2px solid var(--teal)";
-      resetWatchdog(); // watchdog újraindítása
-      console.log("[STT] Felismerés elindult:", recognition.lang);
+      console.log("[STT] Start:", r.lang);
     };
 
-    recognition.onresult = async e=>{
-      resetWatchdog(); // aktív → watchdog visszaállítása
+    r.onresult = async e=>{
       let final = "";
       for(let i = e.resultIndex; i < e.results.length; i++){
-        const r = e.results[i];
-        if(r.isFinal) final += r[0].transcript;
+        const res = e.results[i];
+        if(res.isFinal) final += res[0].transcript;
         else {
           ownBox.style.display = "block";
-          ownMain.textContent = r[0].transcript;
-          setSplitOwnCaption(r[0].transcript);
+          ownMain.textContent = res[0].transcript;
+          setSplitOwnCaption(res[0].transcript);
         }
       }
       if(final.trim()){
-        console.log("[STT] Felismert szöveg:", final.trim());
+        console.log("[STT] Eredmény:", final.trim());
         ownBox.style.display = "block";
         ownMain.textContent = final.trim();
         setSplitOwnCaption(final.trim());
@@ -2611,39 +2600,42 @@ function startRecognition(){
       }
     };
 
-    recognition.onerror = e=>{
+    r.onerror = e=>{
       console.warn("[STT] Hiba:", e.error);
       micBtn.style.outline = "";
-      clearTimeout(watchdogTimer);
+      isStarting = false;
+      recognition = null; // nullázzuk, hogy újra lehessen indítani
 
       if(e.error === "not-allowed" || e.error === "service-not-allowed"){
         recognitionShouldRun = false;
         return;
       }
-      // Minden más hibánál újraindítás
+      if(e.error === "aborted") return; // onend kezeli
       if(recognitionShouldRun && micOn && !callEnded){
-        const delay = (e.error === "network") ? 3000 : 1000;
-        setTimeout(createAndStart, delay);
+        setTimeout(createAndStart, 2000);
       }
     };
 
-    recognition.onend = ()=>{
+    r.onend = ()=>{
       micBtn.style.outline = "";
-      clearTimeout(watchdogTimer);
-      console.log("[STT] onend, shouldRun:", recognitionShouldRun);
-      // continuous:false → onend után mindig újraindítunk
+      isStarting = false;
+      recognition = null; // FONTOS: nullázás, hogy újraindítható legyen
+      console.log("[STT] End, shouldRun:", recognitionShouldRun);
       if(recognitionShouldRun && micOn && !callEnded){
-        setTimeout(createAndStart, 200); // rövid szünet, aztán újra
+        setTimeout(createAndStart, 500); // 500ms szünet kötelező Androidon
       }
     };
 
+    recognition = r; // ELŐBB hozzárendeljük
     try{
-      recognition.start();
+      r.start();
+      console.log("[STT] start() meghívva");
     }catch(e){
-      console.warn("[STT] start() hiba:", e);
-      clearTimeout(watchdogTimer);
+      console.warn("[STT] start() hiba:", e.message);
+      recognition = null;
+      isStarting = false;
       if(recognitionShouldRun && micOn && !callEnded){
-        setTimeout(createAndStart, 1500);
+        setTimeout(createAndStart, 2000);
       }
     }
   }
@@ -2652,18 +2644,15 @@ function startRecognition(){
 }
 
 function stopRecognition(){
-  recognitionShouldRun=false;
-  micBtn.style.outline="";
+  recognitionShouldRun = false;
+  micBtn.style.outline = "";
   if(recognition){
-    recognition.onstart=null; recognition.onresult=null;
-    recognition.onerror=null; recognition.onend=null;
+    recognition.onstart = null;
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onend = null; // FONTOS: onend nullázás, hogy ne indítson újat
     try{ recognition.abort(); }catch(_){}
-    recognition=null;
-  }
-  if(sttStream){
-    sttStream.getTracks().forEach(t=>t.stop());
-    sttStream=null;
-    console.log("[STT] Külön audio stream lezárva");
+    recognition = null;
   }
 }
 
