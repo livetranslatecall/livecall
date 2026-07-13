@@ -2578,7 +2578,7 @@ async function initMedia(){
       //window._sharedAudioContext = new AudioContext();
       //window._sharedAudioSource = window._sharedAudioContext.createMediaStreamSource(localStream);
       //window._sharedMicStream = localStream;
-      await dbLog("initMedia_audioContext", "state: "+window._sharedAudioContext.state);
+      //await dbLog("initMedia_audioContext", "state: "+window._sharedAudioContext.state);
     } else {
       await dbLog("initMedia_audioTrack_MISSING", "nincs audio track!");
     }
