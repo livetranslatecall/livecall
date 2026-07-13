@@ -2556,13 +2556,34 @@ function startRecognition(){
   }
   recognitionShouldRun = true;
 
-  function createAndStart(){
+  // ── ÚJ: külön STT mikrofon stream ──
+  let sttStream = null;
+
+  async function createAndStart(){
     if(!recognitionShouldRun||!micOn||callEnded) return;
+
+    // Külön getUserMedia az STT-nek — nem veszi el a WebRTC streamtől
+    try{
+      if(!sttStream || sttStream.getTracks().every(t=>t.readyState==="ended")){
+        sttStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl:  true,
+          },
+          video: false
+        });
+        console.log("[STT] Külön audio stream megnyitva");
+      }
+    }catch(err){
+      console.warn("[STT] Külön stream hiba:", err);
+      // Fallback: próbáljuk stream nélkül
+    }
+
     recognition = new SR();
     recognition.lang = STT_LOCALE[myLang]||"hu-HU";
     recognition.continuous = true;
     recognition.interimResults = true;
-    // ── ÚJ: mobilon magasabb érzékenység ──
     recognition.maxAlternatives = 1;
 
     recognition.onstart = ()=>{
@@ -2604,13 +2625,17 @@ function startRecognition(){
         return;
       }
       if(e.error==="no-speech"){
-        // no-speech mobilon normális, csak újraindítjuk csendben
         micBtn.style.outline="";
-        return; // az onend kezeli az újraindítást
+        return;
       }
       if(e.error==="network"||e.error==="audio-capture"||e.error==="aborted"){
-        console.warn("[STT] Újraindítás szükséges:", e.error);
+        console.warn("[STT] Újraindítás:", e.error);
         micBtn.style.outline="";
+        // STT stream újranyitása következő körben
+        if(sttStream){
+          sttStream.getTracks().forEach(t=>t.stop());
+          sttStream=null;
+        }
         if(recognitionShouldRun && micOn && !callEnded){
           setTimeout(createAndStart, 1500);
         }
@@ -2619,21 +2644,27 @@ function startRecognition(){
 
     recognition.onend = ()=>{
       micBtn.style.outline="";
-      console.log("[STT] Felismerés véget ért, shouldRun:", recognitionShouldRun, "micOn:", micOn);
-      if(!recognitionShouldRun||!micOn||callEnded) return;
-      // Mobilon rövidebb várakozás
+      console.log("[STT] Véget ért, shouldRun:", recognitionShouldRun);
+      if(!recognitionShouldRun||!micOn||callEnded){
+        // Takarítás
+        if(sttStream){
+          sttStream.getTracks().forEach(t=>t.stop());
+          sttStream=null;
+        }
+        return;
+      }
       setTimeout(createAndStart, 300);
     };
 
     try{
       recognition.start();
       console.log("[STT] recognition.start() meghívva");
-    }
-    catch(e){
+    }catch(e){
       console.warn("[STT] start() hiba:",e);
       setTimeout(createAndStart,1500);
     }
   }
+
   createAndStart();
 }
 
