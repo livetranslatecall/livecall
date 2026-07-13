@@ -642,8 +642,17 @@ select{
 
   
 
-  <!-- Emoji overlay -->
-  <div id="emojiOverlay"></div>
+ <!-- History panel -->
+<div id="historyPanel" style="display:none;position:absolute;left:14px;bottom:100px;z-index:7;background:rgba(13,20,32,.92);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:16px;padding:12px 14px;width:280px;max-height:220px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <span style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;font-weight:700;">📝 Felirat előzmények</span>
+    <button onclick="document.getElementById('historyPanel').style.display='none'" style="background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;line-height:1;">✕</button>
+  </div>
+  <div id="historyList"></div>
+</div>
+
+<!-- Emoji overlay -->
+<div id="emojiOverlay"></div>
 
   <!-- Stats graph overlay -->
   <div id="statsGraphOverlay">
@@ -737,9 +746,13 @@ select{
       <span class="btn-label" data-i18n="ctrlStats">Statiszt.</span>
     </button>
     <button class="ctrl-btn" id="pipBtn">
-      <span class="btn-icon">⧉</span>
-      <span class="btn-label" data-i18n="ctrlPip">PiP</span>
-    </button>
+  <span class="btn-icon">⧉</span>
+  <span class="btn-label" data-i18n="ctrlPip">PiP</span>
+</button>
+<button class="ctrl-btn" id="histBtn">
+  <span class="btn-icon">📝</span>
+  <span class="btn-label" data-i18n="ctrlHist">Előzmény</span>
+</button>
     <button class="ctrl-btn" id="peersBtn">
       <span class="btn-icon">👥</span>
       <span class="btn-label" data-i18n="ctrlPeers">Tagok</span>
@@ -2634,11 +2647,24 @@ async function handleIncomingCaption(payload){
 }
 
 function addHistoryItem(main, orig, isOwn){
+  const histList = document.getElementById("historyList");
   if(!histList) return;
   const item = document.createElement("div");
-  item.className = "hist-item"+(isOwn?"":" partner");
-  item.innerHTML = `<div class="hist-time">${nowTime()}</div><div class="hist-text">${escHtml(main)}</div>`
-    +(orig&&orig!==main?`<div class="hist-orig">${escHtml(orig)}</div>`:"");
+  item.style.cssText = "padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);";
+  const timeEl = document.createElement("div");
+  timeEl.style.cssText = "font-size:9px;color:var(--text-dim);margin-bottom:3px;";
+  timeEl.textContent = nowTime() + (isOwn ? " · Te" : " · Partner");
+  const textEl = document.createElement("div");
+  textEl.style.cssText = "font-size:12px;color:"+(isOwn?"var(--teal)":"var(--amber)")+";line-height:1.4;";
+  textEl.textContent = main;
+  item.appendChild(timeEl);
+  item.appendChild(textEl);
+  if(orig && orig !== main){
+    const origEl = document.createElement("div");
+    origEl.style.cssText = "font-size:10px;color:rgba(255,255,255,.35);margin-top:2px;font-style:italic;";
+    origEl.textContent = "„"+orig+"\"";
+    item.appendChild(origEl);
+  }
   histList.appendChild(item);
   histList.scrollTop = histList.scrollHeight;
 }
@@ -3439,6 +3465,11 @@ langMenu.querySelectorAll("button").forEach(btn=>{
 });
 
 statsBtn.onclick = e=>{ e.stopPropagation(); statsOverlay.classList.toggle("open"); };
+histBtn.onclick = e=>{
+  e.stopPropagation();
+  const panel = document.getElementById("historyPanel");
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+};
 
 
 
@@ -3498,11 +3529,15 @@ peersBtn.onclick = e=>{ e.stopPropagation(); participantsPanel.classList.toggle(
 
 document.addEventListener("click",e=>{
   if(!langMenu.contains(e.target)&&e.target!==langBtn)               langMenu.classList.remove("open");
-  
   if(!statsOverlay.contains(e.target)&&e.target!==statsBtn)          statsOverlay.classList.remove("open");
   if(!participantsPanel.contains(e.target)&&e.target!==peersBtn)     participantsPanel.classList.remove("open");
   if(!statsGraphOverlay.contains(e.target)&&e.target!==netPill&&e.target!==statsGraphClose)
     statsGraphOverlay.classList.remove("open");
+  const histPanel = document.getElementById("historyPanel");
+  const histBtnEl = document.getElementById("histBtn");
+  if(histPanel && histBtnEl && !histPanel.contains(e.target) && e.target!==histBtnEl && !histBtnEl.contains(e.target)){
+    histPanel.style.display = "none";
+  }
 });
 
 /* ── HANGUP MODAL ── */
