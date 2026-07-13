@@ -103,6 +103,20 @@ h1,h2,h3,.brand{font-family:'Space Grotesk',system-ui,sans-serif;}
   padding:3px 10px;border-radius:12px;font-size:12px;color:var(--text-dim);
 }
 
+/* ── SCROLLABLE LISTS ── */
+.scrollable-list{
+  max-height:340px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding-right:4px;
+  scrollbar-width:thin;
+  scrollbar-color:var(--line) transparent;
+}
+.scrollable-list::-webkit-scrollbar{width:5px;}
+.scrollable-list::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+
 /* ── STATUS CARDS ── */
 .status-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
 .stat-card{
@@ -331,7 +345,7 @@ h1,h2,h3,.brand{font-family:'Space Grotesk',system-ui,sans-serif;}
     <h2>🟢 Aktív hívások</h2>
     <span class="badge" id="activeCallsBadge">0 aktív</span>
   </div>
-  <div id="activeCallsList" style="display:flex;flex-direction:column;gap:10px;">
+  <div id="activeCallsList" class="scrollable-list">
     <div style="color:var(--text-dim);font-size:13px;padding:12px;">Nincs aktív hívás.</div>
   </div>
 </div>
@@ -342,7 +356,7 @@ h1,h2,h3,.brand{font-family:'Space Grotesk',system-ui,sans-serif;}
     <h2>📋 Legutóbbi hívások</h2>
     <span class="badge" id="recentCallsBadge">–</span>
   </div>
-  <div id="recentCallsList" style="display:flex;flex-direction:column;gap:10px;">
+  <div id="recentCallsList" class="scrollable-list">
     <div style="color:var(--text-dim);font-size:13px;padding:12px;">Betöltés...</div>
   </div>
 </div>
@@ -532,7 +546,7 @@ async function saveKeys(keys){
   // 1. LocalStorage mentés
   localStorage.setItem(KEYS_KEY, JSON.stringify(keys));
 
-  // 2. Supabase mentés — ugyanolyan struktúra mint amit translator.js vár
+  // 2. Supabase mentés — Postgres Function-ön keresztül (RLS-t megkerüli)
   if(!supabaseClient) return;
   try {
     const toSave = keys.map(k => ({
@@ -542,15 +556,13 @@ async function saveKeys(keys){
       lastError: k.lastError || null,
     }));
 
-    const { error } = await supabaseClient
-      .from("groq_keys")
-      .upsert(
-        { id: 1, keys: toSave, updated_at: new Date().toISOString() },
-        { onConflict: "id" }
-      );
+    const { data, error } = await supabaseClient.rpc("save_groq_keys", {
+      admin_token: "LiveCall2026Admin",
+      keys_data:   toSave,
+    });
 
     if(error) throw error;
-    console.log("✅ Supabase mentés sikeres.");
+    console.log("✅ Supabase mentés sikeres (RPC).");
   } catch(e) {
     console.warn("Supabase mentés hiba:", e?.message || e);
     addLog("warn", "Supabase mentés hiba: " + (e?.message || String(e)));
@@ -1124,47 +1136,60 @@ async function loadCallStats(){
     }
 
     // ─── Legutóbbi hívások lista ────────────────────────────────
-    const recentList  = $("recentCallsList");
-    const recentCalls = finishedCalls.slice(0, 20);
+const recentList  = $("recentCallsList");
+const recentCalls = allCalls.slice(0, 20);
 
-    if(recentCalls.length === 0){
-      recentList.innerHTML = `<div style="color:var(--text-dim);font-size:13px;padding:12px;">Még nincs befejezett hívás.</div>`;
-    } else {
-      recentList.innerHTML = recentCalls.map(call => {
-        const parts = allParticipants?.filter(p =>
-          p.room_id === call.room_id
-        ) || [];
-        const callTranslations = parts.reduce(
-          (s, p) => s + (p.translation_count || 0), 0
-        );
-        return `
-          <div class="key-card" style="padding:14px 18px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-              <span style="font-size:13px;font-weight:700;color:var(--text);">
-                📞 ${escHtml(call.room_id)}
-              </span>
-              <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">
-                ${formatDate(call.started_at)}
-              </span>
+if(recentCalls.length === 0){
+  recentList.innerHTML = `<div style="color:var(--text-dim);font-size:13px;padding:12px;">Még nincs befejezett hívás.</div>`;
+} else {
+  recentList.innerHTML = recentCalls.map(call => {
+    const parts = allParticipants?.filter(p =>
+      p.room_id === call.room_id
+    ) || [];
+    const callTranslations = parts.reduce(
+      (s, p) => s + (p.translation_count || 0), 0
+    );
+    const isActive = !call.ended_at;
+    const durationSec = call.ended_at
+      ? call.duration_seconds
+      : Math.round((Date.now() - new Date(call.started_at).getTime()) / 1000);
+    return `
+      <div class="key-card${isActive ? " active-key" : ""}" style="padding:14px 18px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          ${isActive
+            ? `<div style="width:8px;height:8px;border-radius:50%;background:var(--green);
+                box-shadow:0 0 6px var(--green);flex-shrink:0;"></div>`
+            : `<span style="font-size:13px;">📞</span>`
+          }
+          <span style="font-size:13px;font-weight:700;color:${isActive ? "var(--teal)" : "var(--text)"};">
+            ${escHtml(call.room_id)}
+          </span>
+          ${isActive
+            ? `<span style="font-size:11px;color:var(--green);font-weight:700;">● ÉLŐ</span>`
+            : ""
+          }
+          <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">
+            ${formatDate(call.started_at)}
+          </span>
+        </div>
+        <div style="display:flex;gap:16px;font-size:12px;color:var(--text-dim);margin-bottom:8px;">
+          <span>⏱ ${formatDuration(durationSec)}</span>
+          <span>👥 ${call.participant_count||0} fő</span>
+          <span>🔄 ${callTranslations} fordítás</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${parts.map(p => `
+            <div style="background:var(--panel-2);border:1px solid var(--line);
+              border-radius:8px;padding:4px 10px;font-size:11px;">
+              ${getLangFlag(p.lang)} ${escHtml(p.name||"–")}
+              <span style="color:var(--text-dim);margin-left:3px;">${p.lang?.toUpperCase()||"–"}</span>
             </div>
-            <div style="display:flex;gap:16px;font-size:12px;color:var(--text-dim);margin-bottom:8px;">
-              <span>⏱ ${formatDuration(call.duration_seconds)}</span>
-              <span>👥 ${call.participant_count||0} fő</span>
-              <span>🔄 ${callTranslations} fordítás</span>
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              ${parts.map(p => `
-                <div style="background:var(--panel-2);border:1px solid var(--line);
-                  border-radius:8px;padding:4px 10px;font-size:11px;">
-                  ${getLangFlag(p.lang)} ${escHtml(p.name||"–")}
-                  <span style="color:var(--text-dim);margin-left:3px;">${p.lang?.toUpperCase()||"–"}</span>
-                </div>
-              `).join("")}
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
 
     // ─── Nyelv statisztikák ─────────────────────────────────────
     const langCount = {};
@@ -1220,9 +1245,24 @@ $("refreshStatsBtn").onclick = loadCallStats;
 // Auto frissítés 30 másodpercenként
 let statsRefreshTimer = null;
 
+
+async function closeAbandonedCalls(){
+  if(!supabaseClient) return;
+  try{
+    await supabaseClient.rpc("close_abandoned_calls");
+    console.log("[ADMIN] ✅ Elhagyott hívások lezárva.");
+  }catch(e){
+    console.warn("[ADMIN] closeAbandonedCalls hiba:", e?.message || e);
+  }
+}
+
 function startStatsRefresh(){
   loadCallStats();
-  statsRefreshTimer = setInterval(loadCallStats, 30000);
+  closeAbandonedCalls();
+  statsRefreshTimer = setInterval(()=>{
+    loadCallStats();
+    closeAbandonedCalls();
+  }, 30000);
 }
 
 function stopStatsRefresh(){
