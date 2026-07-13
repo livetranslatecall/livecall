@@ -452,16 +452,14 @@ if (data.reset_date !== today) {
       }));
 
       try {
-        console.log("[Translator] Supabase szinkron indul...");
-        const { error } = await client
-          .from("groq_keys")
-          .upsert(
-            { id: 1, keys: toSave, updated_at: new Date().toISOString() },
-            { onConflict: "id" }
-          );
+        console.log("[Translator] Supabase szinkron indul (RPC)...");
+        const { error } = await client.rpc("save_groq_keys", {
+          admin_token: "LiveCall2026Admin",
+          keys_data:   toSave,
+        });
 
         if (error) throw error;
-        console.log("[Translator] ✅ Supabase szinkron sikeres.");
+        console.log("[Translator] ✅ Supabase szinkron sikeres (RPC).");
       } catch (e) {
         console.warn("[Translator] Supabase szinkron hiba:", e?.message || e);
       }
