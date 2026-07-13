@@ -275,6 +275,62 @@ select{
 .ctrl-btn.off{background:rgba(226,88,107,.2);border-color:var(--danger);color:var(--danger);}
 .ctrl-btn.off .btn-label{color:var(--danger);}
 .ctrl-btn.end{background:linear-gradient(135deg,#c0283e,#e2586b);border-color:transparent;width:58px;height:58px;border-radius:50%;box-shadow:0 4px 20px rgba(226,88,107,.5);margin-bottom:4px;}
+/* ── REZGŐ KERET ── */
+.vid-wrap {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  border: 2px solid rgba(255,255,255,0.1);
+}
+
+.vid-wrap.speaking {
+  border-color: var(--teal) !important;
+  box-shadow: 0 0 30px rgba(79, 209, 197, 0.6), 
+              inset 0 0 30px rgba(79, 209, 197, 0.1);
+  animation: speakingPulse 1s ease-in-out infinite;
+}
+
+.vid-wrap.speaking.own-speaking {
+  border-color: var(--amber) !important;
+  box-shadow: 0 0 30px rgba(242, 166, 90, 0.6);
+}
+
+@keyframes speakingPulse {
+  0%, 100% { 
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(79, 209, 197, 0.4);
+  }
+  50% { 
+    transform: scale(1.008);
+    box-shadow: 0 0 40px rgba(79, 209, 197, 0.8);
+  }
+}
+
+/* SPLIT VIEW PANELEK */
+.split-panel {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  border: 3px solid transparent;
+}
+
+.split-panel.speaking {
+  border-color: var(--teal) !important;
+  box-shadow: inset 0 0 40px rgba(79, 209, 197, 0.15);
+}
+
+.split-panel.speaking.own-speaking {
+  border-color: var(--amber) !important;
+  box-shadow: inset 0 0 40px rgba(242, 166, 90, 0.15);
+}
+
+/* MULTI-PEER CELL */
+.peer-cell {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.peer-cell.speaking {
+  border-color: var(--teal) !important;
+  box-shadow: 0 0 30px rgba(79, 209, 197, 0.5);
+  animation: speakingPulse 1s ease-in-out infinite;
+}
 .ctrl-btn.end:hover{box-shadow:0 6px 28px rgba(226,88,107,.7);}
 .ctrl-btn.end .btn-icon{font-size:22px;}
 .ctrl-btn.active-teal{background:rgba(79,209,197,.2);border-color:var(--teal);}
@@ -556,28 +612,29 @@ select{
 <div id="call" class="screen">
 
   <!-- ── LAPTOP SPLIT VIEW ── -->
-  <div class="split-view" id="splitView">
-    <div class="split-panel" id="splitLeft">
-      <video id="splitLocalVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
-      <div class="split-label">
-        <div class="split-name-badge" id="splitMyName">Te</div>
-        <div class="split-lang-badge" id="splitMyLang">HU</div>
-      </div>
-      <div class="split-caption" id="splitOwnCaption"></div>
+  <!-- ── LAPTOP SPLIT VIEW ── -->
+<div class="split-view" id="splitView">
+  <div class="split-panel" id="splitLeft">
+    <video id="splitLocalVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
+    <div class="split-label">
+      <div class="split-name-badge" id="splitMyName">Te</div>
+      <div class="split-lang-badge" id="splitMyLang">HU</div>
     </div>
-    <div class="split-panel" id="splitRight">
-      <video id="splitRemoteVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
-      <div class="split-label">
-        <div class="split-name-badge" id="splitPartnerName" style="background:rgba(242,166,90,.2);border-color:rgba(242,166,90,.5);color:var(--amber);">Partner</div>
-        <div class="split-lang-badge" id="splitPartnerLang" style="background:rgba(79,209,197,.1);border-color:rgba(79,209,197,.3);color:var(--teal);">--</div>
-      </div>
-      <div class="split-waiting" id="splitWaiting">
-        <div class="split-waiting-icon">⏳</div>
-        <div class="split-waiting-text" data-i18n="waitMsg">Várakozás a másik félre…</div>
-      </div>
-      <div class="split-caption" id="splitIncomingCaption"></div>
-    </div>
+    <div class="split-caption" id="splitOwnCaption"></div>
   </div>
+  <div class="split-panel" id="splitRight">
+    <video id="splitRemoteVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+    <div class="split-label">
+      <div class="split-name-badge" id="splitPartnerName" style="background:rgba(242,166,90,.2);border-color:rgba(242,166,90,.5);color:var(--amber);">Partner</div>
+      <div class="split-lang-badge" id="splitPartnerLang" style="background:rgba(79,209,197,.1);border-color:rgba(79,209,197,.3);color:var(--teal);">--</div>
+    </div>
+    <div class="split-waiting" id="splitWaiting">
+      <div class="split-waiting-icon">⏳</div>
+      <div class="split-waiting-text" data-i18n="waitMsg">Várakozás a másik félre…</div>
+    </div>
+    <div class="split-caption" id="splitIncomingCaption"></div>
+  </div>
+</div>
 
   <!-- Multi-peer rács nézet (3+ fő) -->
   <div id="multiGrid"></div>
@@ -600,22 +657,22 @@ select{
 </div>
 
   <!-- Remote video (mobile) -->
-  <div class="vid-wrap" id="remoteWrap">
-    <video id="remoteVideo" autoplay playsinline></video>
-    <div class="zoom-ctrl">
-      <button class="zoom-btn" id="remoteZoomOut">−</button>
-      <button class="zoom-btn" id="remoteZoomIn">+</button>
-    </div>
+<div class="vid-wrap" id="remoteWrap">
+  <video id="remoteVideo" autoplay playsinline></video>
+  <div class="zoom-ctrl">
+    <button class="zoom-btn" id="remoteZoomOut">−</button>
+    <button class="zoom-btn" id="remoteZoomIn">+</button>
   </div>
+</div>
 
-  <!-- Local video (mobile) -->
-  <div class="vid-wrap" id="localWrap">
-    <video id="localVideo" autoplay playsinline muted></video>
-    <div class="zoom-ctrl">
-      <button class="zoom-btn" id="localZoomOut">−</button>
-      <button class="zoom-btn" id="localZoomIn">+</button>
-    </div>
+<!-- Local video (mobile) -->
+<div class="vid-wrap" id="localWrap">
+  <video id="localVideo" autoplay playsinline muted></video>
+  <div class="zoom-ctrl">
+    <button class="zoom-btn" id="localZoomOut">−</button>
+    <button class="zoom-btn" id="localZoomIn">+</button>
   </div>
+</div>
 
   <!-- Top bar -->
   <div class="top-bar">
@@ -2372,6 +2429,8 @@ async function initPeer(peerId, name, lang, weAreInitiator){
   }
 }
 
+
+
 async function handleSignal(payload){
   if(payload.to && payload.to !== myPeerId) return;
   const senderId = payload.from;
@@ -2641,19 +2700,18 @@ function startRecognition(){
     isStarting = true;
 
     // Csak asztali gépen használjuk az AudioContext-et
-// Mobilon ez összezavarja a SpeechRecognition API-t
-if (!isAndroid && window._sharedAudioContext) {
-  try{
-    dbLog("STT_audioContext_state_before_resume", window._sharedAudioContext.state);
-    if(window._sharedAudioContext.state === "suspended"){
-      await window._sharedAudioContext.resume();
-      dbLog("STT_audioContext_resumed", window._sharedAudioContext.state);
+    if (!isAndroid && window._sharedAudioContext) {
+      try{
+        dbLog("STT_audioContext_state_before_resume", window._sharedAudioContext.state);
+        if(window._sharedAudioContext.state === "suspended"){
+          await window._sharedAudioContext.resume();
+          dbLog("STT_audioContext_resumed", window._sharedAudioContext.state);
+        }
+      }catch(e){
+        dbLog("STT_audioContext_resume_ERROR", e.message||String(e));
+        console.warn("[STT] AudioContext resume hiba:", e.message);
+      }
     }
-  }catch(e){
-    dbLog("STT_audioContext_resume_ERROR", e.message||String(e));
-    console.warn("[STT] AudioContext resume hiba:", e.message);
-  }
-}
 
     const r = new SR();
     r.lang = STT_LOCALE[myLang] || "hu-HU";
@@ -2688,6 +2746,33 @@ if (!isAndroid && window._sharedAudioContext) {
         ownBox.style.display = "block";
         ownMain.textContent = final.trim();
         setSplitOwnCaption(final.trim());
+        
+        // ✨ SAJÁT REZGŐ KERET BEKAPCSOL
+        localWrap.classList.add("speaking");
+        localWrap.classList.add("own-speaking");
+        remoteWrap.classList.remove("speaking");
+        splitLeft.classList.add("speaking");
+        splitLeft.classList.add("own-speaking");
+        splitRight.classList.remove("speaking");
+        
+        // Multi-peer esetén
+        if(ownGridCell) {
+          ownGridCell.classList.add("speaking");
+          document.querySelectorAll(".peer-cell").forEach(cell => {
+            if(cell !== ownGridCell) cell.classList.remove("speaking");
+          });
+        }
+        
+        // 4 másodperc múlva kikapcsol
+        clearTimeout(window._speakingTimer);
+        window._speakingTimer = setTimeout(() => {
+          localWrap.classList.remove("speaking");
+          localWrap.classList.remove("own-speaking");
+          splitLeft.classList.remove("speaking");
+          splitLeft.classList.remove("own-speaking");
+          if(ownGridCell) ownGridCell.classList.remove("speaking");
+        }, 4000);
+        
         if(channel) channel.send({
           type:"broadcast", event:"caption",
           payload:{ text:final.trim(), sourceLang:myLang, name:myName||LANG_LABEL[myLang] }
@@ -2709,7 +2794,6 @@ if (!isAndroid && window._sharedAudioContext) {
         recognitionShouldRun = false;
         dbLog("STT_onerror_PERMISSION_DENIED", "leállítás");
         console.warn("[STT] Engedély megtagadva, leállítás.");
-        // Mobilon: ha nincs engedély, kapcsoljuk ki a mikrofont
         if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){
           micOn = false;
           if(localStream) localStream.getAudioTracks().forEach(t => t.enabled = false);
@@ -2775,10 +2859,8 @@ if (!isAndroid && window._sharedAudioContext) {
     }
   }
 
-  // Mobilon: ha nincs még felhasználói interakció, várjunk egyet
   if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window._userInteracted) {
     dbLog("STT_mobile_waiting_for_tap", "Mobil: várunk egy érintésre a mikrofon gombon");
-    // A mikrofon gomb megnyomása már megtörtént, ezért jelöljük
     window._userInteracted = true;
     createAndStart();
   } else {
@@ -2817,6 +2899,33 @@ async function handleIncomingCaption(payload){
     const sub = (payload.sourceLang&&payload.sourceLang!==myLang)
       ? `„${payload.text}" (${LANG_LABEL[payload.sourceLang]||payload.sourceLang})` : "";
     setSplitIncomingCaption(translated, sub, tagText);
+    
+    // ✨ PARTNER REZGŐ KERET BEKAPCSOL
+    remoteWrap.classList.add("speaking");
+    localWrap.classList.remove("speaking");
+    localWrap.classList.remove("own-speaking");
+    splitRight.classList.add("speaking");
+    splitLeft.classList.remove("speaking");
+    splitLeft.classList.remove("own-speaking");
+    
+    // Multi-peer esetén
+    if(payload.peerId) {
+      document.querySelectorAll(".peer-cell").forEach(cell => {
+        cell.classList.toggle("speaking", cell.dataset.peerId === payload.peerId);
+      });
+      if(ownGridCell) ownGridCell.classList.remove("speaking");
+    }
+    
+    // 7 másodperc múlva kikapcsol (hosszabb, mert a felirat is tovább marad)
+    clearTimeout(window._partnerSpeakingTimer);
+    window._partnerSpeakingTimer = setTimeout(() => {
+      remoteWrap.classList.remove("speaking");
+      splitRight.classList.remove("speaking");
+      document.querySelectorAll(".peer-cell.speaking").forEach(cell => {
+        cell.classList.remove("speaking");
+      });
+    }, 7000);
+    
     // Peer name frissítése
     if(payload.name){
       peers.forEach((p, pid)=>{
@@ -2827,6 +2936,7 @@ async function handleIncomingCaption(payload){
     addHistoryItem(translated, payload.text, false);
   }catch(e){ console.error(e); }
 }
+
 
 function addHistoryItem(main, orig, isOwn){
   const histList = document.getElementById("historyList");
