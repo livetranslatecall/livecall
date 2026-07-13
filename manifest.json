@@ -1,40 +1,3871 @@
-{
-  "name": "Élő Fordító Hívás",
-  "short_name": "FordítóHívás",
-  "description": "Élő videóhívás azonnali felirat-fordítással magyar, angol és orosz nyelv között",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#0d1420",
-  "theme_color": "#0d1420",
-  "orientation": "portrait-primary",
-  "permissions": [
-    "microphone",
-    "camera"
-  ],
-  "icons": [
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ]
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>LiveTranslate Call</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d1420">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- LiveKit Client -->
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0d1420;--panel:#161f30;--panel-2:#1d2942;--line:#293349;
+  --text:#eef2f8;--text-dim:#8b96ab;--teal:#4fd1c5;--amber:#f2a65a;
+  --danger:#e2586b;--green:#48bb78;--purple:#9f7aea;--radius:18px;
 }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;margin:0;}
+body{background:var(--bg);color:var(--text);font-family:'Manrope',system-ui,sans-serif;overflow:hidden;height:100dvh;}
+h1,h2,.brand,.big-code{font-family:'Space Grotesk',system-ui,sans-serif;}
+.screen{display:none;height:100dvh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* ── SETUP ── */
+#setup{
+  align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(circle at 15% 10%,rgba(79,209,197,.14),transparent 45%),
+             radial-gradient(circle at 85% 90%,rgba(242,166,90,.12),transparent 45%),var(--bg);
+  overflow-y:auto;
+}
+.card{width:100%;max-width:440px;background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:28px 24px;}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+.brand{font-size:22px;font-weight:700;letter-spacing:.2px;margin:0;}
+.brand span{color:var(--teal);}
+.tagline{color:var(--text-dim);font-size:13px;margin:0 0 20px;}
+label{display:block;font-size:12px;color:var(--text-dim);margin:14px 0 5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+label .req{color:var(--danger);margin-left:3px;}
+input[type=text],select{
+  width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--text);font-size:15px;font-family:inherit;outline:none;
+  transition:border-color .2s;
+}
+input[type=text]:focus,select:focus{border-color:var(--teal);}
+input.input-error{border-color:var(--danger)!important;animation:shake .3s ease;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+select{
+  appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--text-dim) 50%),
+                   linear-gradient(135deg,var(--text-dim) 50%,transparent 50%);
+  background-position:calc(100% - 18px) center,calc(100% - 13px) center;
+  background-size:5px 5px;background-repeat:no-repeat;
+}
+.row2{display:flex;gap:10px;}
+.row2>div{flex:1;}
+.btn{
+  border:none;border-radius:12px;padding:13px 18px;font-size:14px;font-weight:700;
+  font-family:'Manrope',sans-serif;cursor:pointer;width:100%;margin-top:10px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform .1s,opacity .15s,box-shadow .2s;
+}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:var(--teal);color:#08221f;box-shadow:0 4px 18px rgba(79,209,197,.3);}
+.btn-primary:hover{box-shadow:0 6px 24px rgba(79,209,197,.45);}
+.btn-secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--line);}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn:disabled{opacity:.45;cursor:default;}
+.divider{display:flex;align-items:center;gap:10px;margin:18px 0 4px;color:var(--text-dim);font-size:11px;text-transform:uppercase;letter-spacing:.8px;}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line);}
+.status-line{margin-top:12px;font-size:13px;color:var(--text-dim);text-align:center;min-height:18px;}
+
+/* ── ROOM CODE ── */
+#roomCodeDisplay{display:none;text-align:center;margin-top:20px;padding:18px 16px;
+  background:linear-gradient(135deg,rgba(79,209,197,.12),rgba(242,166,90,.08));
+  border:2px solid var(--teal);border-radius:20px;}
+.share-label{font-size:13px;color:var(--text-dim);margin-bottom:10px;font-weight:600;}
+.code-badge{
+  display:inline-block;
+  background:linear-gradient(135deg,#0a3330,#1a2a10);
+  border:3px solid var(--teal);
+  color:#00ffea;
+  padding:16px 32px;border-radius:16px;
+  font-weight:800;letter-spacing:10px;font-size:38px;
+  font-family:'Space Grotesk',monospace;
+  text-shadow:0 0 20px rgba(79,209,197,.8),0 0 40px rgba(79,209,197,.4);
+  box-shadow:0 0 30px rgba(79,209,197,.35),inset 0 0 20px rgba(79,209,197,.08);
+  margin-bottom:10px;
+}
+
+/* UI Language selector in setup */
+.ui-lang-row{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+.ui-lang-btn{flex:1;min-width:60px;padding:8px 4px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text-dim);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center;}
+.ui-lang-btn.active{background:var(--teal);color:#08221f;border-color:var(--teal);}
+
+/* ── CALL SCREEN ── */
+#call{background:#000;position:relative;}
+
+/* ══ LAPTOP SPLIT VIEW ══ */
+.split-view{display:none;width:100%;height:100%;flex-direction:row;}
+.split-panel{flex:1;position:relative;overflow:hidden;background:#111;display:flex;flex-direction:column;}
+.split-panel:first-child{border-right:3px solid var(--teal);}
+.split-panel video{width:100%;height:100%;object-fit:cover;display:block;}
+.split-label{
+  position:absolute;top:0;left:0;right:0;
+  padding:14px 18px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.75),transparent);
+  display:flex;align-items:center;gap:10px;z-index:3;
+}
+.split-name-badge{background:rgba(79,209,197,.2);border:1px solid rgba(79,209,197,.5);color:var(--teal);font-weight:700;font-size:13px;padding:5px 12px;border-radius:20px;backdrop-filter:blur(4px);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.split-lang-badge{background:rgba(242,166,90,.15);border:1px solid rgba(242,166,90,.4);color:var(--amber);font-size:12px;font-weight:700;padding:4px 10px;border-radius:12px;}
+.split-caption{position:absolute;bottom:90px;left:0;right:0;padding:0 20px;z-index:4;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;}
+.split-waiting{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2;background:rgba(0,0,0,.6);gap:14px;}
+.split-waiting-icon{font-size:52px;opacity:.5;}
+.split-waiting-text{color:var(--text-dim);font-size:15px;}
+
+/* ── CALL CODE PILL ── */
+.call-code-pill{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  z-index:20;
+  background:linear-gradient(135deg,rgba(10,30,26,.92),rgba(10,20,40,.92));
+  border:2px solid var(--teal);border-top:none;border-radius:0 0 16px 16px;
+  padding:6px 24px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;
+  backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(79,209,197,.3);
+  cursor:pointer;
+}
+.call-code-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;font-weight:600;}
+.call-code-value{font-family:'Space Grotesk',monospace;font-size:28px;font-weight:800;letter-spacing:8px;color:#00ffea;text-shadow:0 0 14px rgba(79,209,197,.9),0 0 30px rgba(79,209,197,.5);}
+
+/* ── NAME BADGE ── */
+.call-name-banner{
+  position:absolute;top:0;left:0;z-index:15;
+  background:rgba(13,20,32,.82);
+  border-right:2px solid rgba(79,209,197,.4);
+  border-bottom:2px solid rgba(79,209,197,.4);
+  border-radius:0 0 14px 0;
+  padding:calc(env(safe-area-inset-top,0px)+10px) 14px 10px;
+  display:flex;flex-direction:column;gap:4px;
+  min-width:100px;max-width:160px;
+  backdrop-filter:blur(8px);
+}
+.call-name-text{
+  font-size:14px;font-weight:700;color:var(--teal);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  line-height:1.4;
+}
+.call-name-lang{
+  font-size:11px;color:var(--text-dim);
+  white-space:nowrap;line-height:1.4;
+  background:rgba(79,209,197,.1);
+  border:1px solid rgba(79,209,197,.25);
+  border-radius:6px;padding:2px 7px;
+  display:inline-block;width:fit-content;
+}
+  
+/* Draggable video windows */
+.vid-wrap{
+  position:absolute;border-radius:16px;overflow:hidden;
+  border:2px solid rgba(255,255,255,.2);background:#111;
+  cursor:grab;user-select:none;touch-action:none;z-index:5;
+  box-shadow:0 8px 32px rgba(0,0,0,.6);transition:border-color .2s;
+}
+.vid-wrap:active{cursor:grabbing;border-color:var(--teal);}
+.vid-wrap video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;}
+#localWrap{width:110px;height:150px;right:14px;top:calc(env(safe-area-inset-top,0px)+14px);}
+#remoteWrap{width:100%;height:100%;position:absolute;top:0;left:0;border:none;border-radius:0;cursor:default;z-index:1;}
+
+/* Multi-peer grid (3+ fő) */
+#multiGrid{
+  display:none;width:100%;height:100%;
+  flex-wrap:wrap;background:#000;
+}
+.peer-cell{
+  position:relative;background:#111;overflow:hidden;
+  flex:1 1 calc(50% - 2px);min-width:0;min-height:0;
+  border:1px solid rgba(255,255,255,.08);
+}
+.peer-cell video{width:100%;height:100%;object-fit:cover;display:block;}
+.peer-cell-label{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:6px 10px;
+  background:linear-gradient(to top,rgba(0,0,0,.8),transparent);
+  font-size:12px;font-weight:700;color:var(--teal);
+}
+
+/* zoom controls */
+.zoom-ctrl{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);display:flex;gap:4px;opacity:0;transition:opacity .25s;pointer-events:none;}
+.vid-wrap:hover .zoom-ctrl,.vid-wrap.show-ctrl .zoom-ctrl{opacity:1;pointer-events:auto;}
+.zoom-btn{width:26px;height:26px;border-radius:50%;border:none;background:rgba(0,0,0,.65);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+
+.top-bar{
+  position:absolute;top:0;left:0;right:0;
+  padding:calc(env(safe-area-inset-top,0px)+12px) 16px 44px;
+  display:flex;justify-content:space-between;align-items:flex-start;z-index:6;
+  background:linear-gradient(to bottom,rgba(0,0,0,.6),transparent);pointer-events:none;
+}
+.top-bar>*{pointer-events:auto;}
+.room-pill{background:rgba(20,26,40,.75);backdrop-filter:blur(6px);padding:6px 12px;border-radius:20px;font-size:12px;color:var(--text-dim);}
+.top-right{display:flex;gap:8px;align-items:center;}
+.lang-pill{background:rgba(79,209,197,.18);color:var(--teal);border:1px solid rgba(79,209,197,.4);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;}
+.net-pill{background:rgba(20,26,40,.75);backdrop-filter:blur(6px);padding:6px 10px;border-radius:20px;font-size:11px;display:flex;align-items:center;gap:5px;cursor:pointer;transition:background .15s;}
+.net-pill:hover{background:rgba(79,209,197,.15);}
+.net-dot{width:8px;height:8px;border-radius:50%;background:var(--green);}
+.net-dot.warn{background:var(--amber);}
+.net-dot.bad{background:var(--danger);}
+.rec-pill{background:rgba(226,88,107,.25);color:var(--danger);border:1px solid rgba(226,88,107,.4);padding:6px 10px;border-radius:20px;font-size:11px;font-weight:700;display:none;animation:recpulse 1.2s infinite;}
+@keyframes recpulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+
+/* ── STATS GRAPH OVERLAY ── */
+#statsGraphOverlay{
+  position:absolute;top:64px;right:14px;
+  background:rgba(13,20,32,.94);backdrop-filter:blur(10px);
+  border:1px solid var(--line);border-radius:16px;
+  padding:12px 14px;z-index:20;display:none;
+  min-width:260px;
+}
+#statsGraphOverlay.open{display:block;}
+#statsGraphOverlay h3{font-size:12px;color:var(--text-dim);margin:0 0 8px;text-transform:uppercase;letter-spacing:.6px;}
+#rttCanvas,#bwCanvas{
+  width:100%;height:60px;border-radius:8px;
+  background:var(--panel-2);display:block;margin-bottom:8px;
+}
+.graph-legend{display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-bottom:6px;}
+.graph-legend span{font-weight:700;}
+.graph-legend .val-teal{color:var(--teal);}
+.graph-legend .val-amber{color:var(--amber);}
+.stats-close{background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;float:right;margin-top:-4px;}
+
+/* Captions */
+#captionWrap{
+  position:absolute;left:0;right:0;bottom:100px;padding:0 16px;z-index:7;
+  display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;
+}
+.caption-box{
+  max-width:94%;background:rgba(13,20,32,.85);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:12px 16px;
+  text-align:center;transition:opacity .3s,transform .3s;
+}
+.caption-main{font-size:19px;font-weight:700;line-height:1.35;color:var(--text);}
+.caption-sub{font-size:12px;color:var(--text-dim);margin-top:4px;font-style:italic;}
+.caption-tag{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--amber);font-weight:700;margin-bottom:4px;}
+
+
+
+/* Emoji overlay */
+#emojiOverlay{position:absolute;inset:0;z-index:8;pointer-events:none;overflow:hidden;}
+.emoji-float{position:absolute;font-size:32px;animation:floatUp 2.8s ease-out forwards;}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1);}80%{opacity:.8;}100%{opacity:0;transform:translateY(-55vh) scale(1.4);}}
+
+/* ══ CONTROLS ══ */
+.controls{
+  position:absolute;bottom:0;left:0;right:0;z-index:9;
+  padding:10px 10px calc(env(safe-area-inset-bottom,0px)+12px);
+  display:flex;justify-content:center;gap:8px;align-items:flex-end;flex-wrap:nowrap;
+  background:linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,.4) 70%,transparent 100%);
+}
+.ctrl-btn{
+  position:relative;
+  width:52px;height:52px;border-radius:16px;border:none;
+  background:rgba(255,255,255,.06);color:var(--text);font-size:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  cursor:pointer;backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.1);
+  transition:background .18s,transform .12s,border-color .18s,box-shadow .18s;
+  flex-shrink:0;overflow:visible;
+}
+.ctrl-btn:active{transform:scale(.92);}
+.ctrl-btn .btn-icon{font-size:20px;line-height:1;display:block;}
+.ctrl-btn .btn-label{font-size:9px;font-weight:700;letter-spacing:.3px;color:var(--text-dim);text-transform:uppercase;line-height:1;white-space:nowrap;}
+.ctrl-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);}
+.ctrl-btn.off{background:rgba(226,88,107,.2);border-color:var(--danger);color:var(--danger);}
+.ctrl-btn.off .btn-label{color:var(--danger);}
+.ctrl-btn.end{background:linear-gradient(135deg,#c0283e,#e2586b);border-color:transparent;width:58px;height:58px;border-radius:50%;box-shadow:0 4px 20px rgba(226,88,107,.5);margin-bottom:4px;}
+.ctrl-btn.end:hover{box-shadow:0 6px 28px rgba(226,88,107,.7);}
+.ctrl-btn.end .btn-icon{font-size:22px;}
+.ctrl-btn.active-teal{background:rgba(79,209,197,.2);border-color:var(--teal);}
+.ctrl-btn.active-teal .btn-label{color:var(--teal);}
+.ctrl-btn.active-purple{background:rgba(159,122,234,.2);border-color:var(--purple);}
+.ctrl-btn.active-purple .btn-label{color:var(--purple);}
+.ctrl-btn.active-amber{background:rgba(242,166,90,.2);border-color:var(--amber);}
+.ctrl-btn.active-amber .btn-label{color:var(--amber);}
+
+/* Reaction bar */
+.react-bar{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(22,31,48,.95);backdrop-filter:blur(16px);border:1px solid var(--line);border-radius:40px;padding:10px 16px;display:none;gap:10px;z-index:10;box-shadow:0 8px 28px rgba(0,0,0,.5);}
+.react-bar.open{display:flex;}
+.react-emoji{font-size:26px;cursor:pointer;padding:4px 6px;border-radius:10px;transition:transform .15s,background .15s;}
+.react-emoji:hover{background:rgba(255,255,255,.1);transform:scale(1.25);}
+.react-emoji:active{transform:scale(1.4);}
+
+/* Language switch menu */
+.lang-switch-menu{position:absolute;bottom:84px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px;display:none;z-index:11;box-shadow:0 10px 30px rgba(0,0,0,.5);min-width:180px;}
+.lang-switch-menu.open{display:block;}
+.lang-switch-menu button{display:block;width:100%;text-align:left;padding:10px 14px;background:none;border:none;color:var(--text);font-size:14px;border-radius:8px;cursor:pointer;}
+.lang-switch-menu button:hover{background:var(--panel-2);}
+.lang-switch-menu button.active{color:var(--teal);font-weight:700;}
+
+/* ══ CHAT ══ */
+#chatPanel{
+  position:absolute;right:12px;bottom:90px;width:300px;max-height:55vh;
+  background:rgba(13,20,32,.55);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,.08);border-radius:20px;
+  transform:translateX(calc(100% + 20px));transition:transform .28s cubic-bezier(.4,0,.2,1),opacity .28s;
+  opacity:0;z-index:12;display:flex;flex-direction:column;overflow:hidden;pointer-events:none;
+  height:55vh;
+}
+#chatPanel.open{transform:translateX(0);opacity:1;pointer-events:auto;}
+.chat-head{
+  padding:12px 14px 8px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  display:flex;justify-content:space-between;align-items:center;
+  background:rgba(0,0,0,.2);gap:8px;cursor:grab;
+}
+.chat-head h2{font-size:14px;margin:0;color:var(--text);flex-shrink:0;}
+.chat-opacity-wrap{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  gap:6px;transition:opacity .25s;position:relative;
+}
+.slider-hint{
+  font-size:12px;color:rgba(79,209,197,.6);
+  pointer-events:none;transition:opacity .25s;
+  animation:sliderHint 2s ease-in-out infinite;
+  flex-shrink:0;
+}
+#chatOpacitySlider{
+  width:100%;height:4px;cursor:pointer;accent-color:var(--teal);
+  opacity:0;transition:opacity .25s;position:absolute;
+}
+.chat-head:hover #chatOpacitySlider,
+.chat-head:active #chatOpacitySlider{opacity:1;}
+.chat-head:hover .slider-hint,
+.chat-head:active .slider-hint{opacity:0;}
+@keyframes sliderHint{
+  0%,100%{opacity:.3;}
+  50%{opacity:.9;}
+}
+.chat-close{background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:6px;flex-shrink:0;}
+.chat-close:hover{background:rgba(255,255,255,.1);color:var(--text);}
+#chatMessages{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent;min-height:0;max-height:100%;overscroll-behavior:contain;}#chatMessages::-webkit-scrollbar{width:4px;}
+#chatMessages::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px;}
+.msg{max-width:100%;}
+.msg.me{align-self:flex-end;text-align:right;}
+.msg-bubble{background:rgba(255,255,255,.08);border-radius:12px;padding:7px 11px;font-size:13px;word-break:break-word;border:1px solid rgba(255,255,255,.08);}
+.msg.me .msg-bubble{background:rgba(79,209,197,.25);color:#e0fff8;border-color:rgba(79,209,197,.4);}
+.msg:not(.me) .msg-bubble{background:rgba(242,166,90,.2);color:#fff3e0;border-color:rgba(242,166,90,.35);}
+.msg-orig{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;font-style:italic;}
+.msg-file{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,.08);border-radius:12px;font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,.12);}
+.msg-file:hover{border-color:var(--teal);}
+.msg-time{font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;}
+.chat-input-row{display:flex;gap:6px;padding:8px 10px;border-top:1px solid rgba(255,255,255,.08);align-items:center;background:rgba(0,0,0,.2);}
+.chat-input-row input{flex:1;padding:8px 12px;border-radius:16px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.08);color:var(--text);font-size:13px;font-family:inherit;outline:none;}
+.chat-input-row input:focus{border-color:rgba(79,209,197,.5);background:rgba(255,255,255,.12);}
+.chat-icon-btn{background:none;border:none;color:rgba(255,255,255,.5);font-size:18px;cursor:pointer;padding:4px;flex-shrink:0;}
+.chat-icon-btn:hover{color:var(--text);}
+.chat-send{background:var(--teal);border:none;width:34px;height:34px;border-radius:50%;color:#08221f;font-size:14px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.chat-e2ee-badge{font-size:10px;color:var(--green);text-align:center;padding:4px;opacity:.7;}
+/* Stats text overlay */
+#statsOverlay{
+  position:absolute;top:70px;left:14px;background:rgba(13,20,32,.88);
+  backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:12px;
+  padding:10px 14px;font-size:11px;color:var(--text-dim);z-index:7;display:none;min-width:180px;
+}
+#statsOverlay.open{display:block;}
+.stat-row{display:flex;justify-content:space-between;gap:14px;margin-bottom:3px;}
+.stat-val{color:var(--teal);font-weight:700;}
+
+/* ── SHARE LINK BOX ── */
+#shareLinkBox{
+  display:none;background:linear-gradient(135deg,rgba(79,209,197,.1),rgba(159,122,234,.08));
+  border:1px solid rgba(79,209,197,.35);border-radius:14px;padding:12px 14px;margin-top:12px;
+}
+#shareLinkBox .link-label{font-size:11px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.link-row{display:flex;gap:6px;align-items:center;}
+.link-input{flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--teal);font-size:12px;font-family:'Space Grotesk',monospace;outline:none;min-width:0;}
+.link-copy-btn{padding:8px 12px;border-radius:8px;border:none;background:var(--teal);color:#08221f;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.link-share-btn{padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-size:14px;cursor:pointer;flex-shrink:0;}
+
+/* ── HANGUP MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);z-index:100;display:none;align-items:center;justify-content:center;padding:24px;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:28px 24px;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.modal-icon{font-size:48px;margin-bottom:12px;}
+.modal-title{font-size:20px;font-weight:700;margin-bottom:6px;font-family:'Space Grotesk',sans-serif;}
+.modal-sub{font-size:13px;color:var(--text-dim);margin-bottom:22px;line-height:1.5;}
+.modal-btns{display:flex;gap:10px;}
+.modal-btns .btn{margin-top:0;}
+
+/* ── PARTICIPANTS PANEL ── */
+#participantsPanel{
+  position:absolute;right:12px;top:70px;
+  background:rgba(13,20,32,.9);backdrop-filter:blur(12px);
+  border:1px solid var(--line);border-radius:14px;
+  padding:10px 12px;z-index:13;display:none;min-width:160px;
+  max-height:220px;overflow-y:auto;
+}
+#participantsPanel.open{display:block;}
+#participantsPanel h3{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin:0 0 8px;}
+.participant-item{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;}
+.participant-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.participant-name{font-weight:600;color:var(--text);}
+.participant-lang{font-size:10px;color:var(--text-dim);}
+
+/* ── FORDÍTÁS STÁTUSZ BANNER ── */
+#translationStatusBanner{
+  position:fixed;bottom:0;left:0;right:0;z-index:200;
+  padding:10px 20px;font-size:13px;font-weight:600;text-align:center;
+  transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+  pointer-events:none;line-height:1.5;
+}
+#translationStatusBanner.show{transform:translateY(0);}
+#translationStatusBanner.fallback{background:linear-gradient(90deg,rgba(242,166,90,.95),rgba(249,115,22,.95));color:#1a0a00;border-top:2px solid var(--amber);}
+#translationStatusBanner.restored{background:linear-gradient(90deg,rgba(72,187,120,.95),rgba(79,209,197,.95));color:#001a0e;border-top:2px solid var(--green);}
+
+/* Admin gomb */
+.admin-link{display:block;text-align:center;margin-top:16px;font-size:12px;color:var(--text-dim);text-decoration:none;padding:8px;border-radius:10px;transition:color .15s,background .15s;}
+.admin-link:hover{color:var(--teal);background:rgba(79,209,197,.08);}
+
+
+#nameError{
+  color:var(--danger);
+  min-height:20px;
+  margin-top:6px;
+  font-size:13px;
+  font-weight:600;
+  text-align:center;
+  padding:0 8px;
+}
+  
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+
+/* ══ RESPONSIVE ══ */
+@media(min-width:720px){
+  .split-view{display:flex;}
+  #remoteWrap,#localWrap{display:none!important;}
+  .room-pill{display:none;}
+  #captionWrap{bottom:90px;}
+  #chatPanel{width:320px;}
+  .ctrl-btn{width:54px;height:54px;}
+  .ctrl-btn.end{width:62px;height:62px;}
+  .caption-main{font-size:23px;}
+}
+@media(max-width:719px){
+  .split-view{display:none!important;}
+  #remoteWrap,#localWrap{display:block!important;}
+  #localWrap{width:110px;height:150px;}
+#chatPanel{right:0!important;bottom:0!important;left:auto!important;top:auto!important;width:100%;max-height:30vh;height:30vh;border-radius:20px 20px 0 0;transform:translateY(100%);}  #chatPanel.open{transform:translateY(0);}
+  .chat-head{cursor:default!important;touch-action:none!important;pointer-events:none!important;}
+  .chat-head h2,.chat-head .chat-close,#chatOpacitySlider,.slider-hint{pointer-events:auto!important;}
+  .call-code-value{font-size:20px;letter-spacing:5px;}
+  .controls{flex-wrap:wrap;gap:6px;}
+  .ctrl-btn{width:46px;height:46px;}
+  .ctrl-btn.end{width:54px;height:54px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     SETUP SCREEN
+═══════════════════════════════════════════════ -->
+<div id="setup" class="screen active">
+  <div class="card">
+    <div class="card-top">
+      <div>
+        <div class="brand">LiveTranslate <span>Call</span></div>
+        <p class="tagline" data-i18n="tagline">Videóhívás menet közbeni fordítással</p>
+      </div>
+    </div>
+
+    <!-- UI Language chooser — bővített 13 nyelvvel -->
+    <div class="ui-lang-row" id="uiLangRow">
+      <button class="ui-lang-btn active" data-uilang="hu">🇭🇺 HU</button>
+      <button class="ui-lang-btn" data-uilang="en">🇬🇧 EN</button>
+      <button class="ui-lang-btn" data-uilang="ru">🇷🇺 RU</button>
+      <button class="ui-lang-btn" data-uilang="de">🇩🇪 DE</button>
+      <button class="ui-lang-btn" data-uilang="fr">🇫🇷 FR</button>
+      <button class="ui-lang-btn" data-uilang="es">🇪🇸 ES</button>
+      <button class="ui-lang-btn" data-uilang="it">🇮🇹 IT</button>
+      <button class="ui-lang-btn" data-uilang="pt">🇵🇹 PT</button>
+      <button class="ui-lang-btn" data-uilang="pl">🇵🇱 PL</button>
+      <button class="ui-lang-btn" data-uilang="ro">🇷🇴 RO</button>
+      <button class="ui-lang-btn" data-uilang="uk">🇺🇦 UK</button>
+      <button class="ui-lang-btn" data-uilang="zh">🇨🇳 ZH</button>
+      <button class="ui-lang-btn" data-uilang="ar">🇸🇦 AR</button>
+    </div>
+
+    <label data-i18n="labelName">Neved <span class="req">*</span></label>
+    <input type="text" id="myName" data-i18n-placeholder="phName">
+    <div class="status-line" id="nameError" style="color:var(--danger);min-height:16px;margin-top:4px;"></div>
+
+    <label data-i18n="labelSpeakLang">Milyen nyelven beszélsz / olvasol?</label>
+    <select id="myLang">
+      <option value="hu">🇭🇺 Magyar — Hungarian</option>
+      <option value="en">🇬🇧 English — Angol</option>
+      <option value="ru">🇷🇺 Русский — Orosz</option>
+      <option value="de">🇩🇪 Deutsch — Német</option>
+      <option value="fr">🇫🇷 Français — Francia</option>
+      <option value="es">🇪🇸 Español — Spanyol</option>
+      <option value="it">🇮🇹 Italiano — Olasz</option>
+      <option value="pt">🇵🇹 Português — Portugál</option>
+      <option value="pl">🇵🇱 Polski — Lengyel</option>
+      <option value="ro">🇷🇴 Română — Román</option>
+      <option value="uk">🇺🇦 Українська — Ukrán</option>
+      <option value="zh">🇨🇳 中文 — Kínai</option>
+      <option value="ar">🇸🇦 العربية — Arab</option>
+    </select>
+
+    <div class="divider" data-i18n="divRoom">szoba</div>
+
+    <button class="btn btn-primary" id="createRoomBtn">
+  <span>📞</span><span data-i18n="btnCreate">Új hívás indítása</span>
+</button>
+
+<button class="btn btn-primary" id="enterRoomBtn" style="display:none; margin-top:10px;">
+  <span>🚪</span><span data-i18n="btnEnter">Belépés a hívásba</span>
+</button>
+    <div class="row2" style="margin-top:14px;">
+      <div>
+        <input type="text" id="joinCodeInput" data-i18n-placeholder="phCode" maxlength="6" style="text-transform:uppercase;font-size:18px;font-weight:700;letter-spacing:4px;text-align:center;">
+      </div>
+    </div>
+    <button class="btn btn-secondary" id="joinRoomBtn">
+      <span>🔗</span><span data-i18n="btnJoin">Csatlakozás kóddal</span>
+    </button>
+
+    <div id="roomCodeDisplay">
+      <div class="share-label" data-i18n="shareCode">Küldd el ezt a kódot:</div>
+      <div class="big-code code-badge" id="bigRoomCode">------</div>
+      <button class="btn btn-secondary" id="copyCodeBtn" style="margin-top:4px;">
+        <span>📋</span><span data-i18n="btnCopy">Kód másolása</span>
+      </button>
+    </div>
+
+    <!-- Híváslink mező -->
+    <div id="shareLinkBox">
+      <div class="link-label" data-i18n="shareLinkLabel">Megosztható link</div>
+      <div class="link-row">
+        <input class="link-input" type="text" id="shareLinkInput" readonly>
+        <button class="link-copy-btn" id="linkCopyBtn" data-i18n="btnCopy">Másolás</button>
+        <button class="link-share-btn" id="linkShareBtn" title="Megosztás">📤</button>
+      </div>
+    </div>
+
+    <div class="status-line" id="setupStatus" data-i18n="setupStatusDefault"></div>
+   
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     CALL SCREEN
+═══════════════════════════════════════════════ -->
+<div id="call" class="screen">
+
+  <!-- ── LAPTOP SPLIT VIEW ── -->
+  <div class="split-view" id="splitView">
+    <div class="split-panel" id="splitLeft">
+      <video id="splitLocalVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
+      <div class="split-label">
+        <div class="split-name-badge" id="splitMyName">Te</div>
+        <div class="split-lang-badge" id="splitMyLang">HU</div>
+      </div>
+      <div class="split-caption" id="splitOwnCaption"></div>
+    </div>
+    <div class="split-panel" id="splitRight">
+      <video id="splitRemoteVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+      <div class="split-label">
+        <div class="split-name-badge" id="splitPartnerName" style="background:rgba(242,166,90,.2);border-color:rgba(242,166,90,.5);color:var(--amber);">Partner</div>
+        <div class="split-lang-badge" id="splitPartnerLang" style="background:rgba(79,209,197,.1);border-color:rgba(79,209,197,.3);color:var(--teal);">--</div>
+      </div>
+      <div class="split-waiting" id="splitWaiting">
+        <div class="split-waiting-icon">⏳</div>
+        <div class="split-waiting-text" data-i18n="waitMsg">Várakozás a másik félre…</div>
+      </div>
+      <div class="split-caption" id="splitIncomingCaption"></div>
+    </div>
+  </div>
+
+  <!-- Multi-peer rács nézet (3+ fő) -->
+  <div id="multiGrid"></div>
+
+  <!-- Room code pill -->
+  <div class="call-code-pill" id="callCodePill">
+    <span class="call-code-label" data-i18n="codePill">KÓD / CODE / КОД</span>
+    <span class="call-code-value" id="callCodeValue">------</span>
+  </div>
+
+  <!-- Name banner — saját név bal felül -->
+<div class="call-name-banner" id="callNameBanner">
+  <span class="call-name-text" id="callNameText">—</span>
+  <span class="call-name-lang" id="callNameLang">Magyar</span>
+</div>
+
+<div class="call-name-banner" id="partnerNameBanner" style="left:auto;right:0;border-radius:0 0 0 14px;border-left:2px solid rgba(242,166,90,.4);border-right:none;border-bottom:2px solid rgba(242,166,90,.4);background:rgba(13,20,32,.82);">
+  <span class="call-name-text" id="partnerNameText" style="color:var(--amber);">—</span>
+  <span class="call-name-lang" id="partnerNameLang" style="color:var(--amber);background:rgba(242,166,90,.1);border-color:rgba(242,166,90,.25);">--</span>
+</div>
+
+  <!-- Remote video (mobile) -->
+  <div class="vid-wrap" id="remoteWrap">
+    <video id="remoteVideo" autoplay playsinline></video>
+    <div class="zoom-ctrl">
+      <button class="zoom-btn" id="remoteZoomOut">−</button>
+      <button class="zoom-btn" id="remoteZoomIn">+</button>
+    </div>
+  </div>
+
+  <!-- Local video (mobile) -->
+  <div class="vid-wrap" id="localWrap">
+    <video id="localVideo" autoplay playsinline muted></video>
+    <div class="zoom-ctrl">
+      <button class="zoom-btn" id="localZoomOut">−</button>
+      <button class="zoom-btn" id="localZoomIn">+</button>
+    </div>
+  </div>
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="room-pill" id="roomPill">------</div>
+    <div class="top-right">
+      <div class="rec-pill" id="recPill">⏺ REC</div>
+      <div class="net-pill" id="netPill"><div class="net-dot" id="netDot"></div><span id="netLabel">--</span></div>
+      <div class="lang-pill" id="langPill">HU</div>
+    </div>
+  </div>
+
+  <!-- Captions -->
+  <div id="captionWrap">
+    <div class="caption-box" id="incomingCaptionBox" style="display:none;">
+      <div class="caption-tag" id="incomingTag">PARTNER</div>
+      <div class="caption-main" id="incomingMain"></div>
+      <div class="caption-sub" id="incomingSub"></div>
+    </div>
+    <div class="caption-box" id="ownCaptionBox" style="display:none;opacity:.75;">
+      <div class="caption-tag" data-i18n="captionYou">TE MONDTAD</div>
+      <div class="caption-main" id="ownMain" style="font-size:15px;"></div>
+    </div>
+  </div>
+
+  
+
+<!-- History panel -->
+<div id="historyPanel" style="display:none;position:absolute;left:14px;bottom:100px;z-index:7;background:rgba(13,20,32,.92);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:16px;padding:12px 14px;width:280px;max-height:220px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent;">
+  <div id="historyPanelHead" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:grab;">
+    <span style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;font-weight:700;">📝 Felirat előzmények</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span id="histSliderHint" style="font-size:12px;color:rgba(79,209,197,.6);animation:sliderHint 2s ease-in-out infinite;">◈</span>
+      <input type="range" id="histOpacitySlider" min="0.05" max="1" step="0.05" value="0.92" style="width:60px;height:4px;cursor:pointer;accent-color:var(--teal);opacity:0;transition:opacity .25s;position:absolute;right:40px;">
+      <button onclick="document.getElementById('historyPanel').style.display='none'" style="background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;line-height:1;pointer-events:auto;">✕</button>
+    </div>
+  </div>
+  <div id="historyList"></div>
+</div>
+
+
+<!-- Emoji overlay -->
+<div id="emojiOverlay"></div>
+
+  <!-- Stats graph overlay -->
+  <div id="statsGraphOverlay">
+    <button class="stats-close" id="statsGraphClose">✕</button>
+    <h3>📊 Hálózat valós időben</h3>
+    <div class="graph-legend">
+      <span>RTT: <span class="val-teal" id="graphRttVal">--</span></span>
+      <span>BW: <span class="val-amber" id="graphBwVal">--</span></span>
+    </div>
+    <canvas id="rttCanvas" width="240" height="60"></canvas>
+    <div class="graph-legend" style="margin-top:0;">
+      <span style="font-size:9px;color:var(--teal);">■ RTT (ms)</span>
+      <span style="font-size:9px;color:var(--amber);">■ Sávszélesség (KB/s)</span>
+    </div>
+    <canvas id="bwCanvas" width="240" height="50"></canvas>
+  </div>
+
+  <!-- Stats text overlay -->
+  <div id="statsOverlay">
+    <div class="stat-row"><span data-i18n="statRtt">RTT</span><span class="stat-val" id="statRtt">--</span></div>
+    <div class="stat-row"><span data-i18n="statJitter">Jitter</span><span class="stat-val" id="statJitter">--</span></div>
+    <div class="stat-row"><span data-i18n="statPacket">Csomagveszteség</span><span class="stat-val" id="statPacket">--</span></div>
+    <div class="stat-row"><span data-i18n="statBw">Sávszélesség</span><span class="stat-val" id="statBw">--</span></div>
+<div class="stat-row"><span>Chat E2EE</span><span class="stat-val" id="statE2ee" style="color:var(--green)">--</span></div>  </div>
+
+  <!-- Participants panel -->
+  <div id="participantsPanel">
+    <h3 data-i18n="participants">Résztvevők</h3>
+    <div id="participantsList"></div>
+  </div>
+
+  <!-- Reaction bar -->
+  <div class="react-bar" id="reactBar">
+    <span class="react-emoji" data-emoji="👍">👍</span>
+    <span class="react-emoji" data-emoji="❤️">❤️</span>
+    <span class="react-emoji" data-emoji="😂">😂</span>
+    <span class="react-emoji" data-emoji="😮">😮</span>
+    <span class="react-emoji" data-emoji="👏">👏</span>
+    <span class="react-emoji" data-emoji="🔥">🔥</span>
+  </div>
+
+  <!-- Language switch menu -->
+  <div class="lang-switch-menu" id="langMenu">
+    <button data-lang="hu">🇭🇺 Magyar</button>
+    <button data-lang="en">🇬🇧 English</button>
+    <button data-lang="ru">🇷🇺 Русский</button>
+    <button data-lang="de">🇩🇪 Deutsch</button>
+    <button data-lang="fr">🇫🇷 Français</button>
+    <button data-lang="es">🇪🇸 Español</button>
+    <button data-lang="it">🇮🇹 Italiano</button>
+    <button data-lang="pt">🇵🇹 Português</button>
+    <button data-lang="pl">🇵🇱 Polski</button>
+    <button data-lang="ro">🇷🇴 Română</button>
+    <button data-lang="uk">🇺🇦 Українська</button>
+    <button data-lang="zh">🇨🇳 中文</button>
+    <button data-lang="ar">🇸🇦 العربية</button>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="ctrl-btn" id="micBtn">
+      <span class="btn-icon">🎙️</span>
+      <span class="btn-label" data-i18n="ctrlMic">Mikro</span>
+    </button>
+    <button class="ctrl-btn" id="camBtn">
+      <span class="btn-icon">📷</span>
+      <span class="btn-label" data-i18n="ctrlCam">Kamera</span>
+    </button>
+    
+    
+    <button class="ctrl-btn end" id="hangupBtn">
+      <span class="btn-icon">✖</span>
+    </button>
+    <button class="ctrl-btn" id="recBtn">
+      <span class="btn-icon">⏺</span>
+      <span class="btn-label" data-i18n="ctrlRec">Felvétel</span>
+    </button>
+    
+    <button class="ctrl-btn" id="langBtn">
+      <span class="btn-icon">🌐</span>
+      <span class="btn-label" data-i18n="ctrlLang">Nyelv</span>
+    </button>
+   
+    <button class="ctrl-btn" id="chatBtn">
+      <span class="btn-icon">💬</span>
+      <span class="btn-label" data-i18n="ctrlChat">Chat</span>
+    </button>
+    <button class="ctrl-btn" id="statsBtn">
+      <span class="btn-icon">📊</span>
+      <span class="btn-label" data-i18n="ctrlStats">Statiszt.</span>
+    </button>
+    <button class="ctrl-btn" id="pipBtn">
+  <span class="btn-icon">⧉</span>
+  <span class="btn-label" data-i18n="ctrlPip">PiP</span>
+</button>
+<button class="ctrl-btn" id="histBtn">
+  <span class="btn-icon">📝</span>
+  <span class="btn-label" data-i18n="ctrlHist">Előzmény</span>
+</button>
+    <button class="ctrl-btn" id="peersBtn">
+      <span class="btn-icon">👥</span>
+      <span class="btn-label" data-i18n="ctrlPeers">Tagok</span>
+    </button>
+  </div>
+
+  
+
+  <!-- Chat panel -->
+  <div id="chatPanel">
+    <div class="chat-head">
+  <h2 data-i18n="chatTitle">💬 Chat</h2>
+  <div class="chat-opacity-wrap">
+  <span class="slider-hint">◈</span>
+  <input type="range" id="chatOpacitySlider" min="0.05" max="1" step="0.05" value="0.55">
+</div>
+  <button class="chat-close" id="chatCloseBtn">✕</button>
+</div>
+    <div class="chat-e2ee-badge">🔐 Chat: end-to-end titkosított · Videó/audio: szerver szintű</div>
+    <div id="chatMessages"></div>
+    <div class="chat-input-row">
+      <button class="chat-icon-btn" id="fileBtn" title="Send file">📎</button>
+      <input type="text" id="chatInput" data-i18n-placeholder="phChat">
+      <button class="chat-send" id="chatSendBtn">➤</button>
+    </div>
+    <input type="file" id="fileInput" style="display:none;" multiple>
+  </div>
+
+</div><!-- end #call -->
+
+<!-- ══ HANGUP MODAL ══ -->
+<div class="modal-overlay" id="hangupModal">
+  <div class="modal-box">
+    <div class="modal-icon">📵</div>
+    <div class="modal-title" data-i18n="modalTitle">Befejezed a hívást?</div>
+    <div class="modal-sub" data-i18n="modalSub">A kapcsolat megszakad és nem lehet folytatni.</div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" id="modalCancelBtn" style="margin-top:0;">
+        <span data-i18n="modalNo">Mégsem</span>
+      </button>
+      <button class="btn btn-danger" id="modalConfirmBtn" style="margin-top:0;">
+        <span data-i18n="modalYes">Igen, befejezem</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Fordítás státusz banner -->
+<div id="translationStatusBanner">
+  <button id="bannerCloseBtn" onclick="this.parentElement.className=''" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:inherit;font-size:18px;font-weight:700;cursor:pointer;opacity:0.7;line-height:1;">✕</button>
+  <span id="bannerText"></span>
+</div>
+
+<script type="module">
+/* =========================================================================
+   KONFIGURÁCIÓ
+   ========================================================================= */
+const SUPABASE_URL      = "https://yyexlblyepkxyqqbgpvu.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZXhsYmx5ZXBreHlxcWJncHZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTE5MjAsImV4cCI6MjA5OTEyNzkyMH0.qG1iDFLarL_OCAuJVnpsb6uOUMRNvUyWdpxYw7C5TDs";
+  // ─── LIVEKIT KONFIGURÁCIÓ ───
+const LIVEKIT_URL = "wss://videolive-d0o40xt9.livekit.cloud";
+
+const LIVEKIT_API_KEY = ""; // Nem kell a kliensnek — a token Edge Function-ben generálódik
+// LIVEKIT_API_SECRET szándékosan nincs itt — csak az Edge Function ismeri
+const ICE_SERVERS = [
+  {urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"},
+  {urls:"stun:freestun.net:3478"},
+  {urls:"turn:freestun.net:3478",username:"free",credential:"free"},
+  {urls:"turns:freestun.net:5349",username:"free",credential:"free"}
+];
+
+const LANG_LABEL = {
+  hu:"Magyar",en:"English",ru:"Русский",de:"Deutsch",fr:"Français",
+  es:"Español",it:"Italiano",pt:"Português",pl:"Polski",
+  ro:"Română",uk:"Українська",zh:"中文",ar:"العربية"
+};
+const LANG_TAG = {
+  hu:"HU",en:"EN",ru:"RU",de:"DE",fr:"FR",es:"ES",it:"IT",
+  pt:"PT",pl:"PL",ro:"RO",uk:"UK",zh:"ZH",ar:"AR"
+};
+const STT_LOCALE = {
+  hu:"hu-HU",en:"en-US",ru:"ru-RU",de:"de-DE",fr:"fr-FR",
+  es:"es-ES",it:"it-IT",pt:"pt-PT",pl:"pl-PL",
+  ro:"ro-RO",uk:"uk-UA",zh:"zh-CN",ar:"ar-SA"
+};
+
+/* =========================================================================
+   I18N — 13 NYELV
+   ========================================================================= */
+const I18N = {
+  hu:{
+    tagline:"Videóhívás menet közbeni fordítással — 13 nyelv",
+    labelName:"Neved", phName:"pl. Klárika",
+    labelSpeakLang:"Milyen nyelven beszélsz / olvasol?",
+    divRoom:"szoba", btnCreate:"Új hívás indítása", btnJoin:"Csatlakozás kóddal",
+    btnEnter:"Belépés a hívásba",
+    shareLinkMsg:"Küldd el a linket a másik félnek, majd nyomd meg a BELÉPÉS gombot!",
+    setupStatusDefault:"",
+    btnCopy:"Kód másolása", shareCode:"Küldd el ezt a kódot a hívott félnek:",
+    shareLinkLabel:"Megosztható link",
+    phCode:"Kapott kód", phChat:"Írj üzenetet…",
+    captionYou:"TE MONDTAD", chatTitle:"💬 Chat", histTitle:"Felirat előzmények",
+    statRtt:"RTT", statJitter:"Jitter", statPacket:"Csomagveszteség", statBw:"Sávszélesség",
+    waitMsg:"Várakozás a másik félre…", joinMsg:"Csatlakozás…",
+    errPerm:"❌ Nincs engedély a kamerához/mikrofonhoz!",
+    callEnded:"A hívás véget ért.", copyDone:"✅ Másolva",
+    noCode:"Írd be a kapott kódot (4–6 karakter).",
+    nameRequired:"⚠️ A neved megadása kötelező!",
+    screenShare:"Képernyőmegosztás", stopScreen:"Megosztás leállítva",
+    recStart:"Felvétel elindítva", recStop:"Felvétel mentve",
+    fileReceived:"Fájl érkezett", fileSend:"Fájl elküldve",
+    codePill:"KÓD / CODE / КОД",
+    modalTitle:"Befejezed a hívást?",
+    modalSub:"A kapcsolat megszakad és nem lehet visszatérni.",
+    modalNo:"Mégsem", modalYes:"Igen, befejezem",
+    ctrlMic:"Mikro", ctrlCam:"Kamera", ctrlMirror:"Tükör", ctrlScreen:"Képernyő",
+    ctrlOcr:"OCR", ctrlRec:"Felvétel", ctrlReact:"Reakció", ctrlLang:"Nyelv",
+    ctrlHist:"Előzmény", ctrlChat:"Chat", ctrlStats:"Stat.", ctrlPip:"PiP",
+    ctrlPeers:"Tagok", participants:"Résztvevők",
+    ocrOn:"OCR aktív", ocrOff:"OCR kikapcsolva",
+    e2eeActive:"E2EE aktív", e2eePending:"E2EE folyamatban",
+  },
+  en:{
+    tagline:"Video call with live translation — 13 languages",
+    labelName:"Your name", phName:"e.g. Alex",
+    labelSpeakLang:"What language do you speak / read?",
+    divRoom:"room", btnCreate:"Start new call", btnJoin:"Join with code",
+    btnEnter:"Enter the call",
+    shareLinkMsg:"Send the link to the other person, then press the ENTER CALL button!",
+    setupStatusDefault:"",
+    btnCopy:"Copy code", shareCode:"Send this code to the other person:",
+    shareLinkLabel:"Shareable link",
+    phCode:"Received code", phChat:"Type a message…",
+    captionYou:"YOU SAID", chatTitle:"💬 Chat", histTitle:"Caption history",
+    statRtt:"RTT", statJitter:"Jitter", statPacket:"Packet loss", statBw:"Bandwidth",
+    waitMsg:"Waiting for the other person…", joinMsg:"Connecting…",
+    errPerm:"❌ Camera/microphone permission denied!",
+    callEnded:"Call ended.", copyDone:"✅ Copied",
+    noCode:"Enter the received code (4–6 characters).",
+    nameRequired:"⚠️ Your name is required!",
+    screenShare:"Screen sharing", stopScreen:"Sharing stopped",
+    recStart:"Recording started", recStop:"Recording saved",
+    fileReceived:"File received", fileSend:"File sent",
+    codePill:"CODE / KÓD / КОД",
+    modalTitle:"End the call?",
+    modalSub:"The connection will be closed and cannot be resumed.",
+    modalNo:"Cancel", modalYes:"Yes, end call",
+    ctrlMic:"Mic", ctrlCam:"Camera", ctrlMirror:"Mirror", ctrlScreen:"Screen",
+    ctrlOcr:"OCR", ctrlRec:"Record", ctrlReact:"React", ctrlLang:"Lang",
+    ctrlHist:"History", ctrlChat:"Chat", ctrlStats:"Stats", ctrlPip:"PiP",
+    ctrlPeers:"People", participants:"Participants",
+    ocrOn:"OCR active", ocrOff:"OCR off",
+    e2eeActive:"E2EE active", e2eePending:"E2EE pending",
+  },
+  ru:{
+    tagline:"Видеозвонок с живым переводом — 13 языков",
+    labelName:"Ваше имя", phName:"напр. Саша",
+    labelSpeakLang:"На каком языке вы говорите / читаете?",
+    divRoom:"комната", btnCreate:"Начать новый звонок", btnJoin:"Присоединиться по коду",
+    btnEnter:"Войти в звонок",
+    shareLinkMsg:"Отправьте ссылку другому человеку, затем нажмите ВОЙТИ В ЗВОНОК!",
+    setupStatusDefault:"",
+    btnCopy:"Скопировать код", shareCode:"Отправьте этот код собеседнику:",
+    shareLinkLabel:"Ссылка для публикации",
+    phCode:"Полученный код", phChat:"Напишите сообщение…",
+    captionYou:"ВЫ СКАЗАЛИ", chatTitle:"💬 Чат", histTitle:"История субтитров",
+    statRtt:"RTT", statJitter:"Джиттер", statPacket:"Потеря пакетов", statBw:"Пропускная способность",
+    waitMsg:"Ожидание другого участника…", joinMsg:"Подключение…",
+    errPerm:"❌ Нет доступа к камере/микрофону!",
+    callEnded:"Звонок завершён.", copyDone:"✅ Скопировано",
+    noCode:"Введите полученный код (4–6 символов).",
+    nameRequired:"⚠️ Необходимо указать имя!",
+    screenShare:"Демонстрация экрана", stopScreen:"Демонстрация остановлена",
+    recStart:"Запись начата", recStop:"Запись сохранена",
+    fileReceived:"Получен файл", fileSend:"Файл отправлен",
+    codePill:"КОД / CODE / KÓD",
+    modalTitle:"Завершить звонок?",
+    modalSub:"Соединение будет закрыто и не может быть возобновлено.",
+    modalNo:"Отмена", modalYes:"Да, завершить",
+    ctrlMic:"Микро", ctrlCam:"Камера", ctrlMirror:"Зеркало", ctrlScreen:"Экран",
+    ctrlOcr:"OCR", ctrlRec:"Запись", ctrlReact:"Реакция", ctrlLang:"Язык",
+    ctrlHist:"История", ctrlChat:"Чат", ctrlStats:"Стат.", ctrlPip:"PiP",
+    ctrlPeers:"Участники", participants:"Участники",
+    ocrOn:"OCR активен", ocrOff:"OCR выкл.",
+    e2eeActive:"E2EE активен", e2eePending:"E2EE в процессе",
+  },
+  de:{
+    tagline:"Videoanruf mit Echtzeit-Übersetzung — 13 Sprachen",
+    labelName:"Ihr Name", phName:"z.B. Klaus",
+    labelSpeakLang:"Welche Sprache sprechen / lesen Sie?",
+    divRoom:"Raum", btnCreate:"Neuen Anruf starten", btnJoin:"Mit Code beitreten",
+    btnEnter:"Anruf betreten",
+    shareLinkMsg:"Sende den Link an die andere Person und drücke dann ANRUF BETRETEN!",
+    setupStatusDefault:"",
+    btnCopy:"Code kopieren", shareCode:"Diesen Code an die andere Person senden:",
+    shareLinkLabel:"Teilbarer Link",
+    phCode:"Erhaltener Code", phChat:"Nachricht schreiben…",
+    captionYou:"SIE SAGTEN", chatTitle:"💬 Chat", histTitle:"Untertitel-Verlauf",
+    statRtt:"RTT", statJitter:"Jitter", statPacket:"Paketverlust", statBw:"Bandbreite",
+    waitMsg:"Warten auf die andere Person…", joinMsg:"Verbinden…",
+    errPerm:"❌ Kein Zugriff auf Kamera/Mikrofon!",
+    callEnded:"Anruf beendet.", copyDone:"✅ Kopiert",
+    noCode:"Code eingeben (4–6 Zeichen).", nameRequired:"⚠️ Name erforderlich!",
+    screenShare:"Bildschirmfreigabe", stopScreen:"Freigabe gestoppt",
+    recStart:"Aufnahme gestartet", recStop:"Aufnahme gespeichert",
+    fileReceived:"Datei empfangen", fileSend:"Datei gesendet",
+    codePill:"CODE / KÓD / КОД",
+    modalTitle:"Anruf beenden?",
+    modalSub:"Die Verbindung wird geschlossen.",
+    modalNo:"Abbrechen", modalYes:"Ja, beenden",
+    ctrlMic:"Mikro", ctrlCam:"Kamera", ctrlMirror:"Spiegel", ctrlScreen:"Bildschirm",
+    ctrlOcr:"OCR", ctrlRec:"Aufnahme", ctrlReact:"Reaktion", ctrlLang:"Sprache",
+    ctrlHist:"Verlauf", ctrlChat:"Chat", ctrlStats:"Statistik", ctrlPip:"PiP",
+    ctrlPeers:"Personen", participants:"Teilnehmer",
+    ocrOn:"OCR aktiv", ocrOff:"OCR aus",
+    e2eeActive:"E2EE aktiv", e2eePending:"E2EE ausstehend",
+  },
+  fr:{
+    tagline:"Appel vidéo avec traduction en direct — 13 langues",
+    labelName:"Votre nom", phName:"ex. Pierre",
+    labelSpeakLang:"Quelle langue parlez-vous / lisez-vous ?",
+    divRoom:"salle", btnCreate:"Démarrer un appel", btnJoin:"Rejoindre avec un code",
+    btnEnter:"Entrer dans l'appel",
+    shareLinkMsg:"Envoyez le lien à l'autre personne, puis appuyez sur ENTRER DANS L'APPEL!",
+    setupStatusDefault:"",
+    btnCopy:"Copier le code", shareCode:"Envoyez ce code à l'autre personne :",
+    shareLinkLabel:"Lien partageable",
+    phCode:"Code reçu", phChat:"Écrire un message…",
+    captionYou:"VOUS AVEZ DIT", chatTitle:"💬 Chat", histTitle:"Historique des sous-titres",
+    statRtt:"RTT", statJitter:"Gigue", statPacket:"Perte de paquets", statBw:"Bande passante",
+    waitMsg:"En attente de l'autre personne…", joinMsg:"Connexion…",
+    errPerm:"❌ Accès caméra/micro refusé !",
+    callEnded:"Appel terminé.", copyDone:"✅ Copié",
+    noCode:"Entrez le code reçu (4–6 caractères).", nameRequired:"⚠️ Nom requis !",
+    screenShare:"Partage d'écran", stopScreen:"Partage arrêté",
+    recStart:"Enregistrement démarré", recStop:"Enregistrement sauvegardé",
+    fileReceived:"Fichier reçu", fileSend:"Fichier envoyé",
+    codePill:"CODE / KÓD / КОД",
+    modalTitle:"Terminer l'appel ?",
+    modalSub:"La connexion sera fermée.",
+    modalNo:"Annuler", modalYes:"Oui, terminer",
+    ctrlMic:"Micro", ctrlCam:"Caméra", ctrlMirror:"Miroir", ctrlScreen:"Écran",
+    ctrlOcr:"OCR", ctrlRec:"Enreg.", ctrlReact:"Réaction", ctrlLang:"Langue",
+    ctrlHist:"Historique", ctrlChat:"Chat", ctrlStats:"Stats", ctrlPip:"PiP",
+    ctrlPeers:"Membres", participants:"Participants",
+    ocrOn:"OCR actif", ocrOff:"OCR désactivé",
+    e2eeActive:"E2EE actif", e2eePending:"E2EE en cours",
+  },
+  es:{
+    tagline:"Videollamada con traducción en vivo — 13 idiomas",
+    labelName:"Tu nombre", phName:"ej. Carlos",
+    labelSpeakLang:"¿Qué idioma hablas / lees?",
+    divRoom:"sala", btnCreate:"Iniciar llamada", btnJoin:"Unirse con código",
+    btnEnter:"Entrar en la llamada",
+    shareLinkMsg:"Envía el enlace a la otra persona, luego presiona ENTRAR EN LA LLAMADA!",
+    setupStatusDefault:"",
+    btnCopy:"Copiar código", shareCode:"Envía este código a la otra persona:",
+    shareLinkLabel:"Enlace compartible",
+    phCode:"Código recibido", phChat:"Escribe un mensaje…",
+    captionYou:"DIJISTE", chatTitle:"💬 Chat", histTitle:"Historial de subtítulos",
+    statRtt:"RTT", statJitter:"Jitter", statPacket:"Pérdida de paquetes", statBw:"Ancho de banda",
+    waitMsg:"Esperando a la otra persona…", joinMsg:"Conectando…",
+    errPerm:"❌ ¡Sin acceso a cámara/micrófono!",
+    callEnded:"Llamada terminada.", copyDone:"✅ Copiado",
+    noCode:"Introduce el código recibido (4–6 caracteres).", nameRequired:"⚠️ ¡Nombre requerido!",
+    screenShare:"Compartir pantalla", stopScreen:"Compartición detenida",
+    recStart:"Grabación iniciada", recStop:"Grabación guardada",
+    fileReceived:"Archivo recibido", fileSend:"Archivo enviado",
+    codePill:"CÓDIGO / CODE / КОД",
+    modalTitle:"¿Terminar llamada?",
+    modalSub:"La conexión se cerrará.",
+    modalNo:"Cancelar", modalYes:"Sí, terminar",
+    ctrlMic:"Micro", ctrlCam:"Cámara", ctrlMirror:"Espejo", ctrlScreen:"Pantalla",
+    ctrlOcr:"OCR", ctrlRec:"Grabar", ctrlReact:"Reacción", ctrlLang:"Idioma",
+    ctrlHist:"Historial", ctrlChat:"Chat", ctrlStats:"Stats", ctrlPip:"PiP",
+    ctrlPeers:"Miembros", participants:"Participantes",
+    ocrOn:"OCR activo", ocrOff:"OCR desactivado",
+    e2eeActive:"E2EE activo", e2eePending:"E2EE pendiente",
+  },
+  it:{
+    tagline:"Videochiamata con traduzione in tempo reale — 13 lingue",
+    labelName:"Il tuo nome", phName:"es. Marco",
+    labelSpeakLang:"Quale lingua parli / leggi?",
+    divRoom:"stanza", btnCreate:"Inizia chiamata", btnJoin:"Unisciti con codice",
+    btnEnter:"Entra nella chiamata",
+    shareLinkMsg:"Invia il link all'altra persona, poi premi ENTRA NELLA CHIAMATA!",
+    setupStatusDefault:"",
+    btnCopy:"Copia codice", shareCode:"Invia questo codice all'altra persona:",
+    shareLinkLabel:"Link condivisibile",
+    phCode:"Codice ricevuto", phChat:"Scrivi un messaggio…",
+    captionYou:"HAI DETTO", chatTitle:"💬 Chat", histTitle:"Cronologia sottotitoli",
+    statRtt:"RTT", statJitter:"Jitter", statPacket:"Perdita pacchetti", statBw:"Larghezza di banda",
+    waitMsg:"In attesa dell'altra persona…", joinMsg:"Connessione…",
+    errPerm:"❌ Accesso fotocamera/microfono negato!",
+    callEnded:"Chiamata terminata.", copyDone:"✅ Copiato",
+    noCode:"Inserisci il codice ricevuto (4–6 caratteri).", nameRequired:"⚠️ Nome richiesto!",
+    screenShare:"Condivisione schermo", stopScreen:"Condivisione fermata",
+    recStart:"Registrazione avviata", recStop:"Registrazione salvata",
+    fileReceived:"File ricevuto", fileSend:"File inviato",
+    codePill:"CODICE / CODE / КОД",
+    modalTitle:"Termina la chiamata?",
+    modalSub:"La connessione verrà chiusa.",
+    modalNo:"Annulla", modalYes:"Sì, termina",
+    ctrlMic:"Micro", ctrlCam:"Camera", ctrlMirror:"Specchio", ctrlScreen:"Schermo",
+    ctrlOcr:"OCR", ctrlRec:"Registra", ctrlReact:"Reazione", ctrlLang:"Lingua",
+    ctrlHist:"Cronologia", ctrlChat:"Chat", ctrlStats:"Statistiche", ctrlPip:"PiP",
+    ctrlPeers:"Membri", participants:"Partecipanti",
+    ocrOn:"OCR attivo", ocrOff:"OCR disattivato",
+    e2eeActive:"E2EE attivo", e2eePending:"E2EE in corso",
+  },
+  pt:{
+    tagline:"Videochamada com tradução ao vivo — 13 idiomas",
+    labelName:"Seu nome", phName:"ex. João",
+    labelSpeakLang:"Qual idioma você fala / lê?",
+    divRoom:"sala", btnCreate:"Iniciar chamada", btnJoin:"Entrar com código",
+    btnEnter:"Entrar na chamada",
+    shareLinkMsg:"Envie o link para a outra pessoa, depois pressione ENTRAR NA CHAMADA!",
+    setupStatusDefault:"",
+    btnCopy:"Copiar código", shareCode:"Envie este código para a outra pessoa:",
+    shareLinkLabel:"Link compartilhável",
+    phCode:"Código recebido", phChat:"Escreva uma mensagem…",
+    captionYou:"VOCÊ DISSE", chatTitle:"💬 Chat", histTitle:"Histórico de legendas",
+    statRtt:"RTT", statJitter:"Jitter", statPacket:"Perda de pacotes", statBw:"Largura de banda",
+    waitMsg:"Aguardando a outra pessoa…", joinMsg:"Conectando…",
+    errPerm:"❌ Acesso à câmera/microfone negado!",
+    callEnded:"Chamada encerrada.", copyDone:"✅ Copiado",
+    noCode:"Digite o código recebido (4–6 caracteres).", nameRequired:"⚠️ Nome obrigatório!",
+    screenShare:"Compartilhar tela", stopScreen:"Compartilhamento parado",
+    recStart:"Gravação iniciada", recStop:"Gravação salva",
+    fileReceived:"Arquivo recebido", fileSend:"Arquivo enviado",
+    codePill:"CÓDIGO / CODE / КОД",
+    modalTitle:"Encerrar chamada?",
+    modalSub:"A conexão será fechada.",
+    modalNo:"Cancelar", modalYes:"Sim, encerrar",
+    ctrlMic:"Micro", ctrlCam:"Câmera", ctrlMirror:"Espelho", ctrlScreen:"Tela",
+    ctrlOcr:"OCR", ctrlRec:"Gravar", ctrlReact:"Reação", ctrlLang:"Idioma",
+    ctrlHist:"Histórico", ctrlChat:"Chat", ctrlStats:"Stats", ctrlPip:"PiP",
+    ctrlPeers:"Membros", participants:"Participantes",
+    ocrOn:"OCR ativo", ocrOff:"OCR desativado",
+    e2eeActive:"E2EE ativo", e2eePending:"E2EE pendente",
+  },
+  pl:{
+    tagline:"Połączenie wideo z tłumaczeniem na żywo — 13 języków",
+    labelName:"Twoje imię", phName:"np. Marek",
+    labelSpeakLang:"W jakim języku mówisz / czytasz?",
+    divRoom:"pokój", btnCreate:"Rozpocznij połączenie", btnJoin:"Dołącz z kodem",
+    btnEnter:"Wejdź do rozmowy",
+    shareLinkMsg:"Wyślij link drugiej osobie, następnie naciśnij WEJDŹ DO ROZMOWY!",
+    setupStatusDefault:"",
+    btnCopy:"Kopiuj kod", shareCode:"Wyślij ten kod drugiej osobie:",
+    shareLinkLabel:"Link do udostępnienia",
+    phCode:"Otrzymany kod", phChat:"Napisz wiadomość…",
+    captionYou:"POWIEDZIAŁEŚ", chatTitle:"💬 Czat", histTitle:"Historia napisów",
+    statRtt:"RTT", statJitter:"Jitter", statPacket:"Utrata pakietów", statBw:"Przepustowość",
+    waitMsg:"Oczekiwanie na drugą osobę…", joinMsg:"Łączenie…",
+    errPerm:"❌ Brak dostępu do kamery/mikrofonu!",
+    callEnded:"Połączenie zakończone.", copyDone:"✅ Skopiowano",
+    noCode:"Wprowadź otrzymany kod (4–6 znaków).", nameRequired:"⚠️ Imię jest wymagane!",
+    screenShare:"Udostępnianie ekranu", stopScreen:"Udostępnianie zatrzymane",
+    recStart:"Nagrywanie rozpoczęte", recStop:"Nagranie zapisane",
+    fileReceived:"Plik odebrany", fileSend:"Plik wysłany",
+    codePill:"KOD / CODE / КОД",
+    modalTitle:"Zakończyć połączenie?",
+    modalSub:"Połączenie zostanie zamknięte.",
+    modalNo:"Anuluj", modalYes:"Tak, zakończ",
+    ctrlMic:"Mikro", ctrlCam:"Kamera", ctrlMirror:"Lustro", ctrlScreen:"Ekran",
+    ctrlOcr:"OCR", ctrlRec:"Nagraj", ctrlReact:"Reakcja", ctrlLang:"Język",
+    ctrlHist:"Historia", ctrlChat:"Czat", ctrlStats:"Stat.", ctrlPip:"PiP",
+    ctrlPeers:"Osoby", participants:"Uczestnicy",
+    ocrOn:"OCR aktywny", ocrOff:"OCR wyłączony",
+    e2eeActive:"E2EE aktywny", e2eePending:"E2EE w toku",
+  },
+  ro:{
+    tagline:"Apel video cu traducere în timp real — 13 limbi",
+    labelName:"Numele tău", phName:"ex. Ion",
+    labelSpeakLang:"Ce limbă vorbești / citești?",
+    divRoom:"cameră", btnCreate:"Pornește apel", btnJoin:"Alătură-te cu cod",
+    btnEnter:"Intră în apel",
+    shareLinkMsg:"Trimite link-ul celeilalte persoane, apoi apasă INTRĂ ÎN APEL!",
+    setupStatusDefault:"",
+    btnCopy:"Copiază cod", shareCode:"Trimite acest cod celeilalte persoane:",
+    shareLinkLabel:"Link partajabil",
+    phCode:"Cod primit", phChat:"Scrie un mesaj…",
+    captionYou:"AI SPUS", chatTitle:"💬 Chat", histTitle:"Istoric subtitrări",
+    statRtt:"RTT", statJitter:"Jitter", statPacket:"Pierdere pachete", statBw:"Lățime de bandă",
+    waitMsg:"Așteptând cealaltă persoană…", joinMsg:"Conectare…",
+    errPerm:"❌ Acces cameră/microfon refuzat!",
+    callEnded:"Apel încheiat.", copyDone:"✅ Copiat",
+    noCode:"Introduceți codul primit (4–6 caractere).", nameRequired:"⚠️ Numele este obligatoriu!",
+    screenShare:"Partajare ecran", stopScreen:"Partajare oprită",
+    recStart:"Înregistrare pornită", recStop:"Înregistrare salvată",
+    fileReceived:"Fișier primit", fileSend:"Fișier trimis",
+    codePill:"COD / CODE / КОД",
+    modalTitle:"Închei apelul?",
+    modalSub:"Conexiunea va fi închisă.",
+    modalNo:"Anulare", modalYes:"Da, închei",
+    ctrlMic:"Micro", ctrlCam:"Camera", ctrlMirror:"Oglindă", ctrlScreen:"Ecran",
+    ctrlOcr:"OCR", ctrlRec:"Înreg.", ctrlReact:"Reacție", ctrlLang:"Limbă",
+    ctrlHist:"Istoric", ctrlChat:"Chat", ctrlStats:"Statistici", ctrlPip:"PiP",
+    ctrlPeers:"Membri", participants:"Participanți",
+    ocrOn:"OCR activ", ocrOff:"OCR oprit",
+    e2eeActive:"E2EE activ", e2eePending:"E2EE în curs",
+  },
+  uk:{
+    tagline:"Відеодзвінок з живим перекладом — 13 мов",
+    labelName:"Ваше ім'я", phName:"напр. Олег",
+    labelSpeakLang:"Якою мовою ви говорите / читаєте?",
+    divRoom:"кімната", btnCreate:"Почати дзвінок", btnJoin:"Приєднатись за кодом",
+    btnEnter:"Увійти в дзвінок",
+    shareLinkMsg:"Надішліть посилання іншій людині, потім натисніть УВІЙТИ В ДЗВІНОК!",
+    setupStatusDefault:"",
+    btnCopy:"Скопіювати код", shareCode:"Надішліть цей код іншій людині:",
+    shareLinkLabel:"Посилання для поширення",
+    phCode:"Отриманий код", phChat:"Напишіть повідомлення…",
+    captionYou:"ВИ СКАЗАЛИ", chatTitle:"💬 Чат", histTitle:"Історія субтитрів",
+    statRtt:"RTT", statJitter:"Джитер", statPacket:"Втрата пакетів", statBw:"Пропускна здатність",
+    waitMsg:"Очікування іншого учасника…", joinMsg:"Підключення…",
+    errPerm:"❌ Немає доступу до камери/мікрофона!",
+    callEnded:"Дзвінок завершено.", copyDone:"✅ Скопійовано",
+    noCode:"Введіть отриманий код (4–6 символів).", nameRequired:"⚠️ Ім'я обов'язкове!",
+    screenShare:"Демонстрація екрана", stopScreen:"Демонстрацію зупинено",
+    recStart:"Запис розпочато", recStop:"Запис збережено",
+    fileReceived:"Файл отримано", fileSend:"Файл надіслано",
+    codePill:"КОД / CODE / KÓD",
+    modalTitle:"Завершити дзвінок?",
+    modalSub:"З'єднання буде закрито.",
+    modalNo:"Скасувати", modalYes:"Так, завершити",
+    ctrlMic:"Мікро", ctrlCam:"Камера", ctrlMirror:"Дзеркало", ctrlScreen:"Екран",
+    ctrlOcr:"OCR", ctrlRec:"Запис", ctrlReact:"Реакція", ctrlLang:"Мова",
+    ctrlHist:"Історія", ctrlChat:"Чат", ctrlStats:"Стат.", ctrlPip:"PiP",
+    ctrlPeers:"Учасники", participants:"Учасники",
+    ocrOn:"OCR активний", ocrOff:"OCR вимкнено",
+    e2eeActive:"E2EE активний", e2eePending:"E2EE у процесі",
+  },
+  zh:{
+    tagline:"实时翻译视频通话 — 13种语言",
+    labelName:"您的姓名", phName:"例如：小明",
+    labelSpeakLang:"您使用哪种语言说话/阅读？",
+    divRoom:"房间", btnCreate:"开始新通话", btnJoin:"使用代码加入",
+    btnEnter:"进入通话",
+    shareLinkMsg:"将链接发送给对方，然后点击进入通话！",
+    setupStatusDefault:"",
+    btnCopy:"复制代码", shareCode:"将此代码发送给对方：",
+    shareLinkLabel:"可分享链接",
+    phCode:"收到的代码", phChat:"输入消息…",
+    captionYou:"您说了", chatTitle:"💬 聊天", histTitle:"字幕历史",
+    statRtt:"往返时间", statJitter:"抖动", statPacket:"丢包率", statBw:"带宽",
+    waitMsg:"等待对方…", joinMsg:"连接中…",
+    errPerm:"❌ 摄像头/麦克风访问被拒绝！",
+    callEnded:"通话已结束。", copyDone:"✅ 已复制",
+    noCode:"输入收到的代码（4–6字符）。", nameRequired:"⚠️ 姓名为必填项！",
+    screenShare:"屏幕共享", stopScreen:"共享已停止",
+    recStart:"录制已开始", recStop:"录制已保存",
+    fileReceived:"文件已收到", fileSend:"文件已发送",
+    codePill:"代码 / CODE / КОД",
+    modalTitle:"结束通话？",
+    modalSub:"连接将被关闭。",
+    modalNo:"取消", modalYes:"是，结束",
+    ctrlMic:"麦克风", ctrlCam:"摄像头", ctrlMirror:"镜像", ctrlScreen:"屏幕",
+    ctrlOcr:"OCR", ctrlRec:"录制", ctrlReact:"反应", ctrlLang:"语言",
+    ctrlHist:"历史", ctrlChat:"聊天", ctrlStats:"统计", ctrlPip:"画中画",
+    ctrlPeers:"成员", participants:"参与者",
+    ocrOn:"OCR已激活", ocrOff:"OCR已关闭",
+    e2eeActive:"E2EE已激活", e2eePending:"E2EE进行中",
+  },
+  ar:{
+    tagline:"مكالمة فيديو مع ترجمة فورية — 13 لغة",
+    labelName:"اسمك", phName:"مثال: أحمد",
+    labelSpeakLang:"ما اللغة التي تتحدث / تقرأ بها؟",
+    divRoom:"غرفة", btnCreate:"بدء مكالمة جديدة", btnJoin:"الانضمام برمز",
+    btnEnter:"دخول إلى المكالمة",
+    shareLinkMsg:"أرسل الرابط للشخص الآخر، ثم اضغط دخول إلى المكالمة!",
+    setupStatusDefault:"",
+    btnCopy:"نسخ الرمز", shareCode:"أرسل هذا الرمز للشخص الآخر:",
+    shareLinkLabel:"رابط قابل للمشاركة",
+    phCode:"الرمز المستلم", phChat:"اكتب رسالة…",
+    captionYou:"قلت", chatTitle:"💬 محادثة", histTitle:"سجل الترجمة",
+    statRtt:"زمن الاستجابة", statJitter:"الاهتزاز", statPacket:"فقدان الحزم", statBw:"عرض النطاق",
+    waitMsg:"في انتظار الشخص الآخر…", joinMsg:"جارٍ الاتصال…",
+    errPerm:"❌ تم رفض الوصول إلى الكاميرا/الميكروفون!",
+    callEnded:"انتهت المكالمة.", copyDone:"✅ تم النسخ",
+    noCode:"أدخل الرمز المستلم (4-6 أحرف).", nameRequired:"⚠️ الاسم مطلوب!",
+    screenShare:"مشاركة الشاشة", stopScreen:"توقفت المشاركة",
+    recStart:"بدأ التسجيل", recStop:"تم حفظ التسجيل",
+    fileReceived:"تم استلام ملف", fileSend:"تم إرسال ملف",
+    codePill:"الرمز / CODE / КОД",
+    modalTitle:"إنهاء المكالمة؟",
+    modalSub:"سيتم إغلاق الاتصال.",
+    modalNo:"إلغاء", modalYes:"نعم، إنهاء",
+    ctrlMic:"ميكروفون", ctrlCam:"كاميرا", ctrlMirror:"مرآة", ctrlScreen:"شاشة",
+    ctrlOcr:"OCR", ctrlRec:"تسجيل", ctrlReact:"تفاعل", ctrlLang:"اللغة",
+    ctrlHist:"السجل", ctrlChat:"دردشة", ctrlStats:"إحصاء", ctrlPip:"صورة في صورة",
+    ctrlPeers:"الأعضاء", participants:"المشاركون",
+    ocrOn:"OCR نشط", ocrOff:"OCR معطّل",
+    e2eeActive:"E2EE نشط", e2eePending:"E2EE قيد الإعداد",
+  },
+};
+
+  // ─── GLOBÁLIS VÁLTOZÓK ───
+
+const _sessionId = Math.random().toString(36).slice(2,10);
+const _platform = navigator.userAgent.slice(0,80);
+
+async function dbLog(event, detail){
+  try{
+    if(!window.supabaseClient) return;
+    await window.supabaseClient.from("debug_logs").insert({
+      session_id: _sessionId,
+      event: event,
+      detail: String(detail||""),
+      platform: _platform,
+    });
+  }catch(e){
+    console.warn("[dbLog hiba]", e);
+  }
+}
+
+
+const translateCache = new Map();
+let uiLang = "hu";
+function t(key){ return (I18N[uiLang]||I18N.hu)[key] || key; }
+function applyI18n(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el=>{
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  document.documentElement.dir = uiLang === "ar" ? "rtl" : "ltr";
+  
+  // 🔥 EZT ADD HOZZÁ:
+  const statusEl = document.getElementById("setupStatus");
+  if(statusEl && statusEl.dataset.statusType === "shareLink"){
+    statusEl.textContent = "🔗 " + t("shareLinkMsg");
+  }
+}
+document.querySelectorAll(".ui-lang-btn").forEach(btn=>{
+  btn.onclick=()=>{
+    uiLang = btn.dataset.uilang;
+    document.querySelectorAll(".ui-lang-btn").forEach(b=>b.classList.toggle("active",b===btn));
+    applyI18n();
+  };
+});
+applyI18n();
+
+/* =========================================================================
+   ELEM-REFERENCIÁK
+   ========================================================================= */
+const el = id => document.getElementById(id);
+const setupScreen=el("setup"),callScreen=el("call");
+const myNameInput=el("myName"),myLangSelect=el("myLang");
+const createRoomBtn=el("createRoomBtn"),joinRoomBtn=el("joinRoomBtn");
+const joinCodeInput=el("joinCodeInput"),roomCodeDisplay=el("roomCodeDisplay");
+const bigRoomCode=el("bigRoomCode"),copyCodeBtn=el("copyCodeBtn"),setupStatus=el("setupStatus");
+const nameError=el("nameError");
+const remoteVideo=el("remoteVideo"),localVideo=el("localVideo");
+const remoteWrap=el("remoteWrap"),localWrap=el("localWrap");
+const roomPill=el("roomPill"),langPill=el("langPill");
+const incomingBox=el("incomingCaptionBox"),incomingTag=el("incomingTag");
+const incomingMain=el("incomingMain"),incomingSub=el("incomingSub");
+const ownBox=el("ownCaptionBox"),ownMain=el("ownMain");
+const micBtn=el("micBtn"),camBtn=el("camBtn"),langBtn=el("langBtn");
+const hangupBtn=el("hangupBtn"),chatBtn=el("chatBtn");
+const recBtn=el("recBtn");
+const reactBar=el("reactBar");
+const langMenu=el("langMenu");
+const chatPanel=el("chatPanel"),chatCloseBtn=el("chatCloseBtn");
+const chatMessages=el("chatMessages"),chatInput=el("chatInput"),chatSendBtn=el("chatSendBtn");
+const fileBtn=el("fileBtn"),fileInput=el("fileInput");
+const histList=el("historyList");
+const pipBtn=el("pipBtn");
+const statsBtn=el("statsBtn"),statsOverlay=el("statsOverlay");
+const netDot=el("netDot"),netLabel=el("netLabel"),recPill=el("recPill");
+const emojiOverlay=el("emojiOverlay");
+const hangupModal=el("hangupModal"),modalCancelBtn=el("modalCancelBtn"),modalConfirmBtn=el("modalConfirmBtn");
+const splitView=el("splitView");
+const splitLocalVideo=el("splitLocalVideo"),splitRemoteVideo=el("splitRemoteVideo");
+const splitMyName=el("splitMyName"),splitMyLang=el("splitMyLang");
+const splitPartnerName=el("splitPartnerName"),splitPartnerLang=el("splitPartnerLang");
+const splitWaiting=el("splitWaiting");
+const splitOwnCaption=el("splitOwnCaption"),splitIncomingCaption=el("splitIncomingCaption");
+const callCodeValue=el("callCodeValue");
+const callNameText=el("callNameText"),callNameLang=el("callNameLang");
+const shareLinkBox=el("shareLinkBox"),shareLinkInput=el("shareLinkInput");
+const linkCopyBtn=el("linkCopyBtn"),linkShareBtn=el("linkShareBtn");
+
+const statsGraphOverlay=el("statsGraphOverlay"),statsGraphClose=el("statsGraphClose");
+const rttCanvas=el("rttCanvas"),bwCanvas=el("bwCanvas");
+const graphRttVal=el("graphRttVal"),graphBwVal=el("graphBwVal");
+const multiGrid=el("multiGrid");
+const peersBtn=el("peersBtn");
+const participantsPanel=el("participantsPanel"),participantsList=el("participantsList");
+const statE2ee=el("statE2ee");
+
+/* =========================================================================
+   ÁLLAPOT
+   ========================================================================= */
+let supabaseClient, channel, localStream, screenStream;
+let _callDbId = null;
+let _translationCount = 0;
+let myLang="hu", myName="", roomId="", isInitiator=false;
+let micOn=true, camOn=true, mirrored=false, isSharing=false, isRecording=false;
+let recognition, recognitionShouldRun=false;
+let sttStream = null;
+let captionHideTimer=null, callEnded=false;
+let mediaRecorder=null, recordedChunks=[];
+let statsInterval=null;
+
+// ── Multi-peer állapot ──
+// peerId → { pc, dataChannel, remoteDescSet, pendingCandidates, name, lang, cellEl, videoEl }
+const peers = new Map();
+let myPeerId = "";
+
+// ── E2EE állapot ──
+let e2eeCryptoKey = null;       // CryptoKey (AES-GCM)
+let e2eePeerKeys = new Map();   // peerId → CryptoKey
+let e2eeReady = false;
+
+
+
+// ── Stats graph állapot ──
+const RTT_HISTORY = [];
+const BW_HISTORY  = [];
+const GRAPH_POINTS = 30;
+let prevGraphBytes = 0, prevGraphTs = 0;
+
+/* =========================================================================
+   FORDÍTÁSI MOTOR
+   ========================================================================= */
+import { TranslatorEngine } from './translator.js';
+
+const statusBanner = el("translationStatusBanner");
+let bannerHideTimer = null;
+
+function showStatusBanner(type, message){
+  if(bannerHideTimer) clearTimeout(bannerHideTimer);
+  document.getElementById("bannerText").textContent = message;
+  statusBanner.className = `show ${type}`;
+  if(type === "restored"){
+    bannerHideTimer = setTimeout(()=>{ statusBanner.className=""; }, 5000);
+  }
+}
+
+const translator = new TranslatorEngine({
+  onStatusChange: ({type, message}) => showStatusBanner(type, message),
+  onKeyUpdate: ()=>{},
+  getCurrentLang: ()=> myLang,
+});
+
+async function translateText(text, src, tgt){
+  const result = await translator.translate(text, src, tgt);
+  // Fordítás számláló növelése
+  if(result && result !== text && roomId && myPeerId){
+    incrementTranslationCount(roomId, myPeerId);
+  }
+  return result;
+}
+
+/* =========================================================================
+   SEGÉDFÜGGVÉNYEK
+   ========================================================================= */
+function randomCode(){
+  const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from({length:6},()=>c[Math.floor(Math.random()*c.length)]).join("");
+}
+function cryptoId(){
+  return typeof crypto!=="undefined"&&crypto.randomUUID
+    ? crypto.randomUUID()
+    : "u-"+Math.random().toString(36).slice(2,18);
+}
+function formatBytes(b){
+  if(b<1024) return b+"B";
+  if(b<1048576) return (b/1024).toFixed(1)+"KB";
+  return (b/1048576).toFixed(1)+"MB";
+}
+function isLaptop(){ return window.innerWidth>=720; }
+function nowTime(){
+  return new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+}
+
+
+const LIVEKIT_TOKEN_URL = 
+  "https://yyexlblyepkxyqqbgpvu.supabase.co/functions/v1/livekit-token";
+
+async function generateLiveKitToken(roomName, participantName) {
+  const res = await fetch(LIVEKIT_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      roomId:   roomName,
+      userName: participantName,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Token generálás sikertelen: ${res.status}`);
+  }
+
+  const { token } = await res.json();
+  return token;
+}
+
+
+// ─── LIVEKIT KAPCSOLAT ───
+let livekitRoom = null;
+let livekitConnected = false;
+window._livekitRoom = null; // debug célra
+
+async function connectToLiveKit() {
+  await dbLog("livekit_start", "szoba: "+roomId+" felhasználó: "+myName);
+  try {
+    const token = await generateLiveKitToken(roomId, myName);
+    await dbLog("livekit_token_ok", "token megvan");
+    livekitRoom = new LivekitClient.Room({
+      audioCaptureDefaults: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      stopLocalTrackOnUnpublish: false,
+    });
+
+    livekitRoom.on("disconnected", (reason) => {
+      dbLog("livekit_disconnected", String(reason||""));
+      livekitConnected = false;
+      if (!callEnded) activateWebRTCFallback();
+    });
+
+    livekitRoom.on("reconnecting", () => { dbLog("livekit_reconnecting",""); setNetStatus("warn"); });
+    livekitRoom.on("reconnected", () => { dbLog("livekit_reconnected",""); livekitConnected = true; setNetStatus("good"); });
+
+    livekitRoom.on("participantConnected", (participant) => {
+      dbLog("livekit_participant_connected", participant.identity);
+    });
+
+    livekitRoom.on("participantDisconnected", (participant) => {
+      dbLog("livekit_participant_disconnected", participant.identity);
+    });
+
+    livekitRoom.on("trackSubscribed", (track, publication, participant) => {
+      dbLog("livekit_trackSubscribed", "kind: "+track.kind+" participant: "+participant.identity);
+      if (track.kind === "video") {
+        const mediaStream = new MediaStream([track.mediaStreamTrack]);
+        remoteVideo.srcObject = mediaStream;
+        splitRemoteVideo.srcObject = mediaStream;
+        splitWaiting.style.display = "none";
+        remoteVideo.play().catch(() => {});
+        splitRemoteVideo.play().catch(() => {});
+      }
+      if (track.kind === "audio") {
+        const audioStream = new MediaStream([track.mediaStreamTrack]);
+        const audioEl = document.createElement("audio");
+        audioEl.srcObject = audioStream;
+        audioEl.autoplay = true;
+        audioEl.style.display = "none";
+        document.body.appendChild(audioEl);
+      }
+    });
+
+    livekitRoom.on("connectionStateChanged", (state) => {
+      dbLog("livekit_connectionStateChanged", state);
+    });
+
+    await livekitRoom.connect(LIVEKIT_URL, token);
+    livekitConnected = true;
+    await dbLog("livekit_connected_ok", "kapcsolat sikeres");
+
+    if (localStream) {
+      for (const track of localStream.getTracks()) {
+        try {
+          await dbLog("livekit_publishTrack_before", "kind: "+track.kind+" readyState: "+track.readyState+" enabled: "+track.enabled);
+          await livekitRoom.localParticipant.publishTrack(track, {
+            ...(track.kind === "audio" ? {
+              audioBitrate: 32000,
+              dtx: true,
+            } : {})
+          });
+          await dbLog("livekit_publishTrack_after", "kind: "+track.kind+" SIKERES");
+        } catch (e) {
+          await dbLog("livekit_publishTrack_ERROR", "kind: "+track.kind+" hiba: "+(e.message||String(e)));
+          console.warn("⚠️ Track publikálási hiba:", track.kind, e);
+        }
+      }
+    } else {
+      await dbLog("livekit_no_localStream", "nincs localStream!");
+    }
+
+  } catch (error) {
+    await dbLog("livekit_ERROR", error.message||String(error));
+    console.error("❌ LiveKit kapcsolati hiba:", error.message || error);
+    livekitConnected = false;
+    throw error;
+  }
+}
+
+
+  
+
+async function activateWebRTCFallback() {
+  if (callEnded) return;
+  console.log("🔄 activateWebRTCFallback indul...");
+
+  // LiveKit szoba lezárása ha még él
+  if (livekitRoom) {
+    try { await livekitRoom.disconnect(); } catch (_) {}
+    livekitRoom = null;
+  }
+  livekitConnected = false;
+
+  // Ha már vannak WebRTC peer kapcsolatok, csak a streamet kell frissíteni
+  if (peers.size > 0) {
+    console.log("✅ WebRTC peer kapcsolatok már aktívak, stream visszaállítása...");
+
+    // LiveKit által dinamikusan létrehozott audio elemek törlése
+    document.querySelectorAll("audio[autoplay]").forEach(a => {
+      a.srcObject = null;
+      a.remove();
+    });
+
+    // Saját stream újraindítása ha a trackok leálltak
+    const tracksEnded = !localStream || localStream.getTracks().every(t => t.readyState === "ended");
+    if (tracksEnded) {
+      console.log("🎥 Saját stream újraindítása...");
+      try {
+        await initMedia();
+        window._localStream = localStream;
+        // WebRTC peer senderek frissítése az új trackekkel
+        peers.forEach((p) => {
+          const senders = p.pc?.getSenders() || [];
+          localStream.getTracks().forEach(track => {
+            const sender = senders.find(s => s.track?.kind === track.kind);
+            if (sender) sender.replaceTrack(track).catch(() => {});
+          });
+        });
+        console.log("✅ Saját stream újraindítva.");
+      } catch(e) {
+        console.error("❌ Stream újraindítás hiba:", e);
+      }
+    }
+
+    peers.forEach((p) => {
+      let stream = p.videoEl?.srcObject;
+
+      if (!stream) {
+        const receivers = p.pc?.getReceivers() || [];
+        const videoTrack = receivers.find(r => r.track?.kind === "video")?.track;
+        const audioTrack = receivers.find(r => r.track?.kind === "audio")?.track;
+        if (videoTrack) {
+          const tracks = [videoTrack];
+          if (audioTrack) tracks.push(audioTrack);
+          stream = new MediaStream(tracks);
+          if (p.videoEl) p.videoEl.srcObject = stream;
+        }
+      }
+
+      if (stream) {
+        remoteVideo.srcObject = stream;
+        splitRemoteVideo.srcObject = stream;
+        splitWaiting.style.display = "none";
+        remoteVideo.play().catch(() => {});
+        splitRemoteVideo.play().catch(() => {});
+        console.log("✅ Stream visszaállítva PC receiver-ből.");
+      } else {
+        console.warn("⚠️ Nem találtunk streamet a peer-nél.");
+      }
+    });
+
+    setNetStatus("good");
+    return;
+  }
+
+  // Nincs még peer – újra jelzünk a csatornán keresztül
+  console.log("📡 WebRTC peer újraépítés indul a Supabase csatornán...");
+  setNetStatus("bad");
+
+  try {
+    if (channel) {
+      await channel.track({
+        name: myName || "Guest",
+        lang: myLang,
+        peerId: myPeerId,
+        initiator: isInitiator,
+        fallback: true,
+      });
+      console.log("✅ Presence újraküldve, WebRTC tárgyalás indul...");
+    } else {
+      console.warn("⚠️ Nincs aktív Supabase csatorna, újracsatlakozás...");
+      await setupChannel(roomId);
+    }
+  } catch (e) {
+    console.error("❌ WebRTC fallback hiba:", e);
+    setNetStatus("bad");
+  }
+}
+  
+/* =========================================================================
+   FUNKCIÓ 7 — HÍVÁSLINK GENERÁLÁSA
+   ========================================================================= */
+function generateShareLink(code){
+  return window.location.origin + window.location.pathname + "?room=" + code;
+}
+
+function showShareLink(code){
+  const link = generateShareLink(code);
+  shareLinkInput.value = link;
+  shareLinkBox.style.display = "block";
+}
+
+  copyCodeBtn.onclick = ()=>{
+  const code = bigRoomCode.textContent;
+  if(!code||code==="------") return;
+  navigator.clipboard.writeText(code)
+    .then(()=>{ copyCodeBtn.querySelector("span:last-child").textContent="✅ Másolva"; setTimeout(()=>{ copyCodeBtn.querySelector("span:last-child").textContent=t("btnCopy"); },1500); })
+    .catch(()=>{});
+};
+
+linkCopyBtn.onclick = ()=>{
+  const link = shareLinkInput.value;
+  if(!link) return;
+  navigator.clipboard.writeText(link)
+    .then(()=>{ linkCopyBtn.textContent="✅"; setTimeout(()=>{ linkCopyBtn.textContent=t("btnCopy"); },1500); })
+    .catch(()=>{
+      const ta=document.createElement("textarea");
+      ta.value=link; document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); document.body.removeChild(ta);
+      linkCopyBtn.textContent="✅"; setTimeout(()=>{ linkCopyBtn.textContent=t("btnCopy"); },1500);
+    });
+};
+
+linkShareBtn.onclick = ()=>{
+  const link = shareLinkInput.value;
+  if(!link) return;
+  if(navigator.share){
+    navigator.share({ title:"LiveTranslate Call", text:"Csatlakozz a híváshoz:", url: link })
+      .catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(link).catch(()=>{});
+    linkCopyBtn.textContent="✅"; setTimeout(()=>{ linkCopyBtn.textContent=t("btnCopy"); },1500);
+  }
+};
+
+// URL paraméter vizsgálata oldal betöltésekor
+window.addEventListener("load", ()=>{
+  const params = new URLSearchParams(window.location.search);
+  const roomParam = params.get("room");
+  if(roomParam && roomParam.length >= 4 && roomParam.length <= 6){
+    joinCodeInput.value = roomParam.toUpperCase();
+    // Automatikus fókuszálás a névmezőre
+    myNameInput.focus();
+  }
+});
+
+/* =========================================================================
+   SPLIT VIEW CAPTION HELPERS
+   ========================================================================= */
+function setSplitOwnCaption(text){
+  if(!isLaptop()) return;
+  splitOwnCaption.innerHTML = text
+    ? `<div class="caption-box"><div class="caption-tag" style="color:var(--teal)">${t("captionYou")}</div><div class="caption-main" style="font-size:16px">${escHtml(text)}</div></div>`
+    : "";
+}
+function setSplitIncomingCaption(main, sub, tagText){
+  if(!isLaptop()) return;
+  splitIncomingCaption.innerHTML = main
+    ? `<div class="caption-box"><div class="caption-tag">${escHtml(tagText||"PARTNER")}</div><div class="caption-main">${escHtml(main)}</div>${sub?`<div class="caption-sub">${escHtml(sub)}</div>`:""}</div>`
+    : "";
+  if(main){
+    clearTimeout(splitIncomingCaption._timer);
+    splitIncomingCaption._timer = setTimeout(()=>{ splitIncomingCaption.innerHTML=""; },7000);
+  }
+}
+function updateSplitPartnerPresence(name, lang){
+  if(name){
+    splitPartnerName.textContent = name;
+    const pnb = document.getElementById("partnerNameText");
+    if(pnb) pnb.textContent = name;
+  }
+  if(lang){
+    splitPartnerLang.textContent = LANG_TAG[lang]||lang.toUpperCase();
+    splitWaiting.style.display = "none";
+    const pnl = document.getElementById("partnerNameLang");
+    if(pnl) pnl.textContent = LANG_LABEL[lang]||lang;
+  }
+}
+
+function escHtml(s){
+  return String(s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/* =========================================================================
+   DRAG + PINCH/SCROLL ZOOM
+   ========================================================================= */
+function makeDraggableZoomable(wrap, isMain){
+  let dragging=false, startX=0, startY=0;
+  let scale=1, minScale=.5, maxScale=4;
+  let posX=0, posY=0;
+
+  function applyTransform(){
+    if(isMain) return;
+    wrap.style.transform=`translate(${posX}px,${posY}px) scale(${scale})`;
+  }
+  function applyScaleMain(){
+    remoteVideo.style.transform=`scale(${scale})`;
+    remoteVideo.style.transformOrigin="center center";
+  }
+
+  wrap.addEventListener("pointerdown",e=>{
+    if(e.target.classList.contains("zoom-btn")) return;
+    dragging=true;
+    startX=e.clientX-posX;
+    startY=e.clientY-posY;
+    wrap.setPointerCapture(e.pointerId);
+    wrap.classList.add("show-ctrl");
+  });
+  wrap.addEventListener("pointermove",e=>{
+    if(!dragging||isMain) return;
+    posX=e.clientX-startX;
+    posY=e.clientY-startY;
+    wrap.style.transform=`translate(${posX}px,${posY}px) scale(${scale})`;
+  });
+  wrap.addEventListener("pointerup",()=>{ dragging=false; });
+  wrap.addEventListener("pointercancel",()=>{ dragging=false; });
+  wrap.addEventListener("wheel",e=>{
+    e.preventDefault();
+    scale=Math.min(maxScale,Math.max(minScale,scale-(e.deltaY*0.002)));
+    if(isMain) applyScaleMain(); else applyTransform();
+  },{passive:false});
+
+  let lastPinchDist=null;
+  wrap.addEventListener("touchstart",e=>{
+    if(e.touches.length===2)
+      lastPinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+  },{passive:true});
+  wrap.addEventListener("touchmove",e=>{
+    if(e.touches.length===2){
+      const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      if(lastPinchDist){
+        scale=Math.min(maxScale,Math.max(minScale,scale*(d/lastPinchDist)));
+        if(isMain) applyScaleMain(); else applyTransform();
+      }
+      lastPinchDist=d;
+    }
+  },{passive:true});
+  wrap.addEventListener("touchend",()=>{ lastPinchDist=null; });
+
+  const zoomIn =wrap.querySelector(isMain?"#remoteZoomIn":"#localZoomIn");
+  const zoomOut=wrap.querySelector(isMain?"#remoteZoomOut":"#localZoomOut");
+  if(zoomIn) zoomIn.onclick=()=>{ scale=Math.min(maxScale,scale+0.2); if(isMain) applyScaleMain(); else applyTransform(); };
+  if(zoomOut) zoomOut.onclick=()=>{ scale=Math.max(minScale,scale-0.2); if(isMain) applyScaleMain(); else applyTransform(); };
+}
+makeDraggableZoomable(localWrap, false);
+makeDraggableZoomable(remoteWrap, true);
+
+/* =========================================================================
+   FUNKCIÓ 1 — VALÓS IDEJŰ STATS GRAFIKON
+   ========================================================================= */
+function addGraphPoint(arr, value){
+  arr.push(value);
+  if(arr.length > GRAPH_POINTS) arr.shift();
+}
+
+function drawGraph(canvas, data, color, maxVal){
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0,0,w,h);
+
+  // Háttér rácsok
+  ctx.strokeStyle = "rgba(255,255,255,0.05)";
+  ctx.lineWidth = 1;
+  for(let i=1; i<4; i++){
+    ctx.beginPath();
+    ctx.moveTo(0, (h/4)*i);
+    ctx.lineTo(w, (h/4)*i);
+    ctx.stroke();
+  }
+
+  if(data.length < 2) return;
+
+  const max = maxVal || Math.max(...data, 1);
+  const step = w / (GRAPH_POINTS - 1);
+
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  data.forEach((v, i)=>{
+    const x = i * step;
+    const y = h - (v / max) * (h - 4) - 2;
+    if(i===0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Gradiens kitöltés
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, color.replace(")", ",0.25)").replace("rgb","rgba"));
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+}
+
+function updateGraph(rtt, bwKb){
+  addGraphPoint(RTT_HISTORY, rtt||0);
+  addGraphPoint(BW_HISTORY, bwKb||0);
+  if(statsGraphOverlay.classList.contains("open")){
+    drawGraph(rttCanvas, RTT_HISTORY, "#4fd1c5", 500);
+    drawGraph(bwCanvas, BW_HISTORY, "#f2a65a", null);
+    graphRttVal.textContent = rtt!=null ? rtt+"ms" : "--";
+    graphBwVal.textContent  = bwKb!=null ? bwKb.toFixed(0)+"KB/s" : "--";
+  }
+}
+
+netPill.addEventListener("click", ()=>{
+  statsGraphOverlay.classList.toggle("open");
+  if(statsGraphOverlay.classList.contains("open")){
+    drawGraph(rttCanvas, RTT_HISTORY, "#4fd1c5", 500);
+    drawGraph(bwCanvas, BW_HISTORY, "#f2a65a", null);
+  }
+});
+
+statsGraphClose.onclick = e=>{ e.stopPropagation(); statsGraphOverlay.classList.remove("open"); };
+
+/* =========================================================================
+   WEBRTC — MULTI-PEER ALAPOK
+   ========================================================================= */
+
+// Peer létrehozás, beállítás (egyedi peerId-del)
+function createPeerConnectionForPeer(peerId, initiator){
+  const pc = new RTCPeerConnection({iceServers: ICE_SERVERS});
+
+  // Saját streamek hozzáadása
+  if(localStream){
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  }
+
+  // DataChannel
+  let dc = null;
+  if(initiator){
+    dc = pc.createDataChannel("main", {ordered:true});
+    setupDataChannel(dc, peerId);
+  }
+  pc.ondatachannel = e=>{
+    const rdc = e.channel;
+    setupDataChannel(rdc, peerId);
+    const p = peers.get(peerId);
+    if(p) p.remoteDataChannel = rdc;
+  };
+
+  // Remote track fogadása
+  pc.ontrack = e=>{
+    const stream = e.streams?.[0];
+    if(!stream) return;
+    const p = peers.get(peerId);
+    if(!p) return;
+    p.videoEl.srcObject = stream;
+    remoteVideo.srcObject = stream;
+    splitRemoteVideo.srcObject = stream;
+    splitWaiting.style.display = "none";
+    updateMultiGridLayout();
+    // Autoplay kényszerítés
+    remoteVideo.play().catch(()=>{});
+    splitRemoteVideo.play().catch(()=>{});
+  };
+
+  pc.onicecandidate = e=>{
+    if(e.candidate && channel){
+      channel.send({
+        type:"broadcast", event:"signal",
+        payload:{ kind:"ice", candidate:e.candidate, from:myPeerId, to:peerId }
+      });
+    }
+  };
+
+  pc.onconnectionstatechange = ()=>{
+    const s = pc.connectionState;
+    if(s==="connected"){
+      setNetStatus("good");
+      startStatsLoop();
+      // E2EE kulcscsere indítása ha mi vagyunk az initiator
+      if(initiator) sendE2eeKey(peerId);
+    } else if(s==="disconnected"){
+      setNetStatus("warn");
+    } else if(s==="failed"){
+      setNetStatus("bad");
+      // Peer eltávolítása
+      removePeer(peerId);
+    }
+  };
+
+  return { pc, dataChannel: dc, remoteDataChannel: null, remoteDescSet: false, pendingCandidates: [] };
+}
+
+// Peer eltávolítás
+function removePeer(peerId){
+  const p = peers.get(peerId);
+  if(!p) return;
+  try { p.pc.close(); } catch(_){}
+  if(p.cellEl) p.cellEl.remove();
+  peers.delete(peerId);
+  e2eePeerKeys.delete(peerId);
+  updateMultiGridLayout();
+  updateParticipantsPanel();
+}
+
+// Multi-grid elrendezés frissítése
+function updateMultiGridLayout(){
+  const count = peers.size;
+  if(count === 0){
+    multiGrid.style.display = "none";
+    splitView.style.display = isLaptop() ? "flex" : "none";
+    return;
+  }
+  // 2 főig: normál split view / mobile view
+  if(count <= 1){
+    multiGrid.style.display = "none";
+    // Split view már kezeli az 1 peer-t
+    return;
+  }
+  // 3+ fő: grid nézet (elrejti a split view-t és a mobile videket)
+  multiGrid.style.display = "flex";
+  splitView.style.display = "none";
+
+  // Cellák elrendezése: 2 oszlopos rács
+  const allCells = multiGrid.querySelectorAll(".peer-cell");
+  allCells.forEach(cell=>{
+    const peerCount = peers.size + 1; // +1 = saját nézet
+    if(peerCount <= 2){
+      cell.style.flex = "1 1 100%";
+    } else if(peerCount <= 4){
+      cell.style.flex = "1 1 calc(50% - 2px)";
+    } else {
+      cell.style.flex = "1 1 calc(33.333% - 2px)";
+    }
+  });
+}
+
+// Saját nézet cellája a gridben
+let ownGridCell = null;
+
+function ensureOwnGridCell(){
+  if(ownGridCell) return;
+  ownGridCell = document.createElement("div");
+  ownGridCell.className = "peer-cell";
+  const v = document.createElement("video");
+  v.autoplay=true; v.playsInline=true; v.muted=true;
+  if(localStream) v.srcObject = localStream;
+  const lbl = document.createElement("div");
+  lbl.className = "peer-cell-label";
+  lbl.textContent = (myName||"Te")+" ("+LANG_TAG[myLang]+")";
+  ownGridCell.appendChild(v);
+  ownGridCell.appendChild(lbl);
+  multiGrid.appendChild(ownGridCell);
+}
+
+// Új peer cell hozzáadása a gridhez
+function addPeerCell(peerId, name, lang){
+  const cell = document.createElement("div");
+  cell.className = "peer-cell";
+  cell.dataset.peerId = peerId;
+  const v = document.createElement("video");
+  v.autoplay=true; v.playsInline=true;
+  const lbl = document.createElement("div");
+  lbl.className = "peer-cell-label";
+  lbl.textContent = (name||"Partner")+" ("+(LANG_TAG[lang]||"--")+")";
+  cell.appendChild(v);
+  cell.appendChild(lbl);
+  ensureOwnGridCell();
+  multiGrid.insertBefore(cell, ownGridCell);
+  return { cell, video: v };
+}
+
+/* =========================================================================
+   FUNKCIÓ 5 — E2EE (VÉGPONTTÓL VÉGPONTIG TITKOSÍTÁS)
+   ========================================================================= */
+async function generateE2eeKey(){
+  e2eeCryptoKey = await crypto.subtle.generateKey(
+    { name:"AES-GCM", length:256 },
+    true,
+    ["encrypt","decrypt"]
+  );
+  e2eeReady = false; // csak akkor kész ha a másik fél is kapta
+  statE2ee.textContent = t("e2eePending");
+}
+
+async function exportKeyToBase64(key){
+  const raw = await crypto.subtle.exportKey("raw", key);
+  return btoa(String.fromCharCode(...new Uint8Array(raw)));
+}
+
+async function importKeyFromBase64(b64){
+  const raw = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
+  return await crypto.subtle.importKey(
+    "raw", raw.buffer,
+    { name:"AES-GCM" },
+    false,
+    ["encrypt","decrypt"]
+  );
+}
+
+async function sendE2eeKey(peerId){
+  if(!e2eeCryptoKey) return;
+  const p = peers.get(peerId);
+  if(!p) return;
+  const dc = p.dataChannel || p.remoteDataChannel;
+  if(!dc || dc.readyState !== "open") return;
+  const b64 = await exportKeyToBase64(e2eeCryptoKey);
+  dc.send(JSON.stringify({ type:"e2ee-key", key:b64, from:myPeerId }));
+}
+
+async function encryptText(text){
+  if(!e2eeCryptoKey) return null;
+  try{
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(text);
+    const cipherBuf = await crypto.subtle.encrypt(
+      { name:"AES-GCM", iv },
+      e2eeCryptoKey,
+      encoded
+    );
+    return JSON.stringify({
+      iv: Array.from(iv),
+      data: Array.from(new Uint8Array(cipherBuf))
+    });
+  }catch(e){
+    console.warn("E2EE titkosítási hiba:", e);
+    return null;
+  }
+}
+
+async function decryptText(encrypted, key){
+  if(!key) return null;
+  try{
+    const obj = JSON.parse(encrypted);
+    const iv = new Uint8Array(obj.iv);
+    const data = new Uint8Array(obj.data);
+    const plainBuf = await crypto.subtle.decrypt(
+      { name:"AES-GCM", iv },
+      key,
+      data.buffer
+    );
+    return new TextDecoder().decode(plainBuf);
+  }catch(e){
+    console.warn("E2EE visszafejtési hiba:", e);
+    return null;
+  }
+}
+
+/* =========================================================================
+   WEBRTC — DATA CHANNEL KEZELÉS
+   ========================================================================= */
+function setupDataChannel(dc, peerId){
+  let incomingMeta = null, incomingChunks = [];
+
+  dc.onopen = ()=>{
+    console.log("[DC] open, peerId:", peerId);
+    // Ha nincsen kulcsunk még, generálunk
+    if(!e2eeCryptoKey){
+      generateE2eeKey().then(()=> sendE2eeKey(peerId));
+    } else {
+      sendE2eeKey(peerId);
+    }
+  };
+
+  dc.onmessage = async e=>{
+    if(typeof e.data === "string"){
+      let msg;
+      try { msg = JSON.parse(e.data); } catch(_){ return; }
+
+      // E2EE kulcs csere
+      if(msg.type === "e2ee-key"){
+  // Ha már van kulcsunk ettől a peertől, ne csináljunk semmit (loop megelőzés)
+  if(e2eePeerKeys.has(peerId)){
+    return;
+  }
+  try{
+    const peerKey = await importKeyFromBase64(msg.key);
+    e2eePeerKeys.set(peerId, peerKey);
+    // Csak akkor küldünk vissza kulcsot, ha mi még nem küldtünk
+    if(!e2eeCryptoKey){
+      await generateE2eeKey();
+      await sendE2eeKey(peerId);
+    }
+    e2eeReady = true;
+    statE2ee.textContent = t("e2eeActive");
+    console.log("[E2EE] kulcs csere kész, peerId:", peerId);
+  }catch(err){
+    console.warn("[E2EE] kulcs import hiba:", err);
+  }
+  return;
+}
+
+      // Titkosított chat üzenet
+      if(msg.type === "e2ee-chat"){
+        const peerKey = e2eePeerKeys.get(peerId);
+        if(!peerKey){ console.warn("[E2EE] nincs kulcs a fejtéshez"); return; }
+        const plain = await decryptText(msg.payload, peerKey);
+        if(plain === null) return;
+        try{
+          const chatData = JSON.parse(plain);
+          const translated = await translateText(chatData.text, chatData.sourceLang||"hu", myLang);
+          const sub = (chatData.sourceLang && chatData.sourceLang!==myLang)
+            ? `original: „${chatData.text}"` : "";
+          addChatBubble(translated, sub, false, nowTime());
+          // Supabase mentés
+          saveChatToSupabase(chatData.text, chatData.sourceLang, false);
+        }catch(_){}
+        return;
+      }
+
+      // Fájl metaadatok
+// Fájl metaadatok
+      if(msg.type === "file-meta"){
+        incomingMeta = msg;
+        incomingChunks = [];
+        // Progress buborék létrehozása fogadó oldalon
+        const wrap = document.createElement("div");
+        wrap.className = "msg";
+        wrap.id = "incoming-file-"+peerId;
+        const label = document.createElement("div");
+        label.className = "msg-bubble";
+        label.textContent = "📥 "+escHtml(msg.name)+" ("+formatBytes(msg.size)+")";
+        wrap.appendChild(label);
+        const progressWrap = document.createElement("div");
+        progressWrap.style.cssText = "margin-top:6px;background:rgba(255,255,255,.08);border-radius:6px;height:6px;overflow:hidden;width:100%;";
+        const progressBar = document.createElement("div");
+        progressBar.style.cssText = "height:100%;width:0%;background:var(--teal);border-radius:6px;transition:width .15s;";
+        progressBar.id = "incoming-bar-"+peerId;
+        progressWrap.appendChild(progressBar);
+        wrap.appendChild(progressWrap);
+        const progressLabel = document.createElement("div");
+        progressLabel.className = "msg-time";
+        progressLabel.textContent = "0%";
+        progressLabel.id = "incoming-pct-"+peerId;
+        wrap.appendChild(progressLabel);
+        chatMessages.appendChild(wrap);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      } else if(msg.type === "file-end" && incomingMeta){
+        const blob = new Blob(incomingChunks, {type: incomingMeta.mime||"application/octet-stream"});
+        const url = URL.createObjectURL(blob);
+        // Régi progress buborék eltávolítása
+        const oldWrap = document.getElementById("incoming-file-"+peerId);
+        if(oldWrap) oldWrap.remove();
+        // Végleges buborék megjelenítése
+        const detectedImage = incomingMeta.isImage || /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(incomingMeta.name);
+        addFileBubble(incomingMeta.name, incomingMeta.size, url, false, detectedImage);
+        incomingMeta = null;
+        incomingChunks = [];
+      }
+} else if(e.data instanceof ArrayBuffer){
+      incomingChunks.push(e.data);
+      if(incomingMeta){
+        const received = incomingChunks.reduce((s,c)=>s+c.byteLength, 0);
+        const pct = Math.min(100, Math.round((received/incomingMeta.size)*100));
+        const bar = document.getElementById("incoming-bar-"+peerId);
+        const lbl = document.getElementById("incoming-pct-"+peerId);
+        if(bar) bar.style.width = pct+"%";
+        if(lbl) lbl.textContent = pct+"%";
+      }
+    }
+  };
+
+  dc.onerror = err=>{ console.warn("[DC] hiba:", err); };
+}
+
+/* =========================================================================
+   SUPABASE CSATORNA — MULTI-PEER JELZÉS
+   ========================================================================= */
+async function setupChannel(code){
+  console.log("═══════════════════════════════════════════════════");
+  console.log("📡 SUPABASE CSATORNA BEÁLLÍTÁSA");
+  console.log("═══════════════════════════════════════════════════");
+  console.log("🏠 Szoba kód:", code);
+  console.log("🆔 Peer ID:", myPeerId);
+  console.log("───────────────────────────────────────────────────");
+
+  console.log("🔄 Csatorna létrehozása: call-room-" + code);
+  channel = supabaseClient.channel("call-room-"+code, {
+    config:{ broadcast:{self:false}, presence:{key:myPeerId} }
+  });
+  console.log("✅ Csatorna objektum kész");
+
+  console.log("📨 Eseményfigyelők beállítása...");
+  
+ channel.on("broadcast", {event:"signal"}, async ({payload})=> {
+    console.log("   📨 Signal üzenet érkezett:", payload.kind, "from:", payload.from);
+    await handleSignal(payload);
+  });
+  
+  channel.on("broadcast", {event:"caption"}, ({payload})=> {
+    console.log("   📨 Felirat érkezett:", payload.text?.slice(0,30) + (payload.text?.length > 30 ? "..." : ""));
+    handleIncomingCaption(payload);
+  });
+  
+  channel.on("broadcast", {event:"chat"}, ({payload})=> {
+    console.log("   📨 Chat üzenet érkezett:", payload.text?.slice(0,30) + (payload.text?.length > 30 ? "..." : ""));
+    handleIncomingChatBroadcast(payload);
+  });
+  
+  channel.on("broadcast", {event:"reaction"}, ({payload})=> {
+    console.log("   📨 Reakció érkezett:", payload.emoji);
+    showEmojiFloat(payload.emoji, false);
+  });
+
+  channel.on("presence", {event:"sync"}, ()=>{
+    console.log("🔄 Presence szinkronizálás...");
+    const state = channel.presenceState();
+    const peerIds = Object.keys(state);
+    console.log("   👥 Résztvevők száma:", peerIds.length);
+
+    // Résztvevők frissítése
+    const presentPeerIds = new Set();
+    peerIds.forEach(pid=>{
+      const presences = state[pid];
+      if(!Array.isArray(presences)) return;
+      presences.forEach(p=>{
+        if(p.peerId === myPeerId) return; // Saját magunk
+        presentPeerIds.add(p.peerId||pid);
+        // Ha ez egy új peer, kapcsolódunk hozzá
+        if(!peers.has(p.peerId||pid)){
+  console.log("   👤 Új peer felismerve:", p.peerId||pid, "név:", p.name, "nyelv:", p.lang);
+  // Csak a nagyobb peerId kezdeményez, hogy elkerüljük a dupla offer-t
+  const weAreInitiator = myPeerId > (p.peerId||pid);
+  initPeer(p.peerId||pid, p.name||"Partner", p.lang||"hu", weAreInitiator);
+  // Partner csatlakozás mentése Supabase-be
+  saveParticipantJoin(roomId, p.peerId||pid, p.name||"Partner", p.lang||"hu");
+  // Résztvevők számának frissítése
+  if(supabaseClient && _callDbId){
+    supabaseClient.from("calls").update({
+      participant_count: peers.size + 1
+    }).eq("id", _callDbId).then(()=>{
+      console.log("✅ [STATS] Résztvevők száma frissítve:", peers.size + 1);
+    }).catch(e=>{
+      console.warn("[STATS] Résztvevők száma frissítési hiba:", e?.message || e);
+    });
+  }
+          updateSplitPartnerPresence(p.name||"Partner", p.lang||"hu");
+const pnb = document.getElementById("partnerNameText");
+if(pnb) pnb.textContent = p.name||"Partner";
+const pnl = document.getElementById("partnerNameLang");
+if(pnl) pnl.textContent = LANG_LABEL[p.lang||"hu"]||p.lang||"hu";
+} else {
+          // Frissítjük a nevet/nyelvet
+          const existing = peers.get(p.peerId||pid);
+          if(existing){
+            existing.name = p.name||existing.name;
+            existing.lang = p.lang||existing.lang;
+            updateParticipantsPanel();
+          }
+        }
+      });
+    });
+
+    // Eltávozottak eltávolítása
+    peers.forEach((_, pid)=>{
+      if(!presentPeerIds.has(pid)){
+        console.log("   👤 Peer eltávolítva:", pid);
+        removePeer(pid);
+      }
+    });
+
+    updateParticipantsPanel();
+    updateSplitFromPeers();
+    console.log("   ✅ Presence szinkronizálás kész");
+  });
+
+  channel.on("presence", {event:"leave"}, ({leftPresences})=>{
+    console.log("   👤 Peer kilépés érzékelve:", leftPresences.length);
+    leftPresences.forEach(p=>{
+      if(p.peerId) {
+        console.log("      👤 Kilépett:", p.peerId);
+        removePeer(p.peerId);
+      }
+    });
+    updateParticipantsPanel();
+  });
+
+  console.log("🔄 Csatorna feliratkozás...");
+  await channel.subscribe(async status=>{
+    console.log("   📡 Csatorna státusz:", status);
+    if(status === "SUBSCRIBED"){
+      console.log("   ✅ Csatorna feliratkozva!");
+      console.log("   🏷️ Presence track indítása...");
+      await channel.track({
+        name: myName||"Guest",
+        lang: myLang,
+        peerId: myPeerId,
+        initiator: isInitiator
+      });
+      console.log("   ✅ Presence track elindítva");
+      console.log("───────────────────────────────────────────────────");
+    }
+  });
+  console.log("═══════════════════════════════════════════════════");
+}
+
+// Peer inicializálás (mi vagyunk az initiator)
+async function initPeer(peerId, name, lang, weAreInitiator){
+  if(peers.has(peerId)) return;
+
+  const { cell: cellEl, video: videoEl } = addPeerCell(peerId, name, lang);
+  const conn = createPeerConnectionForPeer(peerId, weAreInitiator);
+  peers.set(peerId, {
+    ...conn,
+    name, lang,
+    cellEl, videoEl,
+  });
+  updateParticipantsPanel();
+  updateMultiGridLayout();
+
+  if(weAreInitiator){
+    try{
+      const offer = await conn.pc.createOffer();
+      await conn.pc.setLocalDescription(offer);
+      channel.send({
+        type:"broadcast", event:"signal",
+        payload:{ kind:"offer", sdp:offer, from:myPeerId, to:peerId }
+      });
+    }catch(e){ console.error("[WebRTC] offer hiba:", e); }
+  }
+}
+
+async function handleSignal(payload){
+  if(payload.to && payload.to !== myPeerId) return;
+  const senderId = payload.from;
+  if(!senderId) return;
+
+  if(payload.kind === "offer"){
+    if(!peers.has(senderId)){
+      if(!localStream){
+        try{ await initMedia(); }
+        catch(e){ console.error("Media init hiba offer előtt:", e); return; }
+      }
+      const { cell: cellEl, video: videoEl } = addPeerCell(senderId, "Partner", "hu");
+      const conn = createPeerConnectionForPeer(senderId, false);
+      peers.set(senderId, { ...conn, name:"Partner", lang:"hu", cellEl, videoEl });
+      updateParticipantsPanel();
+      updateMultiGridLayout();
+    } else {
+      const existing = peers.get(senderId);
+      if(existing && existing.pc.signalingState !== "stable"){
+        console.warn("[Signal] nem stable állapot, peer újraindítása...");
+        try{ existing.pc.close(); }catch(_){}
+        peers.delete(senderId);
+        const { cell: cellEl, video: videoEl } = addPeerCell(senderId, "Partner", "hu");
+        const conn = createPeerConnectionForPeer(senderId, false);
+        peers.set(senderId, { ...conn, name:"Partner", lang:"hu", cellEl, videoEl });
+        updateParticipantsPanel();
+        updateMultiGridLayout();
+      }
+    }
+  }
+
+  const p = peers.get(senderId);
+  if(!p) return;
+
+  try{
+    if(payload.kind === "offer"){
+      if(p.pc.signalingState !== "stable") return;
+      await p.pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+      p.remoteDescSet = true;
+      await flushPendingCandidates(senderId);
+      const answer = await p.pc.createAnswer();
+      await p.pc.setLocalDescription(answer);
+      channel.send({
+        type:"broadcast", event:"signal",
+        payload:{ kind:"answer", sdp:answer, from:myPeerId, to:senderId }
+      });
+    } else if(payload.kind === "answer"){
+      if(p.pc.signalingState !== "have-local-offer") return;
+      await p.pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+      p.remoteDescSet = true;
+      await flushPendingCandidates(senderId);
+    } else if(payload.kind === "ice"){
+      if(p.remoteDescSet && p.pc.remoteDescription){
+        try{ await p.pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); }
+        catch(e){ console.warn("[ICE]", e); }
+      } else {
+        p.pendingCandidates.push(payload.candidate);
+      }
+    }
+  }catch(e){ console.error("[Signal] hiba:", e); }
+}
+
+async function flushPendingCandidates(peerId){
+  const p = peers.get(peerId);
+  if(!p) return;
+  for(const c of p.pendingCandidates){
+    try{ await p.pc.addIceCandidate(new RTCIceCandidate(c)); }
+    catch(e){ console.warn("[ICE flush]", e); }
+  }
+  p.pendingCandidates = [];
+}
+
+// Split view frissítése az első peer alapján (2-fős esetben)
+function updateSplitFromPeers(){
+  if(peers.size === 1){
+    const [p] = peers.values();
+    if(p.videoEl?.srcObject){
+      remoteVideo.srcObject = p.videoEl.srcObject;
+      splitRemoteVideo.srcObject = p.videoEl.srcObject;
+      splitWaiting.style.display = "none";
+    }
+    updateSplitPartnerPresence(p.name, p.lang);
+  }
+}
+
+// Résztvevők panel frissítése
+function updateParticipantsPanel(){
+  participantsList.innerHTML = "";
+  // Saját bejegyzés
+  const selfItem = document.createElement("div");
+  selfItem.className = "participant-item";
+  selfItem.innerHTML = `<div class="participant-dot"></div><span class="participant-name">${escHtml(myName||"Te")}</span><span class="participant-lang">${LANG_TAG[myLang]||"--"}</span>`;
+  participantsList.appendChild(selfItem);
+  // Peerek
+  peers.forEach((p)=>{
+    const item = document.createElement("div");
+    item.className = "participant-item";
+    item.innerHTML = `<div class="participant-dot"></div><span class="participant-name">${escHtml(p.name||"Partner")}</span><span class="participant-lang">${LANG_TAG[p.lang]||"--"}</span>`;
+    participantsList.appendChild(item);
+  });
+}
+
+/* =========================================================================
+   RTCStats — KIBŐVÍTVE GRAFIKONHOZ
+   ========================================================================= */
+function setNetStatus(level){
+  netDot.className = "net-dot"+(level==="warn"?" warn":level==="bad"?" bad":"");
+  netLabel.textContent = level==="good"?"●●●":level==="warn"?"●●○":"●○○";
+}
+
+function startStatsLoop(){
+  if(statsInterval) clearInterval(statsInterval);
+  statsInterval = setInterval(async()=>{
+    // Az első csatlakozott peer PC-jét vizsgáljuk
+    const firstPeer = peers.values().next().value;
+    if(!firstPeer?.pc) return;
+    try{
+      const stats = await firstPeer.pc.getStats();
+      let rtt=null, jitter=null, loss=null, bwKb=null;
+      stats.forEach(r=>{
+        if(r.type==="candidate-pair"&&r.state==="succeeded"&&r.currentRoundTripTime!=null){
+          rtt = Math.round(r.currentRoundTripTime*1000);
+        }
+        if(r.type==="inbound-rtp"&&r.kind==="audio"){
+          jitter = r.jitter!=null ? Math.round(r.jitter*1000) : null;
+          if(r.packetsLost!=null&&r.packetsReceived!=null){
+            const total = r.packetsLost+r.packetsReceived;
+            loss = total>0 ? ((r.packetsLost/total)*100).toFixed(1)+"%" : "0%";
+          }
+        }
+        if(r.type==="inbound-rtp"&&r.kind==="video"&&r.bytesReceived!=null){
+          const now = Date.now();
+          if(prevGraphTs){
+            const dt = (now-prevGraphTs)/1000;
+            bwKb = (r.bytesReceived-prevGraphBytes)/1024/dt;
+          }
+          prevGraphBytes = r.bytesReceived;
+          prevGraphTs = now;
+        }
+      });
+      el("statRtt").textContent    = rtt!=null    ? rtt+"ms"  : "--";
+      el("statJitter").textContent = jitter!=null  ? jitter+"ms": "--";
+      el("statPacket").textContent = loss          || "--";
+      el("statBw").textContent     = bwKb!=null    ? bwKb.toFixed(0)+"KB/s" : "--";
+      // Grafikon frissítése
+      updateGraph(rtt, bwKb);
+      // Hálózati státusz
+      if(rtt!=null){
+        if(rtt<150) setNetStatus("good");
+        else if(rtt<350) setNetStatus("warn");
+        else setNetStatus("bad");
+      }
+    }catch(_){}
+  }, 2000);
+}
+
+/* =========================================================================
+   MÉDIAKEZELÉS
+   ========================================================================= */
+async function initMedia(){
+  await dbLog("initMedia_start", "indul");
+  try{
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    await dbLog("initMedia_devices", "eszközök száma: "+devices.length);
+    const cameras = devices.filter(d=>d.kind==="videoinput");
+    const preferred = cameras.find(d=>
+      d.label.toLowerCase().includes("integrated")||
+      d.label.toLowerCase().includes("webcam")||
+      d.label.toLowerCase().includes("beépített")
+    );
+    const videoConstraint = preferred
+      ? {deviceId:{exact:preferred.deviceId}}
+      : {facingMode:"user"};
+    await dbLog("initMedia_getUserMedia", "indul, videoConstraint: "+JSON.stringify(videoConstraint));
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: videoConstraint,
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1,
+        sampleRate: 16000,
+      }
+    });
+    await dbLog("initMedia_stream_ok", "audio trackok: "+localStream.getAudioTracks().length+" video trackok: "+localStream.getVideoTracks().length);
+    localVideo.srcObject = localStream;
+    splitLocalVideo.srcObject = localStream;
+    window._localStream = localStream;
+
+    const audioTrack = localStream.getAudioTracks()[0];
+    if(audioTrack){
+      await dbLog("initMedia_audioTrack", "label: "+audioTrack.label+" readyState: "+audioTrack.readyState);
+      window._sharedAudioContext = new AudioContext();
+      window._sharedAudioSource = window._sharedAudioContext.createMediaStreamSource(localStream);
+      window._sharedMicStream = localStream;
+      await dbLog("initMedia_audioContext", "state: "+window._sharedAudioContext.state);
+    } else {
+      await dbLog("initMedia_audioTrack_MISSING", "nincs audio track!");
+    }
+  }catch(err){
+    await dbLog("initMedia_ERROR", err.message||String(err));
+    console.error("Média hiba:", err);
+    setupStatus.textContent = t("errPerm");
+    throw err;
+  }
+}
+
+/* =========================================================================
+   HANGFELISMERÉS (STT)
+   ========================================================================= */
+function startRecognition(){
+  dbLog("STT_startRecognition_called", "micOn: "+micOn+" callEnded: "+callEnded);
+  if(!micOn || callEnded) { 
+    dbLog("STT_startRecognition_BLOCKED", "micOn: "+micOn+" callEnded: "+callEnded); 
+    return; 
+  }
+  
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ 
+    dbLog("STT_NO_API", "SpeechRecognition nem támogatott"); 
+    console.warn("Web Speech API nem támogatott"); 
+    return; 
+  }
+
+  recognitionShouldRun = true;
+  if(recognition){ 
+    dbLog("STT_already_running", "már fut, skip"); 
+    return; 
+  }
+
+  let isStarting = false;
+  let noSpeechStreak = 0;
+  const isAndroid = /Android/i.test(navigator.userAgent);
+
+  async function createAndStart(){
+    dbLog("STT_createAndStart_called", "recognitionShouldRun: "+recognitionShouldRun+" micOn: "+micOn+" callEnded: "+callEnded+" isStarting: "+isStarting+" recognition: "+(recognition?"van":"null"));
+    if(!recognitionShouldRun || !micOn || callEnded) { 
+      dbLog("STT_createAndStart_BLOCKED","feltétel nem teljesül"); 
+      return; 
+    }
+    if(isStarting || recognition) { 
+      dbLog("STT_createAndStart_SKIP","isStarting vagy recognition már van"); 
+      return; 
+    }
+    isStarting = true;
+
+    // Csak asztali gépen használjuk az AudioContext-et
+// Mobilon ez összezavarja a SpeechRecognition API-t
+if (!isAndroid && window._sharedAudioContext) {
+  try{
+    dbLog("STT_audioContext_state_before_resume", window._sharedAudioContext.state);
+    if(window._sharedAudioContext.state === "suspended"){
+      await window._sharedAudioContext.resume();
+      dbLog("STT_audioContext_resumed", window._sharedAudioContext.state);
+    }
+  }catch(e){
+    dbLog("STT_audioContext_resume_ERROR", e.message||String(e));
+    console.warn("[STT] AudioContext resume hiba:", e.message);
+  }
+}
+
+    const r = new SR();
+    r.lang = STT_LOCALE[myLang] || "hu-HU";
+    r.continuous = false;
+    r.interimResults = true;
+    r.maxAlternatives = 1;
+    dbLog("STT_recognition_created", "lang: "+r.lang);
+
+    r.onstart = ()=>{
+      isStarting = false;
+      noSpeechStreak = 0;
+      micBtn.style.outline = "2px solid var(--teal)";
+      dbLog("STT_onstart", "STT aktív, lang: "+r.lang);
+      console.log("[STT] Start:", r.lang, isAndroid ? "(Android)" : "(Desktop)");
+    };
+
+    r.onresult = async e=>{
+      noSpeechStreak = 0;
+      let final = "";
+      for(let i = e.resultIndex; i < e.results.length; i++){
+        const res = e.results[i];
+        if(res.isFinal) final += res[0].transcript;
+        else{
+          ownBox.style.display = "block";
+          ownMain.textContent = res[0].transcript;
+          setSplitOwnCaption(res[0].transcript);
+        }
+      }
+      if(final.trim()){
+        dbLog("STT_onresult_final", final.trim().slice(0,100));
+        console.log("[STT] Eredmény:", final.trim());
+        ownBox.style.display = "block";
+        ownMain.textContent = final.trim();
+        setSplitOwnCaption(final.trim());
+        if(channel) channel.send({
+          type:"broadcast", event:"caption",
+          payload:{ text:final.trim(), sourceLang:myLang, name:myName||LANG_LABEL[myLang] }
+        });
+        addHistoryItem(final.trim(), "", true);
+        setTimeout(()=>{ ownBox.style.display="none"; setSplitOwnCaption(""); }, 4000);
+      } else {
+        dbLog("STT_onresult_interim", "interim result, nem final");
+      }
+    };
+
+    r.onerror = e=>{
+      dbLog("STT_onerror", "error: "+e.error+" message: "+(e.message||""));
+      micBtn.style.outline = "";
+      isStarting = false;
+      recognition = null;
+
+      if(e.error === "not-allowed" || e.error === "service-not-allowed"){
+        recognitionShouldRun = false;
+        dbLog("STT_onerror_PERMISSION_DENIED", "leállítás");
+        console.warn("[STT] Engedély megtagadva, leállítás.");
+        // Mobilon: ha nincs engedély, kapcsoljuk ki a mikrofont
+        if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){
+          micOn = false;
+          if(localStream) localStream.getAudioTracks().forEach(t => t.enabled = false);
+          micBtn.classList.add("off");
+          micBtn.querySelector(".btn-icon").textContent = "🔇";
+        }
+        return;
+      }
+
+      if(e.error === "aborted"){ dbLog("STT_onerror_aborted","újraindítás skip"); return; }
+
+      if(e.error === "audio-capture"){
+        dbLog("STT_onerror_audio_capture", "audio-capture hiba — 1.5s várakozás");
+        console.warn("[STT] audio-capture hiba — várunk 1.5s...");
+        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 1500);
+        return;
+      }
+
+      if(e.error === "no-speech"){
+        noSpeechStreak++;
+        dbLog("STT_onerror_no_speech", "streak: "+noSpeechStreak);
+        console.log("[STT] no-speech #"+noSpeechStreak);
+        const delay = isAndroid && noSpeechStreak > 3 ? 800 : 100;
+        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, delay);
+        return;
+      }
+
+      if(e.error === "network"){
+        dbLog("STT_onerror_network", "3s várakozás");
+        console.warn("[STT] Hálózati hiba, 3s várakozás...");
+        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 3000);
+        return;
+      }
+
+      dbLog("STT_onerror_egyeb", "error: "+e.error);
+      console.warn("[STT] Hiba:", e.error);
+      if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 1000);
+    };
+
+    r.onend = ()=>{
+      dbLog("STT_onend", "shouldRun: "+recognitionShouldRun+" micOn: "+micOn+" callEnded: "+callEnded);
+      micBtn.style.outline = "";
+      isStarting = false;
+      recognition = null;
+      console.log("[STT] End, shouldRun:", recognitionShouldRun);
+      if(recognitionShouldRun && micOn && !callEnded){
+        const delay = isAndroid ? 600 : 300;
+        setTimeout(createAndStart, delay);
+      }
+    };
+
+    recognition = r;
+    try{
+      r.start();
+      dbLog("STT_start_called", "recognition.start() meghívva");
+      console.log("[STT] start() meghívva");
+    }catch(e){
+      dbLog("STT_start_ERROR", e.message||String(e));
+      console.warn("[STT] start() hiba:", e.message);
+      recognition = null;
+      isStarting = false;
+      if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 1500);
+    }
+  }
+
+  // Mobilon: ha nincs még felhasználói interakció, várjunk egyet
+  if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window._userInteracted) {
+    dbLog("STT_mobile_waiting_for_tap", "Mobil: várunk egy érintésre a mikrofon gombon");
+    // A mikrofon gomb megnyomása már megtörtént, ezért jelöljük
+    window._userInteracted = true;
+    createAndStart();
+  } else {
+    createAndStart();
+  }
+}
+
+function stopRecognition(){
+  recognitionShouldRun = false;
+  micBtn.style.outline = "";
+  if(recognition){
+    recognition.onstart = null;
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onend = null; // FONTOS: onend nullázás, hogy ne indítson újat
+    try{ recognition.abort(); }catch(_){}
+    recognition = null;
+  }
+}
+
+/* =========================================================================
+   FELIRATOK + ELŐZMÉNYEK
+   ========================================================================= */
+async function handleIncomingCaption(payload){
+  if(!payload?.text) return;
+  try{
+    const translated = await translateText(payload.text, payload.sourceLang||"hu", myLang);
+    const tagText = (payload.name||LANG_LABEL[payload.sourceLang]||"PARTNER").toUpperCase();
+    incomingTag.textContent  = tagText;
+    incomingMain.textContent = translated;
+    incomingSub.textContent  = (payload.sourceLang&&payload.sourceLang!==myLang)
+      ? `„${payload.text}" (${LANG_LABEL[payload.sourceLang]||payload.sourceLang})` : "";
+    incomingBox.style.display = "block";
+    clearTimeout(captionHideTimer);
+    captionHideTimer = setTimeout(()=>{ incomingBox.style.display="none"; },7000);
+    const sub = (payload.sourceLang&&payload.sourceLang!==myLang)
+      ? `„${payload.text}" (${LANG_LABEL[payload.sourceLang]||payload.sourceLang})` : "";
+    setSplitIncomingCaption(translated, sub, tagText);
+    // Peer name frissítése
+    if(payload.name){
+      peers.forEach((p, pid)=>{
+        if(p.name==="Partner") p.name=payload.name;
+      });
+    }
+    updateSplitPartnerPresence(payload.name||null, payload.sourceLang||null);
+    addHistoryItem(translated, payload.text, false);
+  }catch(e){ console.error(e); }
+}
+
+function addHistoryItem(main, orig, isOwn){
+  const histList = document.getElementById("historyList");
+  if(!histList) return;
+  const panel = document.getElementById("historyPanel");
+  const item = document.createElement("div");
+  item.style.cssText = "padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);";
+  const timeEl = document.createElement("div");
+  timeEl.style.cssText = "font-size:9px;color:var(--text-dim);margin-bottom:3px;";
+  timeEl.textContent = nowTime() + (isOwn ? " · Te" : " · Partner");
+  const textEl = document.createElement("div");
+  textEl.style.cssText = "font-size:12px;color:"+(isOwn?"var(--teal)":"var(--amber)")+";line-height:1.4;";
+  textEl.textContent = main;
+  item.appendChild(timeEl);
+  item.appendChild(textEl);
+  if(orig && orig !== main){
+    const origEl = document.createElement("div");
+    origEl.style.cssText = "font-size:10px;color:rgba(255,255,255,.35);margin-top:2px;font-style:italic;";
+    origEl.textContent = "„"+orig+"\"";
+    item.appendChild(origEl);
+  }
+histList.appendChild(item);
+  // Scroll: mind a historyList-et, mind a historyPanel-t görgetjük
+  histList.scrollTop = histList.scrollHeight;
+  if(panel) panel.scrollTop = panel.scrollHeight;
+  // Kis késleltetés után is, ha a DOM még renderel
+  setTimeout(()=>{
+    histList.scrollTop = histList.scrollHeight;
+    if(panel) panel.scrollTop = panel.scrollHeight;
+  }, 50);
+}
+
+/* =========================================================================
+   FUNKCIÓ 4 — CHAT SUPABASE MENTÉS
+   ========================================================================= */
+async function saveChatToSupabase(text, sourceLang, isOwn){
+  if(!supabaseClient||!roomId) return;
+  try{
+    await supabaseClient.from("chat_history").insert({
+      room_id: roomId,
+      user_name: isOwn ? (myName||"Me") : "Partner",
+      message: text,
+      source_lang: sourceLang||myLang,
+    });
+  }catch(e){
+    // Tábla nem létezik esetén elnézzük (nem akadályozza a működést)
+    console.warn("[Supabase] chat_history mentés hiba (lehet hogy a tábla nem létezik):", e);
+  }
+}
+
+async function loadChatHistoryFromSupabase(){
+  if(!supabaseClient||!roomId) return;
+  try{
+    const { data, error } = await supabaseClient
+      .from("chat_history")
+      .select("*")
+      .eq("room_id", roomId)
+      .order("created_at", {ascending:true})
+      .limit(50);
+    if(error) throw error;
+    if(!data||data.length===0) return;
+    for(const row of data){
+      const isOwn = row.user_name === (myName||"Me");
+      const translated = await translateText(row.message, row.source_lang||"hu", myLang);
+      const sub = (row.source_lang&&row.source_lang!==myLang)
+        ? `original: „${row.message}"`:"";
+      addChatBubble(translated, sub, isOwn, row.created_at
+        ? new Date(row.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})
+        : "");
+    }
+  }catch(e){
+    console.warn("[Supabase] chat_history betöltés hiba:", e);
+  }
+}
+
+/* =========================================================================
+   CHAT
+   ========================================================================= */
+function addChatBubble(text, sub, isMe, time){
+  const wrap = document.createElement("div");
+  wrap.className = "msg"+(isMe?" me":"");
+  const bubble = document.createElement("div");
+  bubble.className = "msg-bubble";
+  bubble.textContent = text;
+  wrap.appendChild(bubble);
+  if(sub){ const s=document.createElement("div"); s.className="msg-orig"; s.textContent=sub; wrap.appendChild(s); }
+  if(time){ const ts=document.createElement("div"); ts.className="msg-time"; ts.textContent=time; wrap.appendChild(ts); }
+  chatMessages.appendChild(wrap);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function addFileBubble(name, size, url, isMe, isImage){
+  const wrap = document.createElement("div");
+  wrap.className = "msg"+(isMe?" me":"");
+  if(isImage && url){
+    const img = document.createElement("img");
+    img.src = url;
+    img.style.cssText = "max-width:220px;max-height:180px;border-radius:12px;display:block;cursor:pointer;border:1px solid rgba(255,255,255,.15);margin-top:4px;";
+    img.onclick = ()=>{ window.open(url,"_blank"); };
+    wrap.appendChild(img);
+  } else {
+    const f = document.createElement("a");
+    f.className="msg-file"; f.href=url||"#"; f.download=name; f.target="_blank";
+    f.innerHTML=`📎 <span>${escHtml(name)}</span><span style="color:var(--text-dim);font-size:11px">${formatBytes(size)}</span>`;
+    wrap.appendChild(f);
+  }
+  const ts = document.createElement("div");
+  ts.className="msg-time"; ts.textContent=nowTime();
+  wrap.appendChild(ts);
+  chatMessages.appendChild(wrap);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return wrap;
+}
+
+// Fallback broadcast chat (ha nincs E2EE DataChannel, pl. 3. fél)
+async function handleIncomingChatBroadcast(payload){
+  if(!payload?.text) return;
+  // Csak akkor használjuk ha nincs DataChannel alapú titkosított chat
+  if(e2eeReady) return; // DataChannel kezeli
+  try{
+    const translated = await translateText(payload.text, payload.sourceLang||"hu", myLang);
+    const sub = (payload.sourceLang&&payload.sourceLang!==myLang)
+      ? `original: „${payload.text}"`:"";
+    addChatBubble(translated, sub, false, nowTime());
+  }catch(e){ console.error(e); }
+}
+
+async function sendChat(){
+  const text = chatInput.value.trim();
+  if(!text||!channel) return;
+  addChatBubble(text,"",true,nowTime());
+  saveChatToSupabase(text, myLang, true);
+
+  // E2EE DataChannel küldés minden peernek
+  let sentViaE2ee = false;
+  for(const [pid, p] of peers){
+    const dc = p.dataChannel||p.remoteDataChannel;
+    if(dc&&dc.readyState==="open"){
+      const payload = JSON.stringify({text, sourceLang:myLang});
+      const encrypted = await encryptText(payload);
+      if(encrypted){
+        dc.send(JSON.stringify({type:"e2ee-chat", payload:encrypted}));
+        sentViaE2ee = true;
+      }
+    }
+  }
+
+  // Fallback: broadcast (csak ha nincs DataChannel)
+  if(!sentViaE2ee){
+    channel.send({type:"broadcast", event:"chat", payload:{text, sourceLang:myLang}});
+  }
+
+  chatInput.value = "";
+}
+
+
+/* =========================================================================
+   FELVÉTEL
+   ========================================================================= */
+function toggleRecording(){
+  if(!isRecording){
+    recordedChunks = [];
+    const firstPeer = peers.values().next().value;
+    const remoteTracks = firstPeer?.videoEl?.srcObject?.getTracks()||[];
+    const combined = new MediaStream([
+      ...( localStream?.getTracks()||[]),
+      ...remoteTracks
+    ]);
+    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+      ?"video/webm;codecs=vp9,opus"
+      :MediaRecorder.isTypeSupported("video/webm")?"video/webm":"video/mp4";
+    try{
+      mediaRecorder = new MediaRecorder(combined, {mimeType});
+      mediaRecorder.ondataavailable = e=>{ if(e.data.size>0) recordedChunks.push(e.data); };
+      mediaRecorder.onstop = ()=>{
+        const blob = new Blob(recordedChunks, {type:mimeType});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href=url;
+        a.download="LiveTranslate-"+new Date().toISOString().slice(0,19).replace(/:/g,"-")+".webm";
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+      mediaRecorder.start(1000);
+      isRecording=true;
+      recBtn.classList.add("active-amber");
+      recBtn.querySelector(".btn-icon").textContent="⏹";
+      recPill.style.display="block";
+    }catch(e){ console.error("MediaRecorder hiba:",e); }
+  }else{
+    if(mediaRecorder&&mediaRecorder.state!=="inactive") mediaRecorder.stop();
+    isRecording=false;
+    recBtn.classList.remove("active-amber");
+    recBtn.querySelector(".btn-icon").textContent="⏺";
+    recPill.style.display="none";
+  }
+}
+
+/* =========================================================================
+   FÁJLKÜLDÉS (DataChannel)
+   ========================================================================= */
+async function sendFile(file){
+  const isImage = file.type.startsWith("image/");
+  const url = URL.createObjectURL(file);
+
+  // Saját buborék azonnal megjelenik progress bar-ral
+  const wrap = document.createElement("div");
+  wrap.className = "msg me";
+  if(isImage){
+    const img = document.createElement("img");
+    img.src = url;
+    img.style.cssText = "max-width:220px;max-height:180px;border-radius:12px;display:block;cursor:pointer;border:1px solid rgba(255,255,255,.15);margin-top:4px;";
+    img.onclick = ()=>{ window.open(url,"_blank"); };
+    wrap.appendChild(img);
+  } else {
+    const f = document.createElement("a");
+    f.className="msg-file"; f.href=url; f.download=file.name; f.target="_blank";
+    f.innerHTML=`📎 <span>${escHtml(file.name)}</span><span style="color:var(--text-dim);font-size:11px">${formatBytes(file.size)}</span>`;
+    wrap.appendChild(f);
+  }
+
+  // Progress bar
+  const progressWrap = document.createElement("div");
+  progressWrap.style.cssText = "margin-top:6px;background:rgba(255,255,255,.08);border-radius:6px;height:6px;overflow:hidden;width:100%;";
+  const progressBar = document.createElement("div");
+  progressBar.style.cssText = "height:100%;width:0%;background:var(--teal);border-radius:6px;transition:width .15s;";
+  progressWrap.appendChild(progressBar);
+  wrap.appendChild(progressWrap);
+
+  const progressLabel = document.createElement("div");
+  progressLabel.className = "msg-time";
+  progressLabel.textContent = "0%";
+  wrap.appendChild(progressLabel);
+
+  chatMessages.appendChild(wrap);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // Küldés DataChannel-en
+  let sentToAny = false;
+  for(const [pid, p] of peers){
+    const dc = p.dataChannel||p.remoteDataChannel;
+    if(!dc||dc.readyState!=="open") continue;
+
+    const meta = {type:"file-meta", name:file.name, size:file.size, mime:file.type, isImage};
+    dc.send(JSON.stringify(meta));
+
+    const CHUNK = 16384;
+    let offset = 0;
+
+    await new Promise((resolve)=>{
+      const reader = new FileReader();
+      reader.onload = e=>{
+        dc.send(e.target.result);
+        offset += e.target.result.byteLength;
+        const pct = Math.round((offset/file.size)*100);
+        progressBar.style.width = pct+"%";
+        progressLabel.textContent = pct+"%";
+        if(offset < file.size){
+          reader.readAsArrayBuffer(file.slice(offset, offset+CHUNK));
+        } else {
+          dc.send(JSON.stringify({type:"file-end"}));
+          progressWrap.style.display = "none";
+          progressLabel.textContent = nowTime();
+          resolve();
+        }
+      };
+      reader.readAsArrayBuffer(file.slice(0, CHUNK));
+    });
+
+    sentToAny = true;
+    break;
+  }
+
+  if(!sentToAny){
+    progressWrap.style.display = "none";
+    progressLabel.textContent = "⚠️ DataChannel nem elérhető";
+    progressLabel.style.color = "var(--danger)";
+  }
+}
+/* =========================================================================
+   EMOJI REAKCIÓK
+   ========================================================================= */
+function showEmojiFloat(emoji, sendToChannel){
+  const e = document.createElement("div");
+  e.className = "emoji-float";
+  e.textContent = emoji;
+  e.style.left = (10+Math.random()*80)+"%";
+  e.style.bottom = "80px";
+  emojiOverlay.appendChild(e);
+  setTimeout(()=>e.remove(), 3000);
+  if(sendToChannel&&channel){
+    channel.send({type:"broadcast",event:"reaction",payload:{emoji}});
+  }
+}
+
+
+
+/* =========================================================================
+   PICTURE IN PICTURE
+   ========================================================================= */
+async function togglePiP(){
+  console.log("═══════════════════════════════════════════════════");
+  console.log("⧉ PiP GOMB MEGNYOMVA");
+  console.log("   peers.size:", peers.size);
+  console.log("   isLaptop:", isLaptop());
+  console.log("   document.pictureInPictureElement:", document.pictureInPictureElement);
+  try{
+    if(document.pictureInPictureElement){
+      console.log("   → PiP bezárása...");
+      await document.exitPictureInPicture();
+      pipBtn.classList.remove("active-teal");
+      console.log("   ✅ PiP bezárva");
+    }else{
+      const targetVideo = isLaptop()
+  ? splitRemoteVideo
+  : (peers.size>0
+      ? (peers.values().next().value.videoEl||remoteVideo)
+      : remoteVideo);
+      console.log("   → targetVideo:", targetVideo?.id || "dinamikus elem");
+      console.log("   → targetVideo.srcObject:", targetVideo?.srcObject ? "van stream" : "NINCS stream");
+      console.log("   → targetVideo.readyState:", targetVideo?.readyState);
+      if(targetVideo.srcObject){
+        console.log("   → PiP indítása...");
+        await targetVideo.requestPictureInPicture();
+        pipBtn.classList.add("active-teal");
+        console.log("   ✅ PiP elindítva");
+      } else {
+        console.warn("   ❌ Nincs srcObject a videón, PiP nem indítható");
+      }
+    }
+  }catch(e){ 
+    console.error("   ❌ PiP hiba:", e.message || e);
+  }
+  console.log("═══════════════════════════════════════════════════");
+}
+
+
+
+async function saveCallStart(roomId){
+  if(!supabaseClient) return null;
+  try{
+    const { data, error } = await supabaseClient
+      .from("calls")
+      .upsert({
+        room_id:           roomId,
+        started_at:        new Date().toISOString(),
+        participant_count: 1,
+        last_seen:         new Date().toISOString(),
+      }, {
+        onConflict: "room_id",
+        ignoreDuplicates: false
+      })
+      .select()
+      .single();
+    if(error) throw error;
+    console.log("✅ [STATS] Hívás mentve/frissítve, id:", data.id);
+
+    // last_seen frissítése 30 másodpercenként
+    setInterval(async()=>{
+      if(callEnded) return;
+      try{
+        await supabaseClient
+          .from("calls")
+          .update({ last_seen: new Date().toISOString() })
+          .eq("id", data.id);
+      }catch(_){}
+    }, 30000);
+
+    return data.id;
+  }catch(e){
+    console.warn("[STATS] Hívás mentési hiba:", e?.message || e);
+    return null;
+  }
+}
+
+async function saveParticipantJoin(roomId, peerId, name, lang){
+  if(!supabaseClient) return;
+  try{
+    const { error } = await supabaseClient
+      .from("call_participants")
+      .upsert({
+        room_id:           roomId,
+        peer_id:           peerId,
+        name:              name,
+        lang:              lang,
+        joined_at:         new Date().toISOString(),
+        translation_count: 0,
+      }, {
+        onConflict: "room_id,peer_id",
+        ignoreDuplicates: true
+      });
+    if(error) throw error;
+    console.log("✅ [STATS] Résztvevő mentve:", name, lang);
+  }catch(e){
+    console.warn("[STATS] Résztvevő mentési hiba:", e?.message || e);
+  }
+}
+
+async function saveParticipantLeave(roomId, peerId, translationCount){
+  if(!supabaseClient) return;
+  try{
+    const { error } = await supabaseClient
+      .from("call_participants")
+      .update({
+        left_at:           new Date().toISOString(),
+        translation_count: translationCount,
+      })
+      .eq("room_id", roomId)
+      .eq("peer_id", peerId);
+    if(error) throw error;
+    console.log("✅ [STATS] Kilépés mentve, fordítások:", translationCount);
+  }catch(e){
+    console.warn("[STATS] Kilépés mentési hiba:", e?.message || e);
+  }
+}
+
+async function saveCallEnd(callId, roomId){
+  if(!supabaseClient || !callId) return;
+  try{
+    const { data: participants } = await supabaseClient
+      .from("call_participants")
+      .select("joined_at")
+      .eq("room_id", roomId)
+      .order("joined_at", { ascending: true })
+      .limit(1);
+    const startedAt = participants?.[0]?.joined_at
+      ? new Date(participants[0].joined_at)
+      : new Date();
+    const durationSeconds = Math.round((Date.now() - startedAt.getTime()) / 1000);
+    const { error } = await supabaseClient
+      .from("calls")
+      .update({
+        ended_at:         new Date().toISOString(),
+        duration_seconds: durationSeconds,
+      })
+      .eq("id", callId);
+    if(error) throw error;
+    console.log("✅ [STATS] Hívás vége mentve, hossz:", durationSeconds, "mp");
+  }catch(e){
+    console.warn("[STATS] Hívás vége mentési hiba:", e?.message || e);
+  }
+}
+
+async function incrementTranslationCount(roomId, peerId){
+  if(!supabaseClient) return;
+  _translationCount++;
+  if(_translationCount % 10 === 0){
+    try{
+      await supabaseClient
+        .from("call_participants")
+        .update({ translation_count: _translationCount })
+        .eq("room_id", roomId)
+        .eq("peer_id", peerId);
+      console.log("[STATS] Fordítás számláló frissítve:", _translationCount);
+    }catch(e){
+      console.warn("[STATS] Fordítás számláló hiba:", e?.message || e);
+    }
+  }
+}
+
+
+
+/* =========================================================================
+   HÍVÁS VÉGE
+   ========================================================================= */
+async function doHangup(){
+  console.log("═══════════════════════════════════════════════════");
+  console.log("📞 HÍVÁS BEFEJEZÉSE (doHangup)");
+  console.log("═══════════════════════════════════════════════════");
+  
+  callEnded = true;
+  // Mobilon: állítsuk vissza a felhasználói interakció jelzőt
+  window._userInteracted = false;
+  
+  // ─── HÍVÁS VÉGE MENTÉSE SUPABASE-BE ─────────────────────────
+  await saveParticipantLeave(roomId, myPeerId, _translationCount);
+  await saveCallEnd(_callDbId, roomId);
+  console.log("✅ callEnded = true");
+  
+  console.log("🛑 Hangfelismerés leállítása...");
+  stopRecognition();
+  console.log("   ✅ Hangfelismerés leállítva");
+  
+
+  
+  if(statsInterval){ 
+    console.log("📊 Statisztika leállítása...");
+    clearInterval(statsInterval); 
+    statsInterval=null; 
+    console.log("   ✅ Statisztika leállítva");
+  }
+  
+  if(isRecording){ 
+    console.log("⏺ Felvétel leállítása...");
+    toggleRecording(); 
+    console.log("   ✅ Felvétel leállítva");
+  }
+  
+  if(isSharing){ 
+  isSharing = false;
+  if(screenStream){ 
+    screenStream.getTracks().forEach(t=>t.stop()); 
+    screenStream=null; 
+  }
+}
+  
+
+
+  // Minden peer lezárása
+  console.log("👥 Peerek lezárása (" + peers.size + " db)...");
+  peers.forEach((p, pid)=>{
+    try{ p.pc.close(); }catch(_){}
+    if(p.cellEl) p.cellEl.remove();
+  });
+  peers.clear();
+  console.log("   ✅ Minden peer lezárva és eltávolítva");
+  
+  console.log("🔐 E2EE kulcsok törlése...");
+  e2eePeerKeys.clear();
+  e2eeCryptoKey = null;
+  e2eeReady = false;
+  console.log("   ✅ E2EE kulcsok törölve");
+  
+  console.log("🔄 UI elemek visszaállítása...");
+  multiGrid.innerHTML = "";
+  ownGridCell = null;
+  console.log("   ✅ MultiGrid törölve");
+
+// LiveKit szoba lezárása
+  if (livekitRoom) {
+    console.log("🔗 LiveKit szoba lezárása...");
+    try { await livekitRoom.disconnect(); } catch (_) {}
+    livekitRoom = null;
+    livekitConnected = false;
+    console.log("   ✅ LiveKit szoba lezárva");
+  }
+
+  if(channel){ 
+    console.log("📡 Supabase csatorna eltávolítása...");
+    supabaseClient.removeChannel(channel); 
+    channel=null; 
+    console.log("   ✅ Csatorna eltávolítva");
+  }
+  
+  if(localStream){ 
+    console.log("🎥 Helyi stream leállítása...");
+    localStream.getTracks().forEach(t=>t.stop()); 
+    localStream=null; 
+    console.log("   ✅ Helyi stream leállítva");
+  }
+
+  console.log("🖥️ Videó elemek törlése...");
+  remoteVideo.srcObject    = null; 
+  localVideo.srcObject   = null;
+  splitLocalVideo.srcObject= null; 
+  splitRemoteVideo.srcObject=null;
+  splitWaiting.style.display = "flex";
+  multiGrid.style.display = "none";
+  console.log("   ✅ Videó elemek törölve");
+
+  console.log("🗑️ Gyorsítótár és chat törlése...");
+  translateCache && translateCache.clear();
+  chatMessages.innerHTML="";
+if(histList) histList.innerHTML="";
+  console.log("   ✅ Gyorsítótár és chat törölve");
+
+  console.log("🔄 Képernyőváltás (call -> setup)...");
+  callScreen.classList.remove("active");
+  setupScreen.classList.add("active");
+  console.log("   ✅ Képernyőváltás megtörtént");
+
+  console.log("🔧 UI elemek visszaállítása...");
+  roomCodeDisplay.style.display="none";
+  shareLinkBox.style.display="none";
+  setupStatus.textContent = t("callEnded");
+  createRoomBtn.disabled=false; 
+  joinRoomBtn.disabled=false;
+  recPill.style.display="none";
+  isRecording=false; 
+  isSharing=false; 
+  mirrored=false;
+
+  hangupModal.classList.remove("open");
+  statsGraphOverlay.classList.remove("open");
+  participantsPanel.classList.remove("open");
+
+  console.log("   ✅ UI elemek visszaállítva");
+
+  // URL paraméter eltávolítása
+  if(window.history.replaceState){
+    window.history.replaceState({}, document.title, window.location.pathname);
+    console.log("   ✅ URL paraméterek törölve");
+  }
+  
+  console.log("═══════════════════════════════════════════════════");
+  console.log("✅ HÍVÁS BEFEJEZVE!");
+  console.log("═══════════════════════════════════════════════════");
+}
+
+
+
+
+
+
+
+
+/* =========================================================================
+   HÍVÁS INDÍTÁSA
+   ========================================================================= */
+async function beginCallFlow(){
+ 
+  console.log("═══════════════════════════════════════════════════");
+  console.log("📞 HÍVÁS INDÍTÁSA");
+  console.log("═══════════════════════════════════════════════════");
+  console.log("📝 Név:", myName);
+  console.log("🌐 Nyelv:", myLang, "(" + LANG_LABEL[myLang] + ")");
+  console.log("🏠 Szoba kód:", roomId);
+  console.log("🔑 Initiátor:", isInitiator ? "IGEN" : "NEM");
+  console.log("🆔 Peer ID:", myPeerId);
+  console.log("───────────────────────────────────────────────────");
+  
+  callEnded = false;
+  myPeerId = cryptoId();
+  
+  try{
+    console.log("🔌 Supabase kapcsolat inicializálása...");
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window.supabaseClient = supabaseClient;
+    translator._initKeys();
+    console.log("✅ Supabase kliens kész");
+    
+    console.log("🎥 Média inicializálása (kamera/mikrofon)...");
+    await initMedia();
+    console.log("✅ Média kész (kamera és mikrofon elérhető)");
+    
+    console.log("📡 Csatorna beállítása a szobához...");
+    await setupChannel(roomId);
+    console.log("✅ Csatorna kész");
+
+    roomPill.textContent     = "Room: "+roomId;
+    callCodeValue.textContent = roomId;
+    langPill.textContent     = LANG_TAG[myLang]||"HU";
+    callNameText.textContent = myName;
+    callNameLang.textContent = LANG_LABEL[myLang]||myLang;
+    splitMyName.textContent  = myName||"Te";
+    splitMyLang.textContent  = LANG_TAG[myLang]||"HU";
+
+    if(isInitiator){
+      _callDbId = await saveCallStart(roomId);
+    } else {
+      const { data } = await supabaseClient
+        .from("calls")
+        .select("id")
+        .eq("room_id", roomId)
+        .is("ended_at", null)
+        .order("started_at", {ascending: false})
+        .limit(1)
+        .single();
+      _callDbId = data?.id || null;
+    }
+    await saveParticipantJoin(roomId, myPeerId, myName, myLang);
+
+    setupScreen.classList.remove("active");
+    callScreen.classList.add("active");
+
+    updateParticipantsPanel();
+
+    // E2EE kulcs előgenerálás
+    await generateE2eeKey();
+
+// ─── LIVEKIT KAPCSOLÓDÁS ELŐSZÖR ───
+    try {
+      await connectToLiveKit();
+      console.log("✅ LiveKit kapcsolódva!");
+    } catch (livekitErr) {
+      console.warn("⚠️ LiveKit nem elérhető, WebRTC fallback indul...", livekitErr);
+      setNetStatus("warn");
+      setTimeout(() => {
+        if (peers.size > 0 && !callEnded) setNetStatus("good");
+      }, 5000);
+    }
+
+    // ─── STT INDÍTÁSA: MOBILON CSAK MIKROFON GOMBBAL ───
+    // Mobilon NE induljon automatikusan, csak ha a felhasználó rányom a mikrofon gombra
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!isMobile) {
+      // Asztali gépen automatikusan indul
+      await new Promise(r => setTimeout(r, 800));
+      startRecognition();
+      console.log("✅ Asztali: STT automatikusan elindítva");
+    } else {
+      // Mobilon: mikrofon alapból KI van kapcsolva, STT nem fut
+      console.log("📱 Mobil: STT NEM indul automatikusan, várok mikrofon gombra");
+      // Mikrofon alapból ki van kapcsolva
+      micOn = false;
+      if (localStream) {
+        localStream.getAudioTracks().forEach(t => t.enabled = false);
+      }
+      micBtn.classList.add("off");
+      micBtn.querySelector(".btn-icon").textContent = "🔇";
+      // recognitionShouldRun false, így nem indul el magától
+      recognitionShouldRun = false;
+    }
+
+    // Chat előzmények betöltése
+    loadChatHistoryFromSupabase();
+
+  }catch(err){
+    console.error(err);
+    setupStatus.textContent = t("errPerm");
+    createRoomBtn.disabled=false; joinRoomBtn.disabled=false;
+  }
+}
+
+
+
+/* =========================================================================
+   SETUP UI EVENTS
+   ========================================================================= */
+function validateName(){
+  const name = myNameInput.value.trim();
+  if(!name){
+    myNameInput.classList.add("input-error");
+    nameError.textContent = t("nameRequired");
+    myNameInput.scrollIntoView({ behavior:"smooth", block:"center" });
+    myNameInput.focus();
+    setTimeout(()=>myNameInput.classList.remove("input-error"),600);
+    return false;
+  }
+  nameError.textContent="";
+  return true;
+}
+
+createRoomBtn.onclick = async()=>{
+  if(!validateName()) return;
+  myName = myNameInput.value.trim();
+  myLang = myLangSelect.value;
+  roomId = randomCode();
+  isInitiator = true;
+  
+  bigRoomCode.textContent = roomId;
+  roomCodeDisplay.style.display = "block";
+  showShareLink(roomId);
+  
+  createRoomBtn.disabled = true;
+  joinRoomBtn.disabled = true;
+  
+  const enterBtn = document.getElementById("enterRoomBtn");
+  enterBtn.style.display = "block";
+  enterBtn.disabled = false;
+  
+  setupStatus.textContent = "🔗 " + t("shareLinkMsg");
+setupStatus.dataset.statusType = "shareLink";   // ← EZT ADD HOZZÁ
+};
+
+// ── BELÉPÉS GOMB ──
+const enterRoomBtn = document.getElementById("enterRoomBtn");
+if(enterRoomBtn){
+  enterRoomBtn.onclick = async()=>{
+    enterRoomBtn.disabled = true;
+    setupStatus.textContent = t("waitMsg");
+    await beginCallFlow();
+    // Visszaállítás (ha újraindulna)
+    enterRoomBtn.style.display = "none";
+    enterRoomBtn.disabled = false;
+  };
+}
+
+  // ── CSATLAKOZÁS GOMBBAL ──
+joinRoomBtn.onclick = async () => {
+  if (!validateName()) return;
+
+  const code = joinCodeInput.value.trim().toUpperCase();
+  if (!code || code.length < 4 || code.length > 6) {
+    setupStatus.textContent = t("noCode");
+    joinCodeInput.style.borderColor = "var(--danger)";
+    joinCodeInput.scrollIntoView({ behavior:"smooth", block:"center" });
+    setTimeout(() => { joinCodeInput.style.borderColor = ""; }, 1500);
+    return;
+  }
+
+  myName      = myNameInput.value.trim();
+  myLang      = myLangSelect.value;
+  roomId      = code;
+  isInitiator = false;
+
+  createRoomBtn.disabled = true;
+  joinRoomBtn.disabled   = true;
+  setupStatus.textContent = t("joinMsg");
+
+  try {
+    await beginCallFlow();
+  } catch(e) {
+    createRoomBtn.disabled = false;
+    joinRoomBtn.disabled   = false;
+    setupStatus.textContent = t("errPerm");
+  }
+};
+
+
+
+
+/* =========================================================================
+   CALL UI EVENTS
+   ========================================================================= */
+micBtn.onclick = ()=>{
+  if(!localStream) return;
+  
+  // Mikrofon hangjának be/ki kapcsolása
+  micOn = !micOn;
+  localStream.getAudioTracks().forEach(t => t.enabled = micOn);
+  micBtn.classList.toggle("off", !micOn);
+  micBtn.querySelector(".btn-icon").textContent = micOn ? "🎙️" : "🔇";
+  
+  // Hangfelismerés kezelése mobilon
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  
+  if (isMobile) {
+    // Mobilon: ha bekapcsoltuk a mikrofont, induljon a hangfelismerés
+    if (micOn) {
+      // recognitionShouldRun true, hogy tudjon futni
+      recognitionShouldRun = true;
+      startRecognition();
+      console.log("📱 Mobil: hangfelismerés elindítva a mikrofon gombra");
+    } else {
+      // Ha kikapcsoltuk a mikrofont, állítsuk le a hangfelismerést
+      stopRecognition();
+      recognitionShouldRun = false;
+      console.log("📱 Mobil: hangfelismerés leállítva");
+    }
+  } else {
+    // Asztali: ha be van kapcsolva a mikrofon, indítsuk újra a felismerést
+    if (micOn) {
+      recognitionShouldRun = true;
+      startRecognition();
+    } else {
+      stopRecognition();
+      recognitionShouldRun = false;
+    }
+  }
+};
+
+camBtn.onclick = ()=>{
+  if(!localStream) return;
+  camOn = !camOn;
+  localStream.getVideoTracks().forEach(t=>t.enabled=camOn);
+  camBtn.classList.toggle("off",!camOn);
+  camBtn.querySelector(".btn-icon").textContent = camOn?"📷":"🚫";
+};
+
+
+recBtn.onclick    = toggleRecording;
+pipBtn.onclick    = togglePiP;
+
+
+
+langBtn.onclick = e=>{ e.stopPropagation(); langMenu.classList.toggle("open"); };
+langMenu.querySelectorAll("button").forEach(btn=>{
+  btn.onclick = ()=>{
+    myLang = btn.dataset.lang;
+    langPill.textContent    = LANG_TAG[myLang]||"HU";
+    splitMyLang.textContent = LANG_TAG[myLang]||"HU";
+    callNameLang.textContent= LANG_LABEL[myLang]||myLang;
+    langMenu.querySelectorAll("button").forEach(b=>b.classList.toggle("active",b===btn));
+    langMenu.classList.remove("open");
+    stopRecognition(); startRecognition();
+    if(channel) channel.track({name:myName||"Guest",lang:myLang,peerId:myPeerId,initiator:isInitiator});
+    el("myLang") && (el("myLang").value=myLang);
+  };
+});
+
+statsBtn.onclick = e=>{ e.stopPropagation(); statsOverlay.classList.toggle("open"); };
+histBtn.onclick = e=>{
+  e.stopPropagation();
+  const panel = document.getElementById("historyPanel");
+  const isHidden = panel.style.display === "none";
+  panel.style.display = isHidden ? "block" : "none";
+  if(isHidden){
+    const histList = document.getElementById("historyList");
+    setTimeout(()=>{
+      if(histList) histList.scrollTop = histList.scrollHeight;
+      if(panel) panel.scrollTop = panel.scrollHeight;
+    }, 80);
+  }
+};
+
+// History panel drag (csak laptopon)
+(()=>{
+  const panel = document.getElementById("historyPanel");
+  const head  = document.getElementById("historyPanelHead");
+  const slider = document.getElementById("histOpacitySlider");
+  const hint   = document.getElementById("histSliderHint");
+  if(!panel||!head) return;
+
+  // Átlátszóság csúszka
+  head.addEventListener("mouseenter",()=>{
+    slider.style.opacity="1";
+    if(hint) hint.style.opacity="0";
+  });
+  head.addEventListener("mouseleave",()=>{
+    slider.style.opacity="0";
+    if(hint) hint.style.opacity="1";
+  });
+  slider.addEventListener("input", e=>{
+    const val = parseFloat(e.target.value);
+    panel.style.background = `rgba(13,20,32,${val})`;
+    panel.style.backdropFilter = val < 0.2 ? "none" : "blur(10px)";
+  });
+
+  // Drag — csak laptopon
+  let dragging=false, startX=0, startY=0, origX=0, origY=0;
+  head.addEventListener("pointerdown", e=>{
+    if(window.innerWidth < 720) return;
+    if(e.target === slider || e.target.tagName === "BUTTON") return;
+    dragging = true;
+    head.style.cursor = "grabbing";
+    const rect = panel.getBoundingClientRect();
+    startX = e.clientX;
+    startY = e.clientY;
+    origX  = rect.left;
+    origY  = rect.top;
+    panel.style.transition = "none";
+    panel.style.left   = origX+"px";
+    panel.style.bottom = "auto";
+    panel.style.top    = origY+"px";
+    head.setPointerCapture(e.pointerId);
+  });
+  head.addEventListener("pointermove", e=>{
+    if(!dragging || window.innerWidth < 720) return;
+    panel.style.left = (origX + e.clientX - startX)+"px";
+    panel.style.top  = (origY + e.clientY - startY)+"px";
+  });
+  head.addEventListener("pointerup", ()=>{
+    if(!dragging) return;
+    dragging = false;
+    head.style.cursor = window.innerWidth >= 720 ? "grab" : "default";
+    panel.style.transition = "";
+  });
+})();
+
+
+
+chatBtn.onclick = ()=> chatPanel.classList.toggle("open");
+
+// Chat panel bezárása mobilon háttérre érintéskor
+document.addEventListener("touchstart", e=>{
+  if(window.innerWidth >= 720) return;
+  const chatPanelEl = document.getElementById("chatPanel");
+  const chatBtnEl   = document.getElementById("chatBtn");
+  if(chatPanelEl && chatPanelEl.classList.contains("open")){
+    if(!chatPanelEl.contains(e.target) && e.target!==chatBtnEl && !chatBtnEl.contains(e.target)){
+      chatPanelEl.classList.remove("open");
+    }
+  }
+}, {passive:true});
+chatCloseBtn.onclick= ()=> chatPanel.classList.remove("open");
+  // Chat panel drag — csak laptopon
+(()=>{
+  let dragging=false, startX=0, startY=0, origX=0, origY=0;
+  const header = document.querySelector(".chat-head");
+
+  header.addEventListener("pointerdown", e=>{
+    if(window.innerWidth < 720) return;
+    if(e.target.id==="chatOpacitySlider"||e.target.classList.contains("chat-close")) return;
+    dragging=true;
+    header.style.cursor="grabbing";
+    const rect = chatPanel.getBoundingClientRect();
+    startX = e.clientX;
+    startY = e.clientY;
+    origX = rect.left;
+    origY = rect.top;
+    chatPanel.style.transition = "none";
+    chatPanel.style.right = "auto";
+    chatPanel.style.bottom = "auto";
+    chatPanel.style.left = origX+"px";
+    chatPanel.style.top = origY+"px";
+    header.setPointerCapture(e.pointerId);
+  });
+  header.addEventListener("pointermove", e=>{
+    if(!dragging||window.innerWidth < 720) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    chatPanel.style.left = (origX+dx)+"px";
+    chatPanel.style.top  = (origY+dy)+"px";
+  });
+  header.addEventListener("pointerup", ()=>{
+    if(!dragging) return;
+    dragging=false;
+    header.style.cursor= window.innerWidth >= 720 ? "grab" : "default";
+    chatPanel.style.transition="";
+  });
+})();
+chatSendBtn.onclick = sendChat;
+  document.getElementById("chatOpacitySlider").addEventListener("input", e=>{
+  const val = parseFloat(e.target.value);
+  chatPanel.style.background = `rgba(13,20,32,${val})`;
+  chatPanel.style.backdropFilter = val < 0.2 ? "none" : `blur(20px)`;
+});
+chatInput.addEventListener("keydown",e=>{ if(e.key==="Enter") sendChat(); });
+
+fileBtn.onclick = ()=> fileInput.click();
+fileInput.onchange = async()=>{
+  for(const f of fileInput.files) await sendFile(f);
+  fileInput.value="";
+};
+
+peersBtn.onclick = e=>{ e.stopPropagation(); participantsPanel.classList.toggle("open"); };
+
+document.addEventListener("click",e=>{
+  if(!langMenu.contains(e.target)&&e.target!==langBtn)               langMenu.classList.remove("open");
+  if(!statsOverlay.contains(e.target)&&e.target!==statsBtn)          statsOverlay.classList.remove("open");
+  if(!participantsPanel.contains(e.target)&&e.target!==peersBtn)     participantsPanel.classList.remove("open");
+  if(!statsGraphOverlay.contains(e.target)&&e.target!==netPill&&e.target!==statsGraphClose)
+    statsGraphOverlay.classList.remove("open");
+  const histPanel = document.getElementById("historyPanel");
+  const histBtnEl = document.getElementById("histBtn");
+  if(histPanel && histBtnEl && !histPanel.contains(e.target) && e.target!==histBtnEl && !histBtnEl.contains(e.target)){
+    histPanel.style.display = "none";
+  }
+  // Chat panel bezárása mobilon kívülre kattintáskor
+// Chat panel bezárása mobilon kívülre kattintáskor/érintéskor
+  if(window.innerWidth < 720){
+    const chatPanelEl = document.getElementById("chatPanel");
+    const chatBtnEl   = document.getElementById("chatBtn");
+    if(chatPanelEl && chatPanelEl.classList.contains("open")){
+      if(!chatPanelEl.contains(e.target) && e.target!==chatBtnEl && !chatBtnEl.contains(e.target)){
+        chatPanelEl.classList.remove("open");
+      }
+    }
+  }
+});
+
+/* ── HANGUP MODAL ── */
+hangupBtn.onclick         = ()=> hangupModal.classList.add("open");
+modalCancelBtn.onclick    = ()=> hangupModal.classList.remove("open");
+modalConfirmBtn.onclick   = ()=> doHangup();
+hangupModal.addEventListener("click",e=>{ if(e.target===hangupModal) hangupModal.classList.remove("open"); });
+
+/* =========================================================================
+   SERVICE WORKER
+   ========================================================================= */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("sw.js")
+      .then(()=>console.log("SW registered"))
+      .catch(e=>console.warn("SW hiba:",e));
+  });
+}
+</script>
+<script src="https://unpkg.com/vconsole/dist/vconsole.min.js"></script>
+<script>new VConsole();</script>
+</body>
+</html>
