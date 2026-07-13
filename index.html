@@ -2575,10 +2575,10 @@ async function initMedia(){
     const audioTrack = localStream.getAudioTracks()[0];
     if(audioTrack){
       await dbLog("initMedia_audioTrack", "label: "+audioTrack.label+" readyState: "+audioTrack.readyState);
-      //window._sharedAudioContext = new AudioContext();
-      //window._sharedAudioSource = window._sharedAudioContext.createMediaStreamSource(localStream);
-      //window._sharedMicStream = localStream;
-      //await dbLog("initMedia_audioContext", "state: "+window._sharedAudioContext.state);
+      window._sharedAudioContext = new AudioContext();
+      window._sharedAudioSource = window._sharedAudioContext.createMediaStreamSource(localStream);
+      window._sharedMicStream = localStream;
+      await dbLog("initMedia_audioContext", "state: "+window._sharedAudioContext.state);
     } else {
       await dbLog("initMedia_audioTrack_MISSING", "nincs audio track!");
     }
