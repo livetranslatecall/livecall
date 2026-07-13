@@ -2535,10 +2535,28 @@ async function initMedia(){
     const videoConstraint = preferred
       ? {deviceId:{exact:preferred.deviceId}}
       : {facingMode:"user"};
-    localStream = await navigator.mediaDevices.getUserMedia({video:videoConstraint,audio:true});
-    localVideo.srcObject   = localStream;
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: videoConstraint,
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1,
+        sampleRate: 16000,
+      }
+    });
+    localVideo.srcObject = localStream;
     splitLocalVideo.srcObject = localStream;
     window._localStream = localStream;
+
+    // ── Audio context létrehozása a megosztott mikrofon kezeléséhez ──
+    const audioTrack = localStream.getAudioTracks()[0];
+    if(audioTrack){
+      window._sharedAudioContext = new AudioContext();
+      window._sharedAudioSource = window._sharedAudioContext.createMediaStreamSource(localStream);
+      window._sharedMicStream = localStream;
+      console.log("[Media] Megosztott audio context kész:", window._sharedAudioContext.state);
+    }
   }catch(err){
     console.error("Média hiba:", err);
     setupStatus.textContent = t("errPerm");
@@ -2566,24 +2584,15 @@ function startRecognition(){
     if(isStarting || recognition) return;
     isStarting = true;
 
-    // Android: explicit audio focus kérés az STT előtt
-    if(isAndroid){
+    // ── Android: AudioContext resume, NEM nyitunk új streamet ──
+    if(isAndroid && window._sharedAudioContext){
       try{
-        if(sttStream){ sttStream.getTracks().forEach(t=>t.stop()); sttStream=null; }
-        sttStream = await navigator.mediaDevices.getUserMedia({
-          audio:{
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            channelCount: 1,
-            sampleRate: 16000,
-          }
-        });
+        if(window._sharedAudioContext.state === "suspended"){
+          await window._sharedAudioContext.resume();
+          console.log("[STT] AudioContext resumed");
+        }
       }catch(e){
-        console.warn("[STT] Android audio init hiba:", e.message);
-        isStarting = false;
-        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 2000);
-        return;
+        console.warn("[STT] AudioContext resume hiba:", e.message);
       }
     }
 
@@ -2640,9 +2649,9 @@ function startRecognition(){
       if(e.error === "aborted") return;
 
       if(e.error === "audio-capture"){
-        console.warn("[STT] audio-capture hiba — mikrofon foglalt, 2s várakozás...");
-        if(sttStream){ sttStream.getTracks().forEach(t=>t.stop()); sttStream=null; }
-        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 2000);
+        // ── Nem nyitunk új streamet, csak várunk és újrapróbálunk ──
+        console.warn("[STT] audio-capture hiba — várunk 1.5s...");
+        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 1500);
         return;
       }
 
@@ -2669,11 +2678,6 @@ function startRecognition(){
       isStarting = false;
       recognition = null;
       console.log("[STT] End, shouldRun:", recognitionShouldRun);
-      // Android: sttStream lezárása minden ciklus után (felszabadítja az audio focust)
-      if(isAndroid && sttStream){
-        sttStream.getTracks().forEach(t=>t.stop());
-        sttStream = null;
-      }
       if(recognitionShouldRun && micOn && !callEnded){
         const delay = isAndroid ? 600 : 300;
         setTimeout(createAndStart, delay);
@@ -2688,7 +2692,6 @@ function startRecognition(){
       console.warn("[STT] start() hiba:", e.message);
       recognition = null;
       isStarting = false;
-      if(sttStream){ sttStream.getTracks().forEach(t=>t.stop()); sttStream=null; }
       if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 1500);
     }
   }
@@ -3402,13 +3405,7 @@ async function beginCallFlow(){
     // E2EE kulcs előgenerálás
     await generateE2eeKey();
 
-    // ─── STT ELŐSZÖR, LIVEKIT ELŐTT ───
-    startRecognition();
-
-    // ← Adj egy kis időt az STT-nek az audio focus megszerzéséhez
-    await new Promise(r => setTimeout(r, 1500));
-
-    // ─── LIVEKIT KAPCSOLÓDÁS ───
+// ─── LIVEKIT KAPCSOLÓDÁS ELŐSZÖR ───
     try {
       await connectToLiveKit();
       console.log("✅ LiveKit kapcsolódva!");
@@ -3419,6 +3416,11 @@ async function beginCallFlow(){
         if (peers.size > 0 && !callEnded) setNetStatus("good");
       }, 5000);
     }
+
+    // ─── STT CSAK LIVEKIT UTÁN INDUL ───
+    await new Promise(r => setTimeout(r, 800));
+    startRecognition();
+
     // Chat előzmények betöltése
     loadChatHistoryFromSupabase();
 
@@ -3428,7 +3430,6 @@ async function beginCallFlow(){
     createRoomBtn.disabled=false; joinRoomBtn.disabled=false;
   }
 }
-
 
 
 
@@ -3738,7 +3739,7 @@ if("serviceWorker" in navigator){
   });
 }
 </script>
-  <script src="https://unpkg.com/vconsole/dist/vconsole.min.js"></script>
+<script src="https://unpkg.com/vconsole/dist/vconsole.min.js"></script>
 <script>new VConsole();</script>
 </body>
 </html>
