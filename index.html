@@ -2595,22 +2595,38 @@ async function initMedia(){
    ========================================================================= */
 function startRecognition(){
   dbLog("STT_startRecognition_called", "micOn: "+micOn+" callEnded: "+callEnded);
-  if(!micOn || callEnded) { dbLog("STT_startRecognition_BLOCKED", "micOn: "+micOn+" callEnded: "+callEnded); return; }
+  if(!micOn || callEnded) { 
+    dbLog("STT_startRecognition_BLOCKED", "micOn: "+micOn+" callEnded: "+callEnded); 
+    return; 
+  }
+  
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SR){ dbLog("STT_NO_API", "SpeechRecognition nem támogatott"); console.warn("Web Speech API nem támogatott"); return; }
+  if(!SR){ 
+    dbLog("STT_NO_API", "SpeechRecognition nem támogatott"); 
+    console.warn("Web Speech API nem támogatott"); 
+    return; 
+  }
 
   recognitionShouldRun = true;
-  if(recognition){ dbLog("STT_already_running", "már fut, skip"); return; }
+  if(recognition){ 
+    dbLog("STT_already_running", "már fut, skip"); 
+    return; 
+  }
 
   let isStarting = false;
   let noSpeechStreak = 0;
   const isAndroid = /Android/i.test(navigator.userAgent);
-  dbLog("STT_platform_check", "isAndroid: "+isAndroid+" lang: "+myLang+" locale: "+(STT_LOCALE[myLang]||"hu-HU"));
 
   async function createAndStart(){
     dbLog("STT_createAndStart_called", "recognitionShouldRun: "+recognitionShouldRun+" micOn: "+micOn+" callEnded: "+callEnded+" isStarting: "+isStarting+" recognition: "+(recognition?"van":"null"));
-    if(!recognitionShouldRun || !micOn || callEnded) { dbLog("STT_createAndStart_BLOCKED","feltétel nem teljesül"); return; }
-    if(isStarting || recognition) { dbLog("STT_createAndStart_SKIP","isStarting vagy recognition már van"); return; }
+    if(!recognitionShouldRun || !micOn || callEnded) { 
+      dbLog("STT_createAndStart_BLOCKED","feltétel nem teljesül"); 
+      return; 
+    }
+    if(isStarting || recognition) { 
+      dbLog("STT_createAndStart_SKIP","isStarting vagy recognition már van"); 
+      return; 
+    }
     isStarting = true;
 
     if(isAndroid && window._sharedAudioContext){
@@ -2680,6 +2696,13 @@ function startRecognition(){
         recognitionShouldRun = false;
         dbLog("STT_onerror_PERMISSION_DENIED", "leállítás");
         console.warn("[STT] Engedély megtagadva, leállítás.");
+        // Mobilon: ha nincs engedély, kapcsoljuk ki a mikrofont
+        if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){
+          micOn = false;
+          if(localStream) localStream.getAudioTracks().forEach(t => t.enabled = false);
+          micBtn.classList.add("off");
+          micBtn.querySelector(".btn-icon").textContent = "🔇";
+        }
         return;
       }
 
@@ -2739,7 +2762,15 @@ function startRecognition(){
     }
   }
 
-  createAndStart();
+  // Mobilon: ha nincs még felhasználói interakció, várjunk egyet
+  if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window._userInteracted) {
+    dbLog("STT_mobile_waiting_for_tap", "Mobil: várunk egy érintésre a mikrofon gombon");
+    // A mikrofon gomb megnyomása már megtörtént, ezért jelöljük
+    window._userInteracted = true;
+    createAndStart();
+  } else {
+    createAndStart();
+  }
 }
 
 function stopRecognition(){
@@ -3254,14 +3285,19 @@ async function doHangup(){
   console.log("═══════════════════════════════════════════════════");
   
   callEnded = true;
+  // Mobilon: állítsuk vissza a felhasználói interakció jelzőt
+  window._userInteracted = false;
+  
   // ─── HÍVÁS VÉGE MENTÉSE SUPABASE-BE ─────────────────────────
-await saveParticipantLeave(roomId, myPeerId, _translationCount);
-await saveCallEnd(_callDbId, roomId);
+  await saveParticipantLeave(roomId, myPeerId, _translationCount);
+  await saveCallEnd(_callDbId, roomId);
   console.log("✅ callEnded = true");
   
   console.log("🛑 Hangfelismerés leállítása...");
   stopRecognition();
   console.log("   ✅ Hangfelismerés leállítva");
+  
+
   
   if(statsInterval){ 
     console.log("📊 Statisztika leállítása...");
@@ -3460,13 +3496,27 @@ async function beginCallFlow(){
       }, 5000);
     }
 
-    // ─── STT CSAK LIVEKIT UTÁN INDUL ───
-    await dbLog("beginCallFlow_before_STT", "800ms várakozás előtt, livekitConnected: "+livekitConnected+" localStream audiotrackok: "+(localStream?localStream.getAudioTracks().length:"nincs stream")+" audioTrack readyState: "+(localStream&&localStream.getAudioTracks()[0]?localStream.getAudioTracks()[0].readyState:"nincs"));
-await new Promise(r => setTimeout(r, 800));
-await dbLog("beginCallFlow_after_wait", "STT indítása most");
-startRecognition();
-await dbLog("beginCallFlow_STT_called", "startRecognition meghívva");
-    startRecognition();
+    // ─── STT INDÍTÁSA: MOBILON CSAK MIKROFON GOMBBAL ───
+    // Mobilon NE induljon automatikusan, csak ha a felhasználó rányom a mikrofon gombra
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!isMobile) {
+      // Asztali gépen automatikusan indul
+      await new Promise(r => setTimeout(r, 800));
+      startRecognition();
+      console.log("✅ Asztali: STT automatikusan elindítva");
+    } else {
+      // Mobilon: mikrofon alapból KI van kapcsolva, STT nem fut
+      console.log("📱 Mobil: STT NEM indul automatikusan, várok mikrofon gombra");
+      // Mikrofon alapból ki van kapcsolva
+      micOn = false;
+      if (localStream) {
+        localStream.getAudioTracks().forEach(t => t.enabled = false);
+      }
+      micBtn.classList.add("off");
+      micBtn.querySelector(".btn-icon").textContent = "🔇";
+      // recognitionShouldRun false, így nem indul el magától
+      recognitionShouldRun = false;
+    }
 
     // Chat előzmények betöltése
     loadChatHistoryFromSupabase();
@@ -3477,7 +3527,6 @@ await dbLog("beginCallFlow_STT_called", "startRecognition meghívva");
     createRoomBtn.disabled=false; joinRoomBtn.disabled=false;
   }
 }
-
 
 
 
@@ -3572,11 +3621,39 @@ joinRoomBtn.onclick = async () => {
    ========================================================================= */
 micBtn.onclick = ()=>{
   if(!localStream) return;
+  
+  // Mikrofon hangjának be/ki kapcsolása
   micOn = !micOn;
-  localStream.getAudioTracks().forEach(t=>t.enabled=micOn);
-  micBtn.classList.toggle("off",!micOn);
-  micBtn.querySelector(".btn-icon").textContent = micOn?"🎙️":"🔇";
-  if(micOn) startRecognition(); else stopRecognition();
+  localStream.getAudioTracks().forEach(t => t.enabled = micOn);
+  micBtn.classList.toggle("off", !micOn);
+  micBtn.querySelector(".btn-icon").textContent = micOn ? "🎙️" : "🔇";
+  
+  // Hangfelismerés kezelése mobilon
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  
+  if (isMobile) {
+    // Mobilon: ha bekapcsoltuk a mikrofont, induljon a hangfelismerés
+    if (micOn) {
+      // recognitionShouldRun true, hogy tudjon futni
+      recognitionShouldRun = true;
+      startRecognition();
+      console.log("📱 Mobil: hangfelismerés elindítva a mikrofon gombra");
+    } else {
+      // Ha kikapcsoltuk a mikrofont, állítsuk le a hangfelismerést
+      stopRecognition();
+      recognitionShouldRun = false;
+      console.log("📱 Mobil: hangfelismerés leállítva");
+    }
+  } else {
+    // Asztali: ha be van kapcsolva a mikrofon, indítsuk újra a felismerést
+    if (micOn) {
+      recognitionShouldRun = true;
+      startRecognition();
+    } else {
+      stopRecognition();
+      recognitionShouldRun = false;
+    }
+  }
 };
 
 camBtn.onclick = ()=>{
