@@ -2557,27 +2557,10 @@ function startRecognition(){
   }
   recognitionShouldRun = true;
 
-  
+  async function createAndStart(){
+    if(!recognitionShouldRun||!micOn||callEnded) return;
 
-async function createAndStart(){
-  if(!recognitionShouldRun||!micOn||callEnded) return;
-
-  // Ha van localStream, klónozzuk az audio trackot az STT-nek
-  // Ez nem nyit új getUserMedia-t, csak másolja a meglévő trackot
-  try{
-    if(localStream && (!sttStream || sttStream.getTracks().every(t=>t.readyState==="ended"))){
-      const audioTrack = localStream.getAudioTracks()[0];
-      if(audioTrack){
-        sttStream = new MediaStream([audioTrack.clone()]);
-        console.log("[STT] Audio track klónozva a localStream-ből");
-      }
-    }
-  }catch(err){
-    console.warn("[STT] Track klónozás hiba:", err);
-  }
-
-  recognition = new SR();
-
+    recognition = new SR();
     recognition.lang = STT_LOCALE[myLang]||"hu-HU";
     recognition.continuous = true;
     recognition.interimResults = true;
@@ -2628,11 +2611,6 @@ async function createAndStart(){
       if(e.error==="network"||e.error==="audio-capture"||e.error==="aborted"){
         console.warn("[STT] Újraindítás:", e.error);
         micBtn.style.outline="";
-        // STT stream újranyitása következő körben
-        if(sttStream){
-          sttStream.getTracks().forEach(t=>t.stop());
-          sttStream=null;
-        }
         if(recognitionShouldRun && micOn && !callEnded){
           setTimeout(createAndStart, 1500);
         }
@@ -2642,14 +2620,7 @@ async function createAndStart(){
     recognition.onend = ()=>{
       micBtn.style.outline="";
       console.log("[STT] Véget ért, shouldRun:", recognitionShouldRun);
-      if(!recognitionShouldRun||!micOn||callEnded){
-        // Takarítás
-        if(sttStream){
-          sttStream.getTracks().forEach(t=>t.stop());
-          sttStream=null;
-        }
-        return;
-      }
+      if(!recognitionShouldRun||!micOn||callEnded) return;
       setTimeout(createAndStart, 300);
     };
 
@@ -2674,7 +2645,6 @@ function stopRecognition(){
     try{ recognition.abort(); }catch(_){}
     recognition=null;
   }
-  // ── ÚJ: STT stream lezárása ──
   if(sttStream){
     sttStream.getTracks().forEach(t=>t.stop());
     sttStream=null;
@@ -3332,8 +3302,8 @@ async function beginCallFlow(){
   try{
     console.log("🔌 Supabase kapcsolat inicializálása...");
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-window.supabaseClient = supabaseClient;
-translator._initKeys(); // újratölti a kulcsokat Supabase-ből
+    window.supabaseClient = supabaseClient;
+    translator._initKeys();
     console.log("✅ Supabase kliens kész");
     
     console.log("🎥 Média inicializálása (kamera/mikrofon)...");
@@ -3344,61 +3314,55 @@ translator._initKeys(); // újratölti a kulcsokat Supabase-ből
     await setupChannel(roomId);
     console.log("✅ Csatorna kész");
 
-    roomPill.textContent    = "Room: "+roomId;
+    roomPill.textContent     = "Room: "+roomId;
     callCodeValue.textContent = roomId;
-    langPill.textContent    = LANG_TAG[myLang]||"HU";
-    callNameText.textContent= myName;
-    callNameLang.textContent= LANG_LABEL[myLang]||myLang;
-    splitMyName.textContent = myName||"Te";
-    splitMyLang.textContent = LANG_TAG[myLang]||"HU";
+    langPill.textContent     = LANG_TAG[myLang]||"HU";
+    callNameText.textContent = myName;
+    callNameLang.textContent = LANG_LABEL[myLang]||myLang;
+    splitMyName.textContent  = myName||"Te";
+    splitMyLang.textContent  = LANG_TAG[myLang]||"HU";
 
-
-
-
-// Hívás indítása — mentés Supabase-be
-if(isInitiator){
-  _callDbId = await saveCallStart(roomId);
-} else {
-  const { data } = await supabaseClient
-    .from("calls")
-    .select("id")
-    .eq("room_id", roomId)
-    .is("ended_at", null)
-    .order("started_at", {ascending: false})
-    .limit(1)
-    .single();
-  _callDbId = data?.id || null;
-}
-await saveParticipantJoin(roomId, myPeerId, myName, myLang);
+    if(isInitiator){
+      _callDbId = await saveCallStart(roomId);
+    } else {
+      const { data } = await supabaseClient
+        .from("calls")
+        .select("id")
+        .eq("room_id", roomId)
+        .is("ended_at", null)
+        .order("started_at", {ascending: false})
+        .limit(1)
+        .single();
+      _callDbId = data?.id || null;
+    }
+    await saveParticipantJoin(roomId, myPeerId, myName, myLang);
 
     setupScreen.classList.remove("active");
     callScreen.classList.add("active");
 
     updateParticipantsPanel();
-    startRecognition();
-
-    // Chat előzmények betöltése
-    loadChatHistoryFromSupabase();
 
     // E2EE kulcs előgenerálás
     await generateE2eeKey();
 
-// ─── LIVEKIT KAPCSOLÓDÁS ───
+    // ─── STT ELŐSZÖR, LIVEKIT ELŐTT ───
+    startRecognition();
+
+    // ─── LIVEKIT KAPCSOLÓDÁS ───
     try {
       await connectToLiveKit();
       console.log("✅ LiveKit kapcsolódva!");
     } catch (livekitErr) {
       console.warn("⚠️ LiveKit nem elérhető, WebRTC fallback indul...", livekitErr);
-      // A Supabase csatorna és a WebRTC peer kapcsolatok
-      // már felépültek a setupChannel() hívásban fentebb,
-      // tehát a hívás WebRTC-n keresztül folytatódik automatikusan.
-      // Explicit fallback jelzés a hálózati státuszban:
       setNetStatus("warn");
-      // Rövid késleltetés után good-ra állítjuk ha peer kapcsolódott
       setTimeout(() => {
         if (peers.size > 0 && !callEnded) setNetStatus("good");
       }, 5000);
     }
+
+    // Chat előzmények betöltése
+    loadChatHistoryFromSupabase();
+
   }catch(err){
     console.error(err);
     setupStatus.textContent = t("errPerm");
