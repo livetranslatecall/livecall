@@ -2558,13 +2558,34 @@ function startRecognition(){
   if(recognition) return;
 
   let isStarting = false;
-  let noSpeechStreak = 0; // egymás utáni no-speech hibák számlálója
+  let noSpeechStreak = 0;
+  const isAndroid = /Android/i.test(navigator.userAgent);
 
   async function createAndStart(){
     if(!recognitionShouldRun || !micOn || callEnded) return;
     if(isStarting || recognition) return;
-
     isStarting = true;
+
+    // Android: explicit audio focus kérés az STT előtt
+    if(isAndroid){
+      try{
+        if(sttStream){ sttStream.getTracks().forEach(t=>t.stop()); sttStream=null; }
+        sttStream = await navigator.mediaDevices.getUserMedia({
+          audio:{
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            channelCount: 1,
+            sampleRate: 16000,
+          }
+        });
+      }catch(e){
+        console.warn("[STT] Android audio init hiba:", e.message);
+        isStarting = false;
+        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 2000);
+        return;
+      }
+    }
 
     const r = new SR();
     r.lang = STT_LOCALE[myLang] || "hu-HU";
@@ -2576,7 +2597,7 @@ function startRecognition(){
       isStarting = false;
       noSpeechStreak = 0;
       micBtn.style.outline = "2px solid var(--teal)";
-      console.log("[STT] Start:", r.lang);
+      console.log("[STT] Start:", r.lang, isAndroid ? "(Android)" : "(Desktop)");
     };
 
     r.onresult = async e=>{
@@ -2585,7 +2606,7 @@ function startRecognition(){
       for(let i = e.resultIndex; i < e.results.length; i++){
         const res = e.results[i];
         if(res.isFinal) final += res[0].transcript;
-        else {
+        else{
           ownBox.style.display = "block";
           ownMain.textContent = res[0].transcript;
           setSplitOwnCaption(res[0].transcript);
@@ -2616,31 +2637,31 @@ function startRecognition(){
         return;
       }
 
-      if(e.error === "aborted") return; // onend kezeli
+      if(e.error === "aborted") return;
+
+      if(e.error === "audio-capture"){
+        console.warn("[STT] audio-capture hiba — mikrofon foglalt, 2s várakozás...");
+        if(sttStream){ sttStream.getTracks().forEach(t=>t.stop()); sttStream=null; }
+        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 2000);
+        return;
+      }
 
       if(e.error === "no-speech"){
         noSpeechStreak++;
         console.log("[STT] no-speech #"+noSpeechStreak);
-        // no-speech után rögtön újraindítás, nincs delay
-        if(recognitionShouldRun && micOn && !callEnded){
-          setTimeout(createAndStart, 100);
-        }
+        const delay = isAndroid && noSpeechStreak > 3 ? 800 : 100;
+        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, delay);
         return;
       }
 
       if(e.error === "network"){
         console.warn("[STT] Hálózati hiba, 3s várakozás...");
-        if(recognitionShouldRun && micOn && !callEnded){
-          setTimeout(createAndStart, 3000);
-        }
+        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 3000);
         return;
       }
 
-      // Egyéb hiba
       console.warn("[STT] Hiba:", e.error);
-      if(recognitionShouldRun && micOn && !callEnded){
-        setTimeout(createAndStart, 1000);
-      }
+      if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 1000);
     };
 
     r.onend = ()=>{
@@ -2648,8 +2669,14 @@ function startRecognition(){
       isStarting = false;
       recognition = null;
       console.log("[STT] End, shouldRun:", recognitionShouldRun);
+      // Android: sttStream lezárása minden ciklus után (felszabadítja az audio focust)
+      if(isAndroid && sttStream){
+        sttStream.getTracks().forEach(t=>t.stop());
+        sttStream = null;
+      }
       if(recognitionShouldRun && micOn && !callEnded){
-        setTimeout(createAndStart, 300);
+        const delay = isAndroid ? 600 : 300;
+        setTimeout(createAndStart, delay);
       }
     };
 
@@ -2661,9 +2688,8 @@ function startRecognition(){
       console.warn("[STT] start() hiba:", e.message);
       recognition = null;
       isStarting = false;
-      if(recognitionShouldRun && micOn && !callEnded){
-        setTimeout(createAndStart, 1500);
-      }
+      if(sttStream){ sttStream.getTracks().forEach(t=>t.stop()); sttStream=null; }
+      if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 1500);
     }
   }
 
@@ -3379,6 +3405,9 @@ async function beginCallFlow(){
     // ─── STT ELŐSZÖR, LIVEKIT ELŐTT ───
     startRecognition();
 
+    // ← Adj egy kis időt az STT-nek az audio focus megszerzéséhez
+    await new Promise(r => setTimeout(r, 1500));
+
     // ─── LIVEKIT KAPCSOLÓDÁS ───
     try {
       await connectToLiveKit();
@@ -3390,7 +3419,6 @@ async function beginCallFlow(){
         if (peers.size > 0 && !callEnded) setNetStatus("good");
       }, 5000);
     }
-
     // Chat előzmények betöltése
     loadChatHistoryFromSupabase();
 
