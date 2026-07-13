@@ -1404,7 +1404,7 @@ function nowTime(){
 const LIVEKIT_TOKEN_URL = 
   "https://yyexlblyepkxyqqbgpvu.supabase.co/functions/v1/livekit-token";
 
-async function generateLiveKitToken(apiKey, apiSecret, roomName, participantName) {
+async function generateLiveKitToken(roomName, participantName) {
   const res = await fetch(LIVEKIT_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -1431,7 +1431,7 @@ window._livekitRoom = null; // debug célra
 async function connectToLiveKit() {
   console.log("🔗 LIVEKIT KAPCSOLAT INDÍTÁSA, szoba:", roomId, "felhasználó:", myName);
   try {
-    const token = await generateLiveKitToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, roomId, myName);
+    const token = await generateLiveKitToken(roomId, myName);
     livekitRoom = new LivekitClient.Room();
 
 
