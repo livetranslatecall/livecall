@@ -3485,7 +3485,10 @@ histBtn.onclick = e=>{
   panel.style.display = isHidden ? "block" : "none";
   if(isHidden){
     const histList = document.getElementById("historyList");
-    if(histList) histList.scrollTop = histList.scrollHeight;
+    setTimeout(()=>{
+      if(histList) histList.scrollTop = histList.scrollHeight;
+      if(panel) panel.scrollTop = panel.scrollHeight;
+    }, 80);
   }
 };
 
@@ -3545,7 +3548,19 @@ histBtn.onclick = e=>{
 
 
 
-chatBtn.onclick   = ()=> chatPanel.classList.toggle("open");
+chatBtn.onclick = ()=> chatPanel.classList.toggle("open");
+
+// Chat panel bezárása mobilon háttérre érintéskor
+document.addEventListener("touchstart", e=>{
+  if(window.innerWidth >= 720) return;
+  const chatPanelEl = document.getElementById("chatPanel");
+  const chatBtnEl   = document.getElementById("chatBtn");
+  if(chatPanelEl && chatPanelEl.classList.contains("open")){
+    if(!chatPanelEl.contains(e.target) && e.target!==chatBtnEl && !chatBtnEl.contains(e.target)){
+      chatPanelEl.classList.remove("open");
+    }
+  }
+}, {passive:true});
 chatCloseBtn.onclick= ()=> chatPanel.classList.remove("open");
   // Chat panel drag — csak laptopon
 (()=>{
@@ -3611,6 +3626,7 @@ document.addEventListener("click",e=>{
     histPanel.style.display = "none";
   }
   // Chat panel bezárása mobilon kívülre kattintáskor
+// Chat panel bezárása mobilon kívülre kattintáskor/érintéskor
   if(window.innerWidth < 720){
     const chatPanelEl = document.getElementById("chatPanel");
     const chatBtnEl   = document.getElementById("chatBtn");
