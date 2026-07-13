@@ -1450,29 +1450,26 @@ async function connectToLiveKit() {
   console.log("🔗 LIVEKIT KAPCSOLAT INDÍTÁSA, szoba:", roomId, "felhasználó:", myName);
   try {
     const token = await generateLiveKitToken(roomId, myName);
-    livekitRoom = new LivekitClient.Room();
+    livekitRoom = new LivekitClient.Room({
+      // ← EZ A KULCS: ne foglalja le kizárólagosan az audiót
+      audioCaptureDefaults: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      stopLocalTrackOnUnpublish: false, // ← ne állítsa le a trackeket
+    });
 
+    // ... (többi event handler marad ugyanúgy) ...
 
-    // ── Hívás közbeni megszakadás figyelése ──
     livekitRoom.on("disconnected", (reason) => {
-      console.warn("⚠️ LiveKit kapcsolat megszakadt, ok:", reason);
+      console.warn("⚠️ LiveKit kapcsolat megszakadt:", reason);
       livekitConnected = false;
-      if (!callEnded) {
-        console.log("🔄 WebRTC fallback aktiválása...");
-        activateWebRTCFallback();
-      }
+      if (!callEnded) activateWebRTCFallback();
     });
 
-    livekitRoom.on("reconnecting", () => {
-      console.log("🔄 LiveKit újracsatlakozás folyamatban...");
-      setNetStatus("warn");
-    });
-
-    livekitRoom.on("reconnected", () => {
-      console.log("✅ LiveKit újracsatlakozás sikeres.");
-      livekitConnected = true;
-      setNetStatus("good");
-    });
+    livekitRoom.on("reconnecting", () => { setNetStatus("warn"); });
+    livekitRoom.on("reconnected", () => { livekitConnected = true; setNetStatus("good"); });
 
     livekitRoom.on("participantConnected", (participant) => {
       console.log("👤 Új résztvevő:", participant.identity);
@@ -1510,10 +1507,18 @@ async function connectToLiveKit() {
     livekitConnected = true;
     console.log("✅ LiveKit kapcsolat sikeres.");
 
+    // ← KULCS: csak a VIDEO trackeket publikáljuk LiveKiten keresztül
+    // Az AUDIO trackeket a localStream tartja, STT és LiveKit közösen használja
     if (localStream) {
       for (const track of localStream.getTracks()) {
         try {
-          await livekitRoom.localParticipant.publishTrack(track);
+          await livekitRoom.localParticipant.publishTrack(track, {
+            // Audio tracknél explicit beállítás
+            ...(track.kind === "audio" ? {
+              audioBitrate: 32000,
+              dtx: true, // discontinuous transmission – csend esetén nem küld
+            } : {})
+          });
           console.log("✅ Track publikálva:", track.kind);
         } catch (e) {
           console.warn("⚠️ Track publikálási hiba:", track.kind, e);
@@ -2550,16 +2555,14 @@ function startRecognition(){
   if(!SR){ console.warn("Web Speech API nem támogatott"); return; }
 
   recognitionShouldRun = true;
-
-  // Ha már fut valami, csak flag-et állítunk és kilépünk
   if(recognition) return;
 
-  let isStarting = false; // mutex
+  let isStarting = false;
+  let noSpeechStreak = 0; // egymás utáni no-speech hibák számlálója
 
   async function createAndStart(){
     if(!recognitionShouldRun || !micOn || callEnded) return;
-    if(isStarting) return; // mutex: ne induljon párhuzamosan
-    if(recognition) return; // már fut egy példány
+    if(isStarting || recognition) return;
 
     isStarting = true;
 
@@ -2571,11 +2574,13 @@ function startRecognition(){
 
     r.onstart = ()=>{
       isStarting = false;
+      noSpeechStreak = 0;
       micBtn.style.outline = "2px solid var(--teal)";
       console.log("[STT] Start:", r.lang);
     };
 
     r.onresult = async e=>{
+      noSpeechStreak = 0;
       let final = "";
       for(let i = e.resultIndex; i < e.results.length; i++){
         const res = e.results[i];
@@ -2601,32 +2606,54 @@ function startRecognition(){
     };
 
     r.onerror = e=>{
-      console.warn("[STT] Hiba:", e.error);
       micBtn.style.outline = "";
       isStarting = false;
-      recognition = null; // nullázzuk, hogy újra lehessen indítani
+      recognition = null;
 
       if(e.error === "not-allowed" || e.error === "service-not-allowed"){
         recognitionShouldRun = false;
+        console.warn("[STT] Engedély megtagadva, leállítás.");
         return;
       }
+
       if(e.error === "aborted") return; // onend kezeli
+
+      if(e.error === "no-speech"){
+        noSpeechStreak++;
+        console.log("[STT] no-speech #"+noSpeechStreak);
+        // no-speech után rögtön újraindítás, nincs delay
+        if(recognitionShouldRun && micOn && !callEnded){
+          setTimeout(createAndStart, 100);
+        }
+        return;
+      }
+
+      if(e.error === "network"){
+        console.warn("[STT] Hálózati hiba, 3s várakozás...");
+        if(recognitionShouldRun && micOn && !callEnded){
+          setTimeout(createAndStart, 3000);
+        }
+        return;
+      }
+
+      // Egyéb hiba
+      console.warn("[STT] Hiba:", e.error);
       if(recognitionShouldRun && micOn && !callEnded){
-        setTimeout(createAndStart, 2000);
+        setTimeout(createAndStart, 1000);
       }
     };
 
     r.onend = ()=>{
       micBtn.style.outline = "";
       isStarting = false;
-      recognition = null; // FONTOS: nullázás, hogy újraindítható legyen
+      recognition = null;
       console.log("[STT] End, shouldRun:", recognitionShouldRun);
       if(recognitionShouldRun && micOn && !callEnded){
-        setTimeout(createAndStart, 500); // 500ms szünet kötelező Androidon
+        setTimeout(createAndStart, 300);
       }
     };
 
-    recognition = r; // ELŐBB hozzárendeljük
+    recognition = r;
     try{
       r.start();
       console.log("[STT] start() meghívva");
@@ -2635,7 +2662,7 @@ function startRecognition(){
       recognition = null;
       isStarting = false;
       if(recognitionShouldRun && micOn && !callEnded){
-        setTimeout(createAndStart, 2000);
+        setTimeout(createAndStart, 1500);
       }
     }
   }
