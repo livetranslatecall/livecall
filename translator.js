@@ -46,7 +46,7 @@ const GROQ_RESTORED_MESSAGES = {
 
 // ─── FŐ OSZTÁLY ───────────────────────────────────────────────────────────────
 
-class TranslatorEngine {
+export class TranslatorEngine {
   constructor({ onStatusChange, onKeyUpdate, getCurrentLang }) {
     /** @type {Array<{key:string,label:string,used:number,limit:number,exhausted:boolean,lastError:string|null}>} */
     this._keys             = [];
@@ -590,7 +590,6 @@ _getCache(key) {
     if (!raw) return undefined;
     const obj = JSON.parse(raw);
     if (obj[key] !== undefined) {
-      // Visszatöltjük memóriába is
       this._cache.set(key, obj[key]);
       return obj[key];
     }
@@ -600,4 +599,5 @@ _getCache(key) {
   return undefined;
 }
 
-}
+} 
+
