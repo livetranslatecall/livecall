@@ -2616,13 +2616,23 @@ async function initMedia(){
       ? {deviceId:{exact:preferred.deviceId}}
       : {facingMode:"user"};
 
-    const audioConstraint = {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
-      channelCount: 1,
-      sampleRate: 16000,
-    };
+    // Mobilon sampleRate constraint elhagyva — sok Android eszközön csendesen
+    // muted trackot ad vissza a sampleRate:16000 kényszer
+    const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    const audioConstraint = isMobileDevice
+      ? {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        }
+      : {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: 16000,
+        };
 
     localStream = await navigator.mediaDevices.getUserMedia({
       video: videoConstraint,
@@ -2631,20 +2641,22 @@ async function initMedia(){
 
     await dbLog("initMedia_stream_ok", "audio trackok: "+localStream.getAudioTracks().length+" video trackok: "+localStream.getVideoTracks().length);
 
+    // Audio track ellenőrzés — ha muted, figyelmeztetés
+    const audioTrack = localStream.getAudioTracks()[0];
+    if(audioTrack){
+      await dbLog("initMedia_audioTrack", "label: "+audioTrack.label+" readyState: "+audioTrack.readyState+" muted: "+audioTrack.muted);
+      if(audioTrack.muted){
+        await dbLog("initMedia_audioTrack_MUTED", "FIGYELEM: az audio track muted állapotban van!");
+        console.warn("⚠️ Audio track muted — mikrofon engedély hiányozhat vagy eszköz foglalt.");
+      }
+    } else {
+      await dbLog("initMedia_NO_audioTrack", "FIGYELEM: nincs audio track!");
+      console.warn("⚠️ Nincs audio track a streamben!");
+    }
+
     localVideo.srcObject = localStream;
     splitLocalVideo.srcObject = localStream;
     window._localStream = localStream;
-
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if(isMobile){
-      localStream.getAudioTracks().forEach(t => t.enabled = false);
-      await dbLog("initMedia_mobile_audio_muted", "Mobil: audio track némítva, mikrofon gombra vár");
-    }
-
-    const audioTrack = localStream.getAudioTracks()[0];
-    if(audioTrack){
-      await dbLog("initMedia_audioTrack", "label: "+audioTrack.label+" readyState: "+audioTrack.readyState);
-    }
 
   }catch(err){
     await dbLog("initMedia_ERROR", err.message||String(err));
@@ -2660,39 +2672,46 @@ async function initMedia(){
    ========================================================================= */
 function startRecognition(){
   dbLog("STT_startRecognition_called", "micOn: "+micOn+" callEnded: "+callEnded);
-  if(!micOn || callEnded) { 
-    dbLog("STT_startRecognition_BLOCKED", "micOn: "+micOn+" callEnded: "+callEnded); 
-    return; 
+  if(!micOn || callEnded) {
+    dbLog("STT_startRecognition_BLOCKED", "micOn: "+micOn+" callEnded: "+callEnded);
+    return;
   }
-  
+
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SR){ 
-    dbLog("STT_NO_API", "SpeechRecognition nem támogatott"); 
-    console.warn("Web Speech API nem támogatott"); 
-    return; 
+  if(!SR){
+    dbLog("STT_NO_API", "SpeechRecognition nem támogatott");
+    console.warn("Web Speech API nem támogatott");
+    return;
   }
 
   recognitionShouldRun = true;
-  if(recognition){ 
-    dbLog("STT_already_running", "már fut, skip"); 
-    return; 
+
+  // Ha már fut, nem indítunk újat
+  if(recognition){
+    dbLog("STT_already_running", "már fut, skip");
+    return;
   }
 
+  const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
   let isStarting = false;
   let noSpeechStreak = 0;
-  const isAndroid = /Android/i.test(navigator.userAgent);
-  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  let restartTimer = null;
 
-  async function createAndStart(){
-    dbLog("STT_createAndStart_called", "recognitionShouldRun: "+recognitionShouldRun+" micOn: "+micOn+" callEnded: "+callEnded+" isStarting: "+isStarting+" recognition: "+(recognition?"van":"null"));
-    if(!recognitionShouldRun || !micOn || callEnded) { 
-      dbLog("STT_createAndStart_BLOCKED","feltétel nem teljesül"); 
-      return; 
-    }
-    if(isStarting || recognition) { 
-      dbLog("STT_createAndStart_SKIP","isStarting vagy recognition már van"); 
-      return; 
-    }
+  function scheduleRestart(delayMs){
+    clearTimeout(restartTimer);
+    if(!recognitionShouldRun || !micOn || callEnded) return;
+    restartTimer = setTimeout(()=>{
+      if(!recognitionShouldRun || !micOn || callEnded) return;
+      if(recognition || isStarting) return;
+      createAndStart();
+    }, delayMs);
+  }
+
+  function createAndStart(){
+    dbLog("STT_createAndStart_called", "shouldRun:"+recognitionShouldRun+" micOn:"+micOn+" ended:"+callEnded+" isStarting:"+isStarting+" rec:"+(recognition?"van":"null"));
+    if(!recognitionShouldRun || !micOn || callEnded) return;
+    if(isStarting || recognition) return;
+
     isStarting = true;
 
     const r = new SR();
@@ -2707,7 +2726,7 @@ function startRecognition(){
       noSpeechStreak = 0;
       micBtn.style.outline = "2px solid var(--teal)";
       dbLog("STT_onstart", "STT aktív, lang: "+r.lang);
-      console.log("[STT] Start:", r.lang, isAndroid ? "(Android)" : isIOS ? "(iOS)" : "(Desktop)");
+      console.log("[STT] Start:", r.lang, isMobileDevice ? "(Mobile)" : "(Desktop)");
     };
 
     r.onresult = async e=>{
@@ -2728,43 +2747,37 @@ function startRecognition(){
         ownBox.style.display = "block";
         ownMain.textContent = final.trim();
         setSplitOwnCaption(final.trim());
-        
-        localWrap.classList.add("speaking");
-        localWrap.classList.add("own-speaking");
+
+        localWrap.classList.add("speaking","own-speaking");
         remoteWrap.classList.remove("speaking");
-        splitLeft.classList.add("speaking");
-        splitLeft.classList.add("own-speaking");
+        splitLeft.classList.add("speaking","own-speaking");
         splitRight.classList.remove("speaking");
-        
-        if(ownGridCell) {
+
+        if(ownGridCell){
           ownGridCell.classList.add("speaking");
-          document.querySelectorAll(".peer-cell").forEach(cell => {
+          document.querySelectorAll(".peer-cell").forEach(cell=>{
             if(cell !== ownGridCell) cell.classList.remove("speaking");
           });
         }
-        
+
         clearTimeout(window._speakingTimer);
-        window._speakingTimer = setTimeout(() => {
-          localWrap.classList.remove("speaking");
-          localWrap.classList.remove("own-speaking");
-          splitLeft.classList.remove("speaking");
-          splitLeft.classList.remove("own-speaking");
+        window._speakingTimer = setTimeout(()=>{
+          localWrap.classList.remove("speaking","own-speaking");
+          splitLeft.classList.remove("speaking","own-speaking");
           if(ownGridCell) ownGridCell.classList.remove("speaking");
         }, 4000);
-        
+
         if(channel) channel.send({
           type:"broadcast", event:"caption",
           payload:{ text:final.trim(), sourceLang:myLang, name:myName||LANG_LABEL[myLang] }
         });
         addHistoryItem(final.trim(), "", true);
         setTimeout(()=>{ ownBox.style.display="none"; setSplitOwnCaption(""); }, 4000);
-      } else {
-        dbLog("STT_onresult_interim", "interim result, nem final");
       }
     };
 
     r.onerror = e=>{
-      dbLog("STT_onerror", "error: "+e.error+" message: "+(e.message||""));
+      dbLog("STT_onerror", "error:"+e.error+" msg:"+(e.message||""));
       micBtn.style.outline = "";
       isStarting = false;
       recognition = null;
@@ -2779,59 +2792,64 @@ function startRecognition(){
         return;
       }
 
-      if(e.error === "aborted"){ dbLog("STT_onerror_aborted","újraindítás skip"); return; }
+      if(e.error === "aborted"){
+        dbLog("STT_onerror_aborted","skip");
+        return;
+      }
 
       if(e.error === "audio-capture"){
-        dbLog("STT_onerror_audio_capture", "audio-capture hiba — 2s várakozás");
-        console.warn("[STT] audio-capture hiba — várunk 2s...");
-        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 2000);
+        dbLog("STT_onerror_audio_capture","3s várakozás");
+        console.warn("[STT] audio-capture hiba — 3s várakozás...");
+        scheduleRestart(3000);
         return;
       }
 
       if(e.error === "no-speech"){
         noSpeechStreak++;
-        dbLog("STT_onerror_no_speech", "streak: "+noSpeechStreak);
-        console.log("[STT] no-speech #"+noSpeechStreak);
-        const delay = (isAndroid || isIOS) && noSpeechStreak > 3 ? 1000 : 200;
-        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, delay);
+        dbLog("STT_onerror_no_speech","streak:"+noSpeechStreak);
+        // Mobilon hosszabb szünet kell az újraindítás előtt
+        const delay = isMobileDevice ? 1200 : 300;
+        scheduleRestart(delay);
         return;
       }
 
       if(e.error === "network"){
-        dbLog("STT_onerror_network", "3s várakozás");
-        console.warn("[STT] Hálózati hiba, 3s várakozás...");
-        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 3000);
+        dbLog("STT_onerror_network","5s várakozás");
+        console.warn("[STT] Hálózati hiba, 5s várakozás...");
+        scheduleRestart(5000);
         return;
       }
 
-      dbLog("STT_onerror_egyeb", "error: "+e.error);
-      console.warn("[STT] Hiba:", e.error);
-      if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 1000);
+      dbLog("STT_onerror_egyeb","error:"+e.error);
+      console.warn("[STT] Egyéb hiba:", e.error);
+      scheduleRestart(1500);
     };
 
     r.onend = ()=>{
-      dbLog("STT_onend", "shouldRun: "+recognitionShouldRun+" micOn: "+micOn+" callEnded: "+callEnded);
+      dbLog("STT_onend","shouldRun:"+recognitionShouldRun+" micOn:"+micOn+" ended:"+callEnded);
       micBtn.style.outline = "";
-      isStarting = false;
+      // FONTOS: először nullázzuk, AZTÁN döntünk az újraindításról
       recognition = null;
+      isStarting = false;
       console.log("[STT] End, shouldRun:", recognitionShouldRun);
       if(recognitionShouldRun && micOn && !callEnded){
-        const delay = (isAndroid || isIOS) ? 800 : 300;
-        setTimeout(createAndStart, delay);
+        // Mobilon hosszabb szünet szükséges az audio subsystem "elengedéséhez"
+        const delay = isMobileDevice ? 1000 : 300;
+        scheduleRestart(delay);
       }
     };
 
     recognition = r;
     try{
       r.start();
-      dbLog("STT_start_called", "recognition.start() meghívva");
+      dbLog("STT_start_called","recognition.start() meghívva");
       console.log("[STT] start() meghívva");
     }catch(e){
       dbLog("STT_start_ERROR", e.message||String(e));
       console.warn("[STT] start() hiba:", e.message);
       recognition = null;
       isStarting = false;
-      if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 2000);
+      scheduleRestart(2000);
     }
   }
 
@@ -3611,31 +3629,37 @@ await generateE2eeKey();
       }, 5000);
     }
 
-    // ─── STT INDÍTÁS ──────────────────────────────────────────
-    // ASZTALI GÉP: automatikusan indul
-    // MOBIL: mikrofon BEkapcsolva, DE a hangfelismerés NEM indul automatikusan
-    
-    // ─── MOBIL: MIKROFON ALAPBÓL KI VAN KAPCSOLVA ───
-const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    // ─── MOBIL / ASZTALI MIKROFON KEZELÉS ───────────────────────────────
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
-if (!isMobile) {
-  // ASZTALI: automatikusan indul a hangfelismerés
-  await new Promise(r => setTimeout(r, 800));
-  micOn = true;
-  recognitionShouldRun = true;
-  startRecognition();
-  console.log("🖥️ Asztali: STT automatikusan elindítva");
-} else {
-  // MOBIL: MIKROFON ALAPBÓL KIKAPCSOLVA
-  micOn = false;
-  if (localStream) {
-    localStream.getAudioTracks().forEach(t => t.enabled = false);
-  }
-  // ⚠️ NE NYÚLJ A micBtn-HOZ MÉG, MERT NEM LÉTEZIK!
-  // (A micBtn csak a call képernyőn van, ami még nincs betöltve)
-  recognitionShouldRun = false;
-  console.log("📱 Mobil: Mikrofon KIKAPCSOLVA, várakozás a gombnyomásra");
-}
+    if (!isMobile) {
+      // ASZTALI: audio track engedélyezve van (initMedia nem tiltotta le)
+      // Hangfelismerés automatikusan indul rövid késleltetéssel
+      micOn = true;
+      micBtn.classList.remove("off");
+      micBtn.querySelector(".btn-icon").textContent = "🎙️";
+      await new Promise(r => setTimeout(r, 800));
+      recognitionShouldRun = true;
+      startRecognition();
+      console.log("🖥️ Asztali: STT automatikusan elindítva");
+    } else {
+      // MOBIL: audio track enabled marad (getUserMedia engedély megvan),
+      // de a SpeechRecognition NEM indul automatikusan.
+      // A mikrofon gomb vizuálisan KI állapotban jelenik meg.
+      // A track enabled=false-ra állítva hogy ne kerüljön a LiveKit-be hang
+      // amíg a felhasználó nem nyomja meg a gombot.
+      micOn = false;
+      recognitionShouldRun = false;
+      if(localStream){
+        localStream.getAudioTracks().forEach(t => { t.enabled = false; });
+      }
+      micBtn.classList.add("off");
+      micBtn.querySelector(".btn-icon").textContent = "🔇";
+      console.log("📱 Mobil: Mikrofon KIKAPCSOLVA vizuálisan és trackben is, várakozás gombnyomásra");
+    }
+
+    // Chat előzmények betöltése
+    loadChatHistoryFromSupabase();
 
     // Chat előzmények betöltése
     loadChatHistoryFromSupabase();
@@ -3754,10 +3778,8 @@ joinRoomBtn.onclick = async () => {
 
 
 micBtn.onclick = async ()=>{
-  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-  
   if(!localStream){
-    // Nincs stream → kérünk engedélyt
+    // Ha nincs stream (nem kellene előfordulnia, de biztonság kedvéért)
     try {
       setupStatus.textContent = "🎤 Mikrofon engedély kérése...";
       await initMedia();
@@ -3770,26 +3792,23 @@ micBtn.onclick = async ()=>{
     }
   }
 
-  // Stream létezik, váltunk
   micOn = !micOn;
-  
-  if(localStream) {
-    localStream.getAudioTracks().forEach(t => t.enabled = micOn);
+
+  if(localStream){
+    localStream.getAudioTracks().forEach(t => { t.enabled = micOn; });
   }
-  
+
   micBtn.classList.toggle("off", !micOn);
   micBtn.querySelector(".btn-icon").textContent = micOn ? "🎙️" : "🔇";
 
   if(micOn){
-    // BEKAPCSOLVA → elindul a hangfelismerés
     recognitionShouldRun = true;
     startRecognition();
-    console.log(isMobile ? "📱 Mobil: hangfelismerés elindítva" : "🖥️ Asztali: hangfelismerés elindítva");
+    console.log("🎙️ Mikrofon BE — SpeechRecognition indítva");
   } else {
-    // KIKAPCSOLVA → leáll
     stopRecognition();
     recognitionShouldRun = false;
-    console.log(isMobile ? "📱 Mobil: hangfelismerés leállítva" : "🖥️ Asztali: hangfelismerés leállítva");
+    console.log("🔇 Mikrofon KI — SpeechRecognition leállítva");
   }
 };
 
