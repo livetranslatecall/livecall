@@ -6,7 +6,7 @@
   let _analytics           = null;
   let _translationFeedback = null;
   let _networkAdaptation   = null;
-  let _webhookManager      = null;
+  
   let _gdprManager         = null;
   let _embedWidget         = null;
 
@@ -68,15 +68,7 @@
       console.log("[sdk-init] ✅ TranslationFeedback kész");
     } catch(e) { console.error("[sdk-init] ❌ TranslationFeedback:", e.message); }
 
-    // 5. WebhookManager
-    try {
-      _webhookManager = new window.WebhookManager(ctx.sb);
-      _webhookManager.setRoomId(ctx.roomId);
-      _webhookManager.loadWebhooks();
-      _webhookManager.fireCallStarted(ctx.roomId, [ctx.name]);
-      console.log("[sdk-init] ✅ WebhookManager kész");
-    } catch(e) { console.error("[sdk-init] ❌ WebhookManager:", e.message); }
-
+    
     // 6. GdprManager
     try {
       _gdprManager = new window.GdprManager(ctx.sb);
@@ -250,12 +242,7 @@
   function _cleanupSDK() {
     console.log("[sdk-init] 🧹 Cleanup indul...");
 
-    try { _webhookManager?.fireCallEnded(window.roomId, 0, {}); } catch(_) {}
-    try {
-      if (_transcriptExporter && _webhookManager) {
-        _webhookManager.fireTranscriptReady(_transcriptExporter.getEntries());
-      }
-    } catch(_) {}
+
 
     try { _analytics?.stop(); } catch(_) {}
     try { _networkAdaptation?.stop(); } catch(_) {}
