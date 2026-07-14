@@ -1176,9 +1176,15 @@ if(recentCalls.length === 0){
           </span>
         </div>
         <div style="display:flex;gap:16px;font-size:12px;color:var(--text-dim);margin-bottom:8px;">
-          <span>⏱ ${formatDuration(durationSec)}</span>
+<span>⏱ ${formatDuration(durationSec)}</span>
           <span>👥 ${call.participant_count||0} fő</span>
           <span>🔄 ${callTranslations} fordítás</span>
+          <span style="color:${
+            call.mos_avg == null ? 'var(--text-dim)' :
+            call.mos_avg >= 4.0 ? 'var(--green)' :
+            call.mos_avg >= 3.0 ? 'var(--amber)' :
+            'var(--danger)'
+          };">📶 MOS: ${call.mos_avg != null ? Number(call.mos_avg).toFixed(2) : '–'}</span>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           ${parts.map(p => `
