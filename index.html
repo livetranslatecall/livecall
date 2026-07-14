@@ -852,6 +852,47 @@ select{
 
 </div><!-- end #call -->
 
+
+<!-- ── GDPR ADATVÉDELMI PANEL ── -->
+<div id="gdprPanel" style="display:none; position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
+  z-index:15; background:rgba(13,20,32,.95); backdrop-filter:blur(16px);
+  border:1px solid var(--line); border-radius:16px; padding:16px 20px;
+  max-width:400px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,.6);">
+  
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <span style="font-weight:700; font-size:15px;">🔐 Adatvédelem</span>
+    <button onclick="document.getElementById('gdprPanel').style.display='none'" 
+      style="background:none; border:none; color:var(--text-dim); font-size:18px; cursor:pointer;">✕</button>
+  </div>
+  
+  <div style="font-size:12px; color:var(--text-dim); margin-bottom:12px; line-height:1.6;">
+    📍 Adatok tárolása: EU (Supabase EU West)<br>
+    🔒 Titkosítás: TLS 1.3 + E2EE chat<br>
+    📋 Megőrzési idő: 30 nap<br>
+    <span style="color:var(--green); font-weight:700;">✅ GDPR kompatibilis</span>
+  </div>
+  
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <button onclick="exportMyData()" 
+      style="flex:1; min-width:80px; padding:8px 14px; border-radius:10px; border:1px solid var(--line);
+        background:var(--panel-2); color:var(--text); font-size:12px; cursor:pointer; font-weight:600;">
+      📥 Export
+    </button>
+    <button onclick="deleteMyData()" 
+      style="flex:1; min-width:80px; padding:8px 14px; border-radius:10px; border:1px solid var(--danger);
+        background:transparent; color:var(--danger); font-size:12px; cursor:pointer; font-weight:600;">
+      🗑️ Törlés
+    </button>
+    <button onclick="document.getElementById('gdprPanel').style.display='none'" 
+      style="flex:1; min-width:80px; padding:8px 14px; border-radius:10px; border:none;
+        background:var(--panel); color:var(--text-dim); font-size:12px; cursor:pointer;">
+      Bezárás
+    </button>
+  </div>
+</div>
+
+
+
 <!-- ══ HANGUP MODAL ══ -->
 <div class="modal-overlay" id="hangupModal">
   <div class="modal-box">
@@ -4259,6 +4300,128 @@ if("serviceWorker" in navigator){
       .catch(e=>console.warn("SW hiba:",e));
   });
 }
+</script>
+
+
+
+
+
+
+<script>
+
+
+// ─── GDPR ADATVÉDELEM ───────────────────────────────────────────
+async function exportMyData() {
+  if (!window._gdprManager) {
+    showToast('❌ GDPR menedzser nem elérhető', 'error');
+    return;
+  }
+  
+  const roomId = window.roomId || window.roomId;
+  if (!roomId) {
+    showToast('❌ Nincs aktív hívás, nem lehet exportálni.', 'error');
+    return;
+  }
+  
+  try {
+    await window._gdprManager.exportRoomData(roomId);
+    showToast('✅ Adatok exportálva!', 'success', 3000);
+  } catch (e) {
+    showToast('❌ Exportálási hiba: ' + e.message, 'error');
+  }
+}
+
+async function deleteMyData() {
+  if (!window._gdprManager) {
+    showToast('❌ GDPR menedzser nem elérhető', 'error');
+    return;
+  }
+  
+  const roomId = window.roomId || window.roomId;
+  if (!roomId) {
+    showToast('❌ Nincs aktív hívás.', 'error');
+    return;
+  }
+  
+  if (!confirm('Biztosan törlöd az összes adatodat ehhez a híváshoz? Ez nem visszafordítható!')) return;
+  
+  try {
+    const result = await window._gdprManager.deleteRoomData(roomId);
+    if (result && result.success) {
+      showToast('✅ Minden adat törölve!', 'success', 3000);
+      document.getElementById('gdprPanel').style.display = 'none';
+    } else {
+      showToast('❌ Hiba történt a törlés során.', 'error');
+    }
+  } catch (e) {
+    showToast('❌ Törlési hiba: ' + e.message, 'error');
+  }
+}
+
+// GDPR panel megjelenítése (pl. egy gombról)
+function showGdprPanel() {
+  const panel = document.getElementById('gdprPanel');
+  if (panel) {
+    panel.style.display = 'block';
+    // 15 másodperc múlva automatikusan eltűnik
+    clearTimeout(window._gdprPanelTimer);
+    window._gdprPanelTimer = setTimeout(() => {
+      if (panel.style.display !== 'none') {
+        panel.style.display = 'none';
+      }
+    }, 15000);
+  }
+}
+
+// Exportáljuk
+window.exportMyData = exportMyData;
+window.deleteMyData = deleteMyData;
+window.showGdprPanel = showGdprPanel;
+
+// GDPR gomb hozzáadása a vezérlőkhöz
+function addGdprButton() {
+  const controls = document.querySelector('.controls');
+  if (!controls) return;
+  
+  // Ellenőrizzük, hogy már létezik-e
+  if (document.getElementById('gdprBtn')) return;
+  
+  const btn = document.createElement('button');
+  btn.className = 'ctrl-btn';
+  btn.id = 'gdprBtn';
+  btn.innerHTML = `<span class="btn-icon">🔐</span><span class="btn-label">Adat</span>`;
+  btn.title = 'Adatvédelem beállítások';
+  btn.onclick = () => {
+    const panel = document.getElementById('gdprPanel');
+    if (panel) {
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+  };
+  
+  // Beszúrás a megfelelő helyre (hangup gomb elé)
+  const hangupBtn = document.getElementById('hangupBtn');
+  if (hangupBtn) {
+    controls.insertBefore(btn, hangupBtn);
+  } else {
+    controls.appendChild(btn);
+  }
+}
+
+// GDPR gomb hozzáadása a hívás indításakor
+const originalBeginCall = window.beginCallFlow;
+if (originalBeginCall) {
+  window.beginCallFlow = async function() {
+    const result = await originalBeginCall.apply(this, arguments);
+    setTimeout(addGdprButton, 1000);
+    return result;
+  };
+}
+
+// Ha már aktív a hívás, adjuk hozzá
+if (document.getElementById('call')?.classList.contains('active')) {
+  setTimeout(addGdprButton, 1500);
+}
+
 </script>
 <script src="sdk-init.js"></script>
 </body>
