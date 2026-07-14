@@ -3629,12 +3629,10 @@ await generateE2eeKey();
       }, 5000);
     }
 
-    // ─── MOBIL / ASZTALI MIKROFON KEZELÉS ───────────────────────────────
+// ─── MOBIL / ASZTALI MIKROFON KEZELÉS ───────────────────────────────
     const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
     if (!isMobile) {
-      // ASZTALI: audio track engedélyezve van (initMedia nem tiltotta le)
-      // Hangfelismerés automatikusan indul rövid késleltetéssel
       micOn = true;
       micBtn.classList.remove("off");
       micBtn.querySelector(".btn-icon").textContent = "🎙️";
@@ -3643,11 +3641,6 @@ await generateE2eeKey();
       startRecognition();
       console.log("🖥️ Asztali: STT automatikusan elindítva");
     } else {
-      // MOBIL: audio track enabled marad (getUserMedia engedély megvan),
-      // de a SpeechRecognition NEM indul automatikusan.
-      // A mikrofon gomb vizuálisan KI állapotban jelenik meg.
-      // A track enabled=false-ra állítva hogy ne kerüljön a LiveKit-be hang
-      // amíg a felhasználó nem nyomja meg a gombot.
       micOn = false;
       recognitionShouldRun = false;
       if(localStream){
@@ -3655,31 +3648,29 @@ await generateE2eeKey();
       }
       micBtn.classList.add("off");
       micBtn.querySelector(".btn-icon").textContent = "🔇";
-      console.log("📱 Mobil: Mikrofon KIKAPCSOLVA vizuálisan és trackben is, várakozás gombnyomásra");
+      console.log("📱 Mobil: mikrofon és STT letiltva, gombra vár");
     }
 
     // Chat előzmények betöltése
     loadChatHistoryFromSupabase();
 
-    // Chat előzmények betöltése
-    loadChatHistoryFromSupabase();
     netAdapt.start((quality, rtt) => {
-  const dot = document.getElementById("netDot");
-  const lbl = document.getElementById("netLabel");
-  if (!dot || !lbl) return;
-  if (quality === "bad") {
-    dot.className = "net-dot bad";
-    lbl.textContent = "●○○";
-  } else if (quality === "warn") {
-    dot.className = "net-dot warn";
-    lbl.textContent = "●●○";
-  } else {
-    dot.className = "net-dot";
-    lbl.textContent = "●●●";
-  }
-});
-analytics.start();
-await webhookMgr.fireCallStarted(roomId, [myName]);
+      const dot = document.getElementById("netDot");
+      const lbl = document.getElementById("netLabel");
+      if (!dot || !lbl) return;
+      if (quality === "bad") {
+        dot.className = "net-dot bad";
+        lbl.textContent = "●○○";
+      } else if (quality === "warn") {
+        dot.className = "net-dot warn";
+        lbl.textContent = "●●○";
+      } else {
+        dot.className = "net-dot";
+        lbl.textContent = "●●●";
+      }
+    });
+    analytics.start();
+    await webhookMgr.fireCallStarted(roomId, [myName]);
 
   }catch(err){
     console.error(err);
