@@ -3793,9 +3793,10 @@ joinRoomBtn.onclick = async () => {
   try {
     await beginCallFlow();
   } catch(e) {
+    console.error("beginCallFlow hiba:", e);
     createRoomBtn.disabled = false;
     joinRoomBtn.disabled   = false;
-    setupStatus.textContent = t("errPerm");
+    setupStatus.textContent = e.message || t("errPerm");
   }
 };
 
