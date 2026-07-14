@@ -3806,40 +3806,72 @@ joinRoomBtn.onclick = async () => {
 /* =========================================================================
    CALL UI EVENTS
    ========================================================================= */
-micBtn.onclick = ()=>{
-  if(!localStream) return;
-  
-  // Mikrofon hangjának be/ki kapcsolása
+micBtn.onclick = async () => {
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    micOn = !micOn;
+    micBtn.classList.toggle("off", !micOn);
+    micBtn.querySelector(".btn-icon").textContent = micOn ? "🎙️" : "🔇";
+
+    if (micOn) {
+      // Mobilon: külön kérjük el a mikrofon engedélyt itt
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Az audio streamet hozzáadjuk a localStream-hez
+        const audioTrack = audioStream.getAudioTracks()[0];
+        if (audioTrack && localStream) {
+          localStream.addTrack(audioTrack);
+          // LiveKit-en is publikáljuk ha kapcsolódva van
+          if (livekitRoom && livekitConnected) {
+            try {
+              await livekitRoom.localParticipant.publishTrack(audioTrack, {
+                source: LivekitClient.Track.Source.Microphone,
+              });
+            } catch(e) {
+              console.warn("LiveKit audio publish hiba:", e.message);
+            }
+          }
+        }
+        recognitionShouldRun = true;
+        startRecognition();
+        console.log("📱 Mobil: mikrofon engedély megszerezve, STT indul");
+      } catch(e) {
+        console.warn("📱 Mobil: mikrofon engedély megtagadva:", e.message);
+        micOn = false;
+        micBtn.classList.add("off");
+        micBtn.querySelector(".btn-icon").textContent = "🔇";
+        setupStatus && (setupStatus.textContent = t("errPerm"));
+      }
+    } else {
+      // Mikrofon kikapcsolása
+      if (localStream) {
+        localStream.getAudioTracks().forEach(t => {
+          t.enabled = false;
+          t.stop();
+          localStream.removeTrack(t);
+        });
+      }
+      stopRecognition();
+      recognitionShouldRun = false;
+      console.log("📱 Mobil: mikrofon leállítva");
+    }
+    return;
+  }
+
+  // Asztali gép
+  if (!localStream) return;
   micOn = !micOn;
   localStream.getAudioTracks().forEach(t => t.enabled = micOn);
   micBtn.classList.toggle("off", !micOn);
   micBtn.querySelector(".btn-icon").textContent = micOn ? "🎙️" : "🔇";
-  
-  // Hangfelismerés kezelése mobilon
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  
-  if (isMobile) {
-    // Mobilon: ha bekapcsoltuk a mikrofont, induljon a hangfelismerés
-    if (micOn) {
-      // recognitionShouldRun true, hogy tudjon futni
-      recognitionShouldRun = true;
-      startRecognition();
-      console.log("📱 Mobil: hangfelismerés elindítva a mikrofon gombra");
-    } else {
-      // Ha kikapcsoltuk a mikrofont, állítsuk le a hangfelismerést
-      stopRecognition();
-      recognitionShouldRun = false;
-      console.log("📱 Mobil: hangfelismerés leállítva");
-    }
+
+  if (micOn) {
+    recognitionShouldRun = true;
+    startRecognition();
   } else {
-    // Asztali: ha be van kapcsolva a mikrofon, indítsuk újra a felismerést
-    if (micOn) {
-      recognitionShouldRun = true;
-      startRecognition();
-    } else {
-      stopRecognition();
-      recognitionShouldRun = false;
-    }
+    stopRecognition();
+    recognitionShouldRun = false;
   }
 };
 
