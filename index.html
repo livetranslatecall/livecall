@@ -4453,6 +4453,15 @@ if (originalBeginCall) {
 if (document.getElementById('call')?.classList.contains('active')) {
   setTimeout(addGdprButton, 1500);
 }
+
+// Biztosítjuk, hogy a showToast globálisan elérhető legyen
+if (typeof window.showToast === 'undefined') {
+  window.showToast = function(message, type = 'info', duration = 4000) {
+    alert(message); // Fallback
+  };
+}
+
+
 </script>
 <script src="sdk-init.js"></script>
 </body>
