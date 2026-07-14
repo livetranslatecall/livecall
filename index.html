@@ -2615,61 +2615,37 @@ async function initMedia(){
     const videoConstraint = preferred
       ? {deviceId:{exact:preferred.deviceId}}
       : {facingMode:"user"};
-    await dbLog("initMedia_getUserMedia", "indul, videoConstraint: "+JSON.stringify(videoConstraint));
-    
-    // MOBILON NEM KÉRÜNK AUDIO TRACK-ET, HOGY A SPEECHRECOGNITION HASZNÁLHASSA A MIKROFONT
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    
-    let audioConstraint;
-    if (isMobile) {
-      // Mobilon: NINCS audio track a getUserMedia-ben
-      audioConstraint = false;
-      await dbLog("initMedia_mobile_audio_off", "Mobil: audio track NEM kérve, SpeechRecognition fogja használni a mikrofont");
-    } else {
-      // Laptopon: audio track bekapcsolva
-      audioConstraint = {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        channelCount: 1,
-        sampleRate: 16000,
-      };
-      await dbLog("initMedia_desktop_audio_on", "Laptop: audio track kérve");
-    }
-    
+
+    const audioConstraint = {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      channelCount: 1,
+      sampleRate: 16000,
+    };
+
     localStream = await navigator.mediaDevices.getUserMedia({
       video: videoConstraint,
       audio: audioConstraint
     });
+
     await dbLog("initMedia_stream_ok", "audio trackok: "+localStream.getAudioTracks().length+" video trackok: "+localStream.getVideoTracks().length);
+
     localVideo.srcObject = localStream;
-    const filteredStream = await noiseCx.init(localStream);
-if (filteredStream && noiseCx.isActive()) {
-  const videoTracks = localStream.getVideoTracks();
-  const audioTracks = filteredStream.getAudioTracks();
-  const combined = new MediaStream([...videoTracks, ...audioTracks]);
-  localStream = combined;
-  window._localStream = localStream;
-}
     splitLocalVideo.srcObject = localStream;
     window._localStream = localStream;
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if(isMobile){
+      localStream.getAudioTracks().forEach(t => t.enabled = false);
+      await dbLog("initMedia_mobile_audio_muted", "Mobil: audio track némítva, mikrofon gombra vár");
+    }
 
     const audioTrack = localStream.getAudioTracks()[0];
     if(audioTrack){
       await dbLog("initMedia_audioTrack", "label: "+audioTrack.label+" readyState: "+audioTrack.readyState);
-      window._sharedAudioContext = new AudioContext();
-      window._sharedAudioSource = window._sharedAudioContext.createMediaStreamSource(localStream);
-      window._sharedMicStream = localStream;
-      await dbLog("initMedia_audioContext", "state: "+window._sharedAudioContext.state);
-    } else {
-      await dbLog("initMedia_audioTrack_MISSING", "nincs audio track!");
-      // Mobilon ez normális, mert nem kértünk audio track-et
-      if (!isMobile) {
-        console.warn("⚠️ Nincs audio track (laptop)");
-      } else {
-        console.log("📱 Mobil: audio track szándékosan nincs, SpeechRecognition fogja használni");
-      }
     }
+
   }catch(err){
     await dbLog("initMedia_ERROR", err.message||String(err));
     console.error("Média hiba:", err);
@@ -3767,77 +3743,27 @@ joinRoomBtn.onclick = async () => {
 
 
 
-/* =========================================================================
-   CALL UI EVENTS
-   ========================================================================= */
-micBtn.onclick = async () => {
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+micBtn.onclick = ()=>{
+  if(!localStream) return;
 
-  if (isMobile) {
-    micOn = !micOn;
-    micBtn.classList.toggle("off", !micOn);
-    micBtn.querySelector(".btn-icon").textContent = micOn ? "🎙️" : "🔇";
-
-    if (micOn) {
-      // Mobilon: külön kérjük el a mikrofon engedélyt itt
-      try {
-        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Az audio streamet hozzáadjuk a localStream-hez
-        const audioTrack = audioStream.getAudioTracks()[0];
-        if (audioTrack && localStream) {
-          localStream.addTrack(audioTrack);
-          // LiveKit-en is publikáljuk ha kapcsolódva van
-          if (livekitRoom && livekitConnected) {
-            try {
-              await livekitRoom.localParticipant.publishTrack(audioTrack, {
-                source: LivekitClient.Track.Source.Microphone,
-              });
-            } catch(e) {
-              console.warn("LiveKit audio publish hiba:", e.message);
-            }
-          }
-        }
-        recognitionShouldRun = true;
-        startRecognition();
-        console.log("📱 Mobil: mikrofon engedély megszerezve, STT indul");
-      } catch(e) {
-        console.warn("📱 Mobil: mikrofon engedély megtagadva:", e.message);
-        micOn = false;
-        micBtn.classList.add("off");
-        micBtn.querySelector(".btn-icon").textContent = "🔇";
-        setupStatus && (setupStatus.textContent = t("errPerm"));
-      }
-    } else {
-      // Mikrofon kikapcsolása
-      if (localStream) {
-        localStream.getAudioTracks().forEach(t => {
-          t.enabled = false;
-          t.stop();
-          localStream.removeTrack(t);
-        });
-      }
-      stopRecognition();
-      recognitionShouldRun = false;
-      console.log("📱 Mobil: mikrofon leállítva");
-    }
-    return;
-  }
-
-  // Asztali gép
-  if (!localStream) return;
   micOn = !micOn;
   localStream.getAudioTracks().forEach(t => t.enabled = micOn);
   micBtn.classList.toggle("off", !micOn);
   micBtn.querySelector(".btn-icon").textContent = micOn ? "🎙️" : "🔇";
 
-  if (micOn) {
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if(micOn){
     recognitionShouldRun = true;
     startRecognition();
+    console.log(isMobile ? "📱 Mobil: hangfelismerés elindítva" : "🖥️ Asztali: hangfelismerés elindítva");
   } else {
     stopRecognition();
     recognitionShouldRun = false;
+    console.log(isMobile ? "📱 Mobil: hangfelismerés leállítva" : "🖥️ Asztali: hangfelismerés leállítva");
   }
 };
+
 
 camBtn.onclick = ()=>{
   if(!localStream) return;
