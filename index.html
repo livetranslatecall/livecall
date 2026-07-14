@@ -15,6 +15,9 @@
 
   <!-- LiveKit Client -->
 <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+<script src="./livecall-sdk.js"></script>
+<script src="./translator.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui.css">
 <style>
 :root{
   --bg:#0d1420;--panel:#161f30;--panel-2:#1d2942;--line:#293349;
@@ -810,6 +813,10 @@ select{
   <span class="btn-icon">⧉</span>
   <span class="btn-label" data-i18n="ctrlPip">PiP</span>
 </button>
+<button class="ctrl-btn" id="exportBtn">
+  <span class="btn-icon">📥</span>
+  <span class="btn-label">Export</span>
+</button>
 <button class="ctrl-btn" id="histBtn">
   <span class="btn-icon">📝</span>
   <span class="btn-label" data-i18n="ctrlHist">Előzmény</span>
@@ -867,7 +874,7 @@ select{
   <span id="bannerText"></span>
 </div>
 
-<script type="module">
+<script>
 /* =========================================================================
    KONFIGURÁCIÓ
    ========================================================================= */
@@ -1407,6 +1414,9 @@ const multiGrid=el("multiGrid");
 const peersBtn=el("peersBtn");
 const participantsPanel=el("participantsPanel"),participantsList=el("participantsList");
 const statE2ee=el("statE2ee");
+const netPill=el("netPill");
+const splitLeft=el("splitLeft");
+const splitRight=el("splitRight");
 
 /* =========================================================================
    ÁLLAPOT
@@ -1421,6 +1431,11 @@ let sttStream = null;
 let captionHideTimer=null, callEnded=false;
 let mediaRecorder=null, recordedChunks=[];
 let statsInterval=null;
+// ── Stats graph állapot ──
+const RTT_HISTORY = [];
+const BW_HISTORY  = [];
+const GRAPH_POINTS = 30;
+let prevGraphBytes = 0, prevGraphTs = 0;
 
 // ── Multi-peer állapot ──
 // peerId → { pc, dataChannel, remoteDescSet, pendingCandidates, name, lang, cellEl, videoEl }
@@ -1434,16 +1449,20 @@ let e2eeReady = false;
 
 
 
-// ── Stats graph állapot ──
-const RTT_HISTORY = [];
-const BW_HISTORY  = [];
-const GRAPH_POINTS = 30;
-let prevGraphBytes = 0, prevGraphTs = 0;
+// TranslatorEngine a translator.js-ből globálisan töltődik be
 
-/* =========================================================================
-   FORDÍTÁSI MOTOR
-   ========================================================================= */
-import { TranslatorEngine } from './translator.js';
+const roomMgr     = new RoomManager(null, null, null);
+const netAdapt    = new NetworkAdaptation(() => roomMgr.getRoom());
+const noiseCx     = new NoiseCancellation();
+const transcript  = new TranscriptExporter();
+const webhookMgr  = new WebhookManager(null);
+const embedWidget = new EmbedWidget();
+const apiClient   = new ApiClient(null);
+const analytics   = new Analytics(null);
+const feedback    = new TranslationFeedback(null);
+const gdpr        = new GdprManager(null);
+
+embedWidget.define();
 
 const statusBanner = el("translationStatusBanner");
 let bannerHideTimer = null;
@@ -1586,10 +1605,9 @@ async function connectToLiveKit() {
         try {
           await dbLog("livekit_publishTrack_before", "kind: "+track.kind+" readyState: "+track.readyState+" enabled: "+track.enabled);
           await livekitRoom.localParticipant.publishTrack(track, {
-            ...(track.kind === "audio" ? {
-              audioBitrate: 32000,
-              dtx: true,
-            } : {})
+            source: track.kind === "audio"
+              ? LivekitClient.Track.Source.Microphone
+              : LivekitClient.Track.Source.Camera,
           });
           await dbLog("livekit_publishTrack_after", "kind: "+track.kind+" SIKERES");
         } catch (e) {
@@ -1609,14 +1627,12 @@ async function connectToLiveKit() {
   }
 }
 
-
   
 
 async function activateWebRTCFallback() {
   if (callEnded) return;
   console.log("🔄 activateWebRTCFallback indul...");
 
-  // LiveKit szoba lezárása ha még él
   if (livekitRoom) {
     try { await livekitRoom.disconnect(); } catch (_) {}
     livekitRoom = null;
@@ -1627,7 +1643,6 @@ async function activateWebRTCFallback() {
   if (peers.size > 0) {
     console.log("✅ WebRTC peer kapcsolatok már aktívak, stream visszaállítása...");
 
-    // LiveKit által dinamikusan létrehozott audio elemek törlése
     document.querySelectorAll("audio[autoplay]").forEach(a => {
       a.srcObject = null;
       a.remove();
@@ -1640,7 +1655,6 @@ async function activateWebRTCFallback() {
       try {
         await initMedia();
         window._localStream = localStream;
-        // WebRTC peer senderek frissítése az új trackekkel
         peers.forEach((p) => {
           const senders = p.pc?.getSenders() || [];
           localStream.getTracks().forEach(track => {
@@ -1654,6 +1668,7 @@ async function activateWebRTCFallback() {
       }
     }
 
+    // Remote stream visszaállítása minden esetben
     peers.forEach((p) => {
       let stream = p.videoEl?.srcObject;
 
@@ -1675,7 +1690,7 @@ async function activateWebRTCFallback() {
         splitWaiting.style.display = "none";
         remoteVideo.play().catch(() => {});
         splitRemoteVideo.play().catch(() => {});
-        console.log("✅ Stream visszaállítva PC receiver-ből.");
+        console.log("✅ Stream visszaállítva.");
       } else {
         console.warn("⚠️ Nem találtunk streamet a peer-nél.");
       }
@@ -2632,6 +2647,14 @@ async function initMedia(){
     });
     await dbLog("initMedia_stream_ok", "audio trackok: "+localStream.getAudioTracks().length+" video trackok: "+localStream.getVideoTracks().length);
     localVideo.srcObject = localStream;
+    const filteredStream = await noiseCx.init(localStream);
+if (filteredStream && noiseCx.isActive()) {
+  const videoTracks = localStream.getVideoTracks();
+  const audioTracks = filteredStream.getAudioTracks();
+  const combined = new MediaStream([...videoTracks, ...audioTracks]);
+  localStream = combined;
+  window._localStream = localStream;
+}
     splitLocalVideo.srcObject = localStream;
     window._localStream = localStream;
 
@@ -2894,6 +2917,7 @@ async function handleIncomingCaption(payload){
     incomingSub.textContent  = (payload.sourceLang&&payload.sourceLang!==myLang)
       ? `„${payload.text}" (${LANG_LABEL[payload.sourceLang]||payload.sourceLang})` : "";
     incomingBox.style.display = "block";
+    feedback.attachToCaption(incomingBox, payload.text, translated, payload.sourceLang || "hu", myLang);
     clearTimeout(captionHideTimer);
     captionHideTimer = setTimeout(()=>{ incomingBox.style.display="none"; },7000);
     const sub = (payload.sourceLang&&payload.sourceLang!==myLang)
@@ -2951,6 +2975,7 @@ function addHistoryItem(main, orig, isOwn){
   textEl.style.cssText = "font-size:12px;color:"+(isOwn?"var(--teal)":"var(--amber)")+";line-height:1.4;";
   textEl.textContent = main;
   item.appendChild(timeEl);
+  transcript.addEntry(main, isOwn ? myName : "Partner", isOwn ? myLang : "partner", isOwn);
   item.appendChild(textEl);
   if(orig && orig !== main){
     const origEl = document.createElement("div");
@@ -3408,6 +3433,12 @@ async function doHangup(){
   console.log("═══════════════════════════════════════════════════");
   
   callEnded = true;
+  netAdapt.stop();
+analytics.stop();
+noiseCx.destroy();
+transcript.clear();
+await webhookMgr.fireCallEnded(roomId, 0, {});
+await webhookMgr.fireTranscriptReady(transcript.getEntries());
   // Mobilon: állítsuk vissza a felhasználói interakció jelzőt
   window._userInteracted = false;
   
@@ -3564,7 +3595,22 @@ async function beginCallFlow(){
   try{
     console.log("🔌 Supabase kapcsolat inicializálása...");
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    roomMgr._sb    = supabaseClient;
+webhookMgr._sb = supabaseClient;
+analytics._sb  = supabaseClient;
+feedback._sb   = supabaseClient;
+gdpr._sb       = supabaseClient;
+apiClient._sb  = supabaseClient;
+webhookMgr.setRoomId(roomId);
+analytics.init(roomId, myPeerId, () => peers.values().next().value?.pc, (stats) => {
+  const rttEl = document.getElementById("statRtt");
+  if (rttEl) rttEl.textContent = stats.rtt ? stats.rtt + "ms" : "--";
+  const jEl = document.getElementById("statJitter");
+  if (jEl) jEl.textContent = stats.jitter ? stats.jitter + "ms" : "--";
+});
     window.supabaseClient = supabaseClient;
+    
     translator._initKeys();
     console.log("✅ Supabase kliens kész");
     
@@ -3643,6 +3689,23 @@ async function beginCallFlow(){
 
     // Chat előzmények betöltése
     loadChatHistoryFromSupabase();
+    netAdapt.start((quality, rtt) => {
+  const dot = document.getElementById("netDot");
+  const lbl = document.getElementById("netLabel");
+  if (!dot || !lbl) return;
+  if (quality === "bad") {
+    dot.className = "net-dot bad";
+    lbl.textContent = "●○○";
+  } else if (quality === "warn") {
+    dot.className = "net-dot warn";
+    lbl.textContent = "●●○";
+  } else {
+    dot.className = "net-dot";
+    lbl.textContent = "●●●";
+  }
+});
+analytics.start();
+await webhookMgr.fireCallStarted(roomId, [myName]);
 
   }catch(err){
     console.error(err);
@@ -3809,6 +3872,24 @@ langMenu.querySelectorAll("button").forEach(btn=>{
 });
 
 statsBtn.onclick = e=>{ e.stopPropagation(); statsOverlay.classList.toggle("open"); };
+document.getElementById("exportBtn").onclick = e => {
+  e.stopPropagation();
+  const menu = document.getElementById("exportMenu");
+  if (menu) { menu.classList.toggle("open"); return; }
+  const m = document.createElement("div");
+  m.id = "exportMenu";
+  m.style.cssText = "position:absolute;bottom:84px;left:50%;transform:translateX(-50%);" +
+    "background:var(--panel);border:1px solid var(--line);border-radius:14px;" +
+    "padding:8px;z-index:11;box-shadow:0 10px 30px rgba(0,0,0,.5);min-width:160px;";
+  m.innerHTML = `
+    <button onclick="transcript.exportPDF()" style="display:block;width:100%;text-align:left;padding:10px 14px;background:none;border:none;color:var(--text);font-size:14px;border-radius:8px;cursor:pointer;">📄 PDF letöltés</button>
+    <button onclick="transcript.exportWord()" style="display:block;width:100%;text-align:left;padding:10px 14px;background:none;border:none;color:var(--text);font-size:14px;border-radius:8px;cursor:pointer;">📝 Word letöltés</button>
+    <button onclick="transcript.exportSRT()" style="display:block;width:100%;text-align:left;padding:10px 14px;background:none;border:none;color:var(--text);font-size:14px;border-radius:8px;cursor:pointer;">🎬 SRT felirat</button>
+    <button onclick="transcript.exportTXT()" style="display:block;width:100%;text-align:left;padding:10px 14px;background:none;border:none;color:var(--text);font-size:14px;border-radius:8px;cursor:pointer;">📋 TXT szöveg</button>
+  `;
+  document.getElementById("call").appendChild(m);
+  setTimeout(() => document.addEventListener("click", () => m.remove(), { once: true }), 100);
+};
 histBtn.onclick = e=>{
   e.stopPropagation();
   const panel = document.getElementById("historyPanel");
