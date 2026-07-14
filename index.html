@@ -860,33 +860,33 @@ select{
   max-width:400px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,.6);">
   
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-    <span style="font-weight:700; font-size:15px;">🔐 Adatvédelem</span>
+    <span style="font-weight:700; font-size:15px;" data-i18n="gdprTitle">🔐 Adatvédelem</span>
     <button onclick="document.getElementById('gdprPanel').style.display='none'" 
       style="background:none; border:none; color:var(--text-dim); font-size:18px; cursor:pointer;">✕</button>
   </div>
   
   <div style="font-size:12px; color:var(--text-dim); margin-bottom:12px; line-height:1.6;">
-    📍 Adatok tárolása: EU (Supabase EU West)<br>
-    🔒 Titkosítás: TLS 1.3 + E2EE chat<br>
-    📋 Megőrzési idő: 30 nap<br>
-    <span style="color:var(--green); font-weight:700;">✅ GDPR kompatibilis</span>
+    <span data-i18n="gdprStorage">📍 Adatok tárolása: EU (Supabase EU West)</span><br>
+    <span data-i18n="gdprEncryption">🔒 Titkosítás: TLS 1.3 + E2EE chat</span><br>
+    <span data-i18n="gdprRetention">📋 Megőrzési idő: 30 nap</span><br>
+    <span style="color:var(--green); font-weight:700;" data-i18n="gdprCompliant">✅ GDPR kompatibilis</span>
   </div>
   
   <div style="display:flex; gap:8px; flex-wrap:wrap;">
     <button onclick="exportMyData()" 
       style="flex:1; min-width:80px; padding:8px 14px; border-radius:10px; border:1px solid var(--line);
         background:var(--panel-2); color:var(--text); font-size:12px; cursor:pointer; font-weight:600;">
-      📥 Export
+      <span data-i18n="gdprExport">📥 Export</span>
     </button>
     <button onclick="deleteMyData()" 
       style="flex:1; min-width:80px; padding:8px 14px; border-radius:10px; border:1px solid var(--danger);
         background:transparent; color:var(--danger); font-size:12px; cursor:pointer; font-weight:600;">
-      🗑️ Törlés
+      <span data-i18n="gdprDelete">🗑️ Törlés</span>
     </button>
     <button onclick="document.getElementById('gdprPanel').style.display='none'" 
       style="flex:1; min-width:80px; padding:8px 14px; border-radius:10px; border:none;
         background:var(--panel); color:var(--text-dim); font-size:12px; cursor:pointer;">
-      Bezárás
+      <span data-i18n="gdprClose">Bezárás</span>
     </button>
   </div>
 </div>
@@ -984,6 +984,25 @@ const I18N = {
     ctrlPeers:"Tagok", participants:"Résztvevők",
     ocrOn:"OCR aktív", ocrOff:"OCR kikapcsolva",
     e2eeActive:"E2EE aktív", e2eePending:"E2EE folyamatban",
+    gdprTitle:"🔐 Adatvédelem",
+    gdprStorage:"📍 Adatok tárolása: EU (Supabase EU West)",
+    gdprEncryption:"🔒 Titkosítás: TLS 1.3 + E2EE chat",
+    gdprRetention:"📋 Megőrzési idő: 30 nap",
+    gdprCompliant:"✅ GDPR kompatibilis",
+    gdprExport:"📥 Export",
+    gdprDelete:"🗑️ Törlés",
+    gdprClose:"Bezárás",
+    gdprError:"❌ GDPR menedzser nem elérhető",
+    gdprNoCall:"❌ Nincs aktív hívás.",
+    gdprExporting:"📤 Adatok exportálása...",
+    gdprExportSuccess:"✅ Adatok exportálva!",
+    gdprNoData:"⚠️ Nem található adat ehhez a híváshoz.",
+    gdprExportError:"❌ Exportálási hiba: ",
+    gdprDeleting:"🗑️ Adatok törlése...",
+    gdprDeleteSuccess:"✅ Minden adat törölve!",
+    gdprDeleteError:"❌ Hiba történt a törlés során.",
+    gdprConfirm:"Biztosan törlöd az összes adatodat ehhez a híváshoz? Ez nem visszafordítható!",
+
   },
   en:{
     tagline:"Video call with live translation — 13 languages",
@@ -1016,7 +1035,25 @@ const I18N = {
     ctrlPeers:"People", participants:"Participants",
     ocrOn:"OCR active", ocrOff:"OCR off",
     e2eeActive:"E2EE active", e2eePending:"E2EE pending",
-  },
+    gdprTitle:"🔐 Privacy",
+    gdprStorage:"📍 Data storage: EU (Supabase EU West)",
+    gdprEncryption:"🔒 Encryption: TLS 1.3 + E2EE chat",
+    gdprRetention:"📋 Retention period: 30 days",
+    gdprCompliant:"✅ GDPR compliant",
+    gdprExport:"📥 Export",
+    gdprDelete:"🗑️ Delete",
+    gdprClose:"Close",
+    gdprError:"❌ GDPR manager not available",
+    gdprNoCall:"❌ No active call.",
+    gdprExporting:"📤 Exporting data...",
+    gdprExportSuccess:"✅ Data exported!",
+    gdprNoData:"⚠️ No data found for this call.",
+    gdprExportError:"❌ Export error: ",
+    gdprDeleting:"🗑️ Deleting data...",
+    gdprDeleteSuccess:"✅ All data deleted!",
+    gdprDeleteError:"❌ Delete error.",
+    gdprConfirm:"Are you sure you want to delete all your data for this call? This cannot be undone!",
+},
   ru:{
     tagline:"Видеозвонок с живым переводом — 13 языков",
     labelName:"Ваше имя", phName:"напр. Саша",
@@ -1048,7 +1085,25 @@ const I18N = {
     ctrlPeers:"Участники", participants:"Участники",
     ocrOn:"OCR активен", ocrOff:"OCR выкл.",
     e2eeActive:"E2EE активен", e2eePending:"E2EE в процессе",
-  },
+    gdprTitle:"🔐 Конфиденциальность",
+    gdprStorage:"📍 Хранение данных: ЕС (Supabase EU West)",
+    gdprEncryption:"🔒 Шифрование: TLS 1.3 + E2EE чат",
+    gdprRetention:"📋 Срок хранения: 30 дней",
+    gdprCompliant:"✅ Соответствует GDPR",
+    gdprExport:"📥 Экспорт",
+    gdprDelete:"🗑️ Удалить",
+    gdprClose:"Закрыть",
+    gdprError:"❌ Менеджер GDPR недоступен",
+    gdprNoCall:"❌ Нет активного звонка.",
+    gdprExporting:"📤 Экспорт данных...",
+    gdprExportSuccess:"✅ Данные экспортированы!",
+    gdprNoData:"⚠️ Данные для этого звонка не найдены.",
+    gdprExportError:"❌ Ошибка экспорта: ",
+    gdprDeleting:"🗑️ Удаление данных...",
+    gdprDeleteSuccess:"✅ Все данные удалены!",
+    gdprDeleteError:"❌ Ошибка удаления.",
+    gdprConfirm:"Вы уверены, что хотите удалить все данные для этого звонка? Это действие нельзя отменить!",
+},
   de:{
     tagline:"Videoanruf mit Echtzeit-Übersetzung — 13 Sprachen",
     labelName:"Ihr Name", phName:"z.B. Klaus",
@@ -1079,7 +1134,25 @@ const I18N = {
     ctrlPeers:"Personen", participants:"Teilnehmer",
     ocrOn:"OCR aktiv", ocrOff:"OCR aus",
     e2eeActive:"E2EE aktiv", e2eePending:"E2EE ausstehend",
-  },
+    gdprTitle:"🔐 Datenschutz",
+    gdprStorage:"📍 Datenspeicherung: EU (Supabase EU West)",
+    gdprEncryption:"🔒 Verschlüsselung: TLS 1.3 + E2EE Chat",
+    gdprRetention:"📋 Aufbewahrungszeit: 30 Tage",
+    gdprCompliant:"✅ GDPR-konform",
+    gdprExport:"📥 Exportieren",
+    gdprDelete:"🗑️ Löschen",
+    gdprClose:"Schließen",
+    gdprError:"❌ GDPR-Manager nicht verfügbar",
+    gdprNoCall:"❌ Kein aktiver Anruf.",
+    gdprExporting:"📤 Daten werden exportiert...",
+    gdprExportSuccess:"✅ Daten exportiert!",
+    gdprNoData:"⚠️ Keine Daten für diesen Anruf gefunden.",
+    gdprExportError:"❌ Exportfehler: ",
+    gdprDeleting:"🗑️ Daten werden gelöscht...",
+    gdprDeleteSuccess:"✅ Alle Daten gelöscht!",
+    gdprDeleteError:"❌ Löschfehler.",
+    gdprConfirm:"Möchten Sie wirklich alle Daten für diesen Anruf löschen? Dies kann nicht rückgängig gemacht werden!",
+},
   fr:{
     tagline:"Appel vidéo avec traduction en direct — 13 langues",
     labelName:"Votre nom", phName:"ex. Pierre",
@@ -1110,7 +1183,25 @@ const I18N = {
     ctrlPeers:"Membres", participants:"Participants",
     ocrOn:"OCR actif", ocrOff:"OCR désactivé",
     e2eeActive:"E2EE actif", e2eePending:"E2EE en cours",
-  },
+    gdprTitle:"🔐 Confidentialité",
+    gdprStorage:"📍 Stockage des données: UE (Supabase EU West)",
+    gdprEncryption:"🔒 Chiffrement: TLS 1.3 + chat E2EE",
+    gdprRetention:"📋 Période de conservation: 30 jours",
+    gdprCompliant:"✅ Conforme au RGPD",
+    gdprExport:"📥 Exporter",
+    gdprDelete:"🗑️ Supprimer",
+    gdprClose:"Fermer",
+    gdprError:"❌ Gestionnaire RGPD non disponible",
+    gdprNoCall:"❌ Aucun appel actif.",
+    gdprExporting:"📤 Exportation des données...",
+    gdprExportSuccess:"✅ Données exportées!",
+    gdprNoData:"⚠️ Aucune donnée trouvée pour cet appel.",
+    gdprExportError:"❌ Erreur d'exportation: ",
+    gdprDeleting:"🗑️ Suppression des données...",
+    gdprDeleteSuccess:"✅ Toutes les données supprimées!",
+    gdprDeleteError:"❌ Erreur de suppression.",
+    gdprConfirm:"Êtes-vous sûr de vouloir supprimer toutes vos données pour cet appel? Cette action est irréversible!",
+},
   es:{
     tagline:"Videollamada con traducción en vivo — 13 idiomas",
     labelName:"Tu nombre", phName:"ej. Carlos",
@@ -1141,7 +1232,25 @@ const I18N = {
     ctrlPeers:"Miembros", participants:"Participantes",
     ocrOn:"OCR activo", ocrOff:"OCR desactivado",
     e2eeActive:"E2EE activo", e2eePending:"E2EE pendiente",
-  },
+    gdprTitle:"🔐 Privacidad",
+    gdprStorage:"📍 Almacenamiento de datos: UE (Supabase EU West)",
+    gdprEncryption:"🔒 Cifrado: TLS 1.3 + chat E2EE",
+    gdprRetention:"📋 Período de retención: 30 días",
+    gdprCompliant:"✅ Conforme al GDPR",
+    gdprExport:"📥 Exportar",
+    gdprDelete:"🗑️ Eliminar",
+    gdprClose:"Cerrar",
+    gdprError:"❌ Gestor GDPR no disponible",
+    gdprNoCall:"❌ No hay llamada activa.",
+    gdprExporting:"📤 Exportando datos...",
+    gdprExportSuccess:"✅ ¡Datos exportados!",
+    gdprNoData:"⚠️ No se encontraron datos para esta llamada.",
+    gdprExportError:"❌ Error de exportación: ",
+    gdprDeleting:"🗑️ Eliminando datos...",
+    gdprDeleteSuccess:"✅ ¡Todos los datos eliminados!",
+    gdprDeleteError:"❌ Error al eliminar.",
+    gdprConfirm:"¿Estás seguro de que quieres eliminar todos tus datos para esta llamada? ¡Esta acción no se puede deshacer!",
+},
   it:{
     tagline:"Videochiamata con traduzione in tempo reale — 13 lingue",
     labelName:"Il tuo nome", phName:"es. Marco",
@@ -1172,7 +1281,25 @@ const I18N = {
     ctrlPeers:"Membri", participants:"Partecipanti",
     ocrOn:"OCR attivo", ocrOff:"OCR disattivato",
     e2eeActive:"E2EE attivo", e2eePending:"E2EE in corso",
-  },
+    gdprTitle:"🔐 Privacy",
+    gdprStorage:"📍 Archiviazione dati: UE (Supabase EU West)",
+    gdprEncryption:"🔒 Crittografia: TLS 1.3 + chat E2EE",
+    gdprRetention:"📋 Periodo di conservazione: 30 giorni",
+    gdprCompliant:"✅ Conforme al GDPR",
+    gdprExport:"📥 Esporta",
+    gdprDelete:"🗑️ Elimina",
+    gdprClose:"Chiudi",
+    gdprError:"❌ Gestore GDPR non disponibile",
+    gdprNoCall:"❌ Nessuna chiamata attiva.",
+    gdprExporting:"📤 Esportazione dati in corso...",
+    gdprExportSuccess:"✅ Dati esportati!",
+    gdprNoData:"⚠️ Nessun dato trovato per questa chiamata.",
+    gdprExportError:"❌ Errore di esportazione: ",
+    gdprDeleting:"🗑️ Eliminazione dati in corso...",
+    gdprDeleteSuccess:"✅ Tutti i dati eliminati!",
+    gdprDeleteError:"❌ Errore di eliminazione.",
+    gdprConfirm:"Sei sicuro di voler eliminare tutti i tuoi dati per questa chiamata? Questa azione non può essere annullata!",
+},
   pt:{
     tagline:"Videochamada com tradução ao vivo — 13 idiomas",
     labelName:"Seu nome", phName:"ex. João",
@@ -1203,7 +1330,25 @@ const I18N = {
     ctrlPeers:"Membros", participants:"Participantes",
     ocrOn:"OCR ativo", ocrOff:"OCR desativado",
     e2eeActive:"E2EE ativo", e2eePending:"E2EE pendente",
-  },
+    gdprTitle:"🔐 Privacidade",
+    gdprStorage:"📍 Armazenamento de dados: UE (Supabase EU West)",
+    gdprEncryption:"🔒 Criptografia: TLS 1.3 + chat E2EE",
+    gdprRetention:"📋 Período de retenção: 30 dias",
+    gdprCompliant:"✅ Em conformidade com o GDPR",
+    gdprExport:"📥 Exportar",
+    gdprDelete:"🗑️ Excluir",
+    gdprClose:"Fechar",
+    gdprError:"❌ Gerenciador GDPR indisponível",
+    gdprNoCall:"❌ Nenhuma chamada ativa.",
+    gdprExporting:"📤 Exportando dados...",
+    gdprExportSuccess:"✅ Dados exportados!",
+    gdprNoData:"⚠️ Nenhum dado encontrado para esta chamada.",
+    gdprExportError:"❌ Erro de exportação: ",
+    gdprDeleting:"🗑️ Excluindo dados...",
+    gdprDeleteSuccess:"✅ Todos os dados excluídos!",
+    gdprDeleteError:"❌ Erro ao excluir.",
+    gdprConfirm:"Tem certeza de que deseja excluir todos os seus dados para esta chamada? Esta ação não pode ser desfeita!",
+},
   pl:{
     tagline:"Połączenie wideo z tłumaczeniem na żywo — 13 języków",
     labelName:"Twoje imię", phName:"np. Marek",
@@ -1234,7 +1379,25 @@ const I18N = {
     ctrlPeers:"Osoby", participants:"Uczestnicy",
     ocrOn:"OCR aktywny", ocrOff:"OCR wyłączony",
     e2eeActive:"E2EE aktywny", e2eePending:"E2EE w toku",
-  },
+    gdprTitle:"🔐 Prywatność",
+    gdprStorage:"📍 Przechowywanie danych: UE (Supabase EU West)",
+    gdprEncryption:"🔒 Szyfrowanie: TLS 1.3 + czat E2EE",
+    gdprRetention:"📋 Okres przechowywania: 30 dni",
+    gdprCompliant:"✅ Zgodny z RODO",
+    gdprExport:"📥 Eksportuj",
+    gdprDelete:"🗑️ Usuń",
+    gdprClose:"Zamknij",
+    gdprError:"❌ Menedżer RODO niedostępny",
+    gdprNoCall:"❌ Brak aktywnego połączenia.",
+    gdprExporting:"📤 Eksportowanie danych...",
+    gdprExportSuccess:"✅ Dane wyeksportowane!",
+    gdprNoData:"⚠️ Nie znaleziono danych dla tego połączenia.",
+    gdprExportError:"❌ Błąd eksportu: ",
+    gdprDeleting:"🗑️ Usuwanie danych...",
+    gdprDeleteSuccess:"✅ Wszystkie dane usunięte!",
+    gdprDeleteError:"❌ Błąd usuwania.",
+    gdprConfirm:"Czy na pewno chcesz usunąć wszystkie swoje dane dla tego połączenia? Tej operacji nie można cofnąć!",
+},
   ro:{
     tagline:"Apel video cu traducere în timp real — 13 limbi",
     labelName:"Numele tău", phName:"ex. Ion",
@@ -1265,7 +1428,25 @@ const I18N = {
     ctrlPeers:"Membri", participants:"Participanți",
     ocrOn:"OCR activ", ocrOff:"OCR oprit",
     e2eeActive:"E2EE activ", e2eePending:"E2EE în curs",
-  },
+    gdprTitle:"🔐 Confidențialitate",
+    gdprStorage:"📍 Stocarea datelor: UE (Supabase EU West)",
+    gdprEncryption:"🔒 Criptare: TLS 1.3 + chat E2EE",
+    gdprRetention:"📋 Perioada de păstrare: 30 de zile",
+    gdprCompliant:"✅ Conform GDPR",
+    gdprExport:"📥 Exportă",
+    gdprDelete:"🗑️ Șterge",
+    gdprClose:"Închide",
+    gdprError:"❌ Manager GDPR indisponibil",
+    gdprNoCall:"❌ Niciun apel activ.",
+    gdprExporting:"📤 Exportarea datelor...",
+    gdprExportSuccess:"✅ Date exportate!",
+    gdprNoData:"⚠️ Nu s-au găsit date pentru acest apel.",
+    gdprExportError:"❌ Eroare la export: ",
+    gdprDeleting:"🗑️ Ștergerea datelor...",
+    gdprDeleteSuccess:"✅ Toate datele au fost șterse!",
+    gdprDeleteError:"❌ Eroare la ștergere.",
+    gdprConfirm:"Sigur dorești să ștergi toate datele pentru acest apel? Această acțiune este ireversibilă!",
+},
   uk:{
     tagline:"Відеодзвінок з живим перекладом — 13 мов",
     labelName:"Ваше ім'я", phName:"напр. Олег",
@@ -1296,7 +1477,25 @@ const I18N = {
     ctrlPeers:"Учасники", participants:"Учасники",
     ocrOn:"OCR активний", ocrOff:"OCR вимкнено",
     e2eeActive:"E2EE активний", e2eePending:"E2EE у процесі",
-  },
+    gdprTitle:"🔐 Конфіденційність",
+    gdprStorage:"📍 Зберігання даних: ЄС (Supabase EU West)",
+    gdprEncryption:"🔒 Шифрування: TLS 1.3 + чат E2EE",
+    gdprRetention:"📋 Термін зберігання: 30 днів",
+    gdprCompliant:"✅ Відповідає GDPR",
+    gdprExport:"📥 Експорт",
+    gdprDelete:"🗑️ Видалити",
+    gdprClose:"Закрити",
+    gdprError:"❌ Менеджер GDPR недоступний",
+    gdprNoCall:"❌ Немає активного дзвінка.",
+    gdprExporting:"📤 Експорт даних...",
+    gdprExportSuccess:"✅ Дані експортовано!",
+    gdprNoData:"⚠️ Даних для цього дзвінка не знайдено.",
+    gdprExportError:"❌ Помилка експорту: ",
+    gdprDeleting:"🗑️ Видалення даних...",
+    gdprDeleteSuccess:"✅ Усі дані видалено!",
+    gdprDeleteError:"❌ Помилка видалення.",
+    gdprConfirm:"Ви впевнені, що хочете видалити всі свої дані для цього дзвінка? Цю дію не можна скасувати!",
+},
   zh:{
     tagline:"实时翻译视频通话 — 13种语言",
     labelName:"您的姓名", phName:"例如：小明",
@@ -1327,7 +1526,25 @@ const I18N = {
     ctrlPeers:"成员", participants:"参与者",
     ocrOn:"OCR已激活", ocrOff:"OCR已关闭",
     e2eeActive:"E2EE已激活", e2eePending:"E2EE进行中",
-  },
+    gdprTitle:"🔐 隐私保护",
+    gdprStorage:"📍 数据存储：欧盟 (Supabase EU West)",
+    gdprEncryption:"🔒 加密：TLS 1.3 + E2EE 聊天",
+    gdprRetention:"📋 保留期限：30天",
+    gdprCompliant:"✅ 符合GDPR标准",
+    gdprExport:"📥 导出",
+    gdprDelete:"🗑️ 删除",
+    gdprClose:"关闭",
+    gdprError:"❌ GDPR管理器不可用",
+    gdprNoCall:"❌ 没有活动通话。",
+    gdprExporting:"📤 正在导出数据...",
+    gdprExportSuccess:"✅ 数据已导出！",
+    gdprNoData:"⚠️ 未找到此通话的数据。",
+    gdprExportError:"❌ 导出错误：",
+    gdprDeleting:"🗑️ 正在删除数据...",
+    gdprDeleteSuccess:"✅ 所有数据已删除！",
+    gdprDeleteError:"❌ 删除错误。",
+    gdprConfirm:"您确定要删除此通话的所有数据吗？此操作不可撤销！",
+},
   ar:{
     tagline:"مكالمة فيديو مع ترجمة فورية — 13 لغة",
     labelName:"اسمك", phName:"مثال: أحمد",
@@ -1358,7 +1575,25 @@ const I18N = {
     ctrlPeers:"الأعضاء", participants:"المشاركون",
     ocrOn:"OCR نشط", ocrOff:"OCR معطّل",
     e2eeActive:"E2EE نشط", e2eePending:"E2EE قيد الإعداد",
-  },
+    gdprTitle:"🔐 الخصوصية",
+    gdprStorage:"📍 تخزين البيانات: الاتحاد الأوروبي (Supabase EU West)",
+    gdprEncryption:"🔒 التشفير: TLS 1.3 + محادثة E2EE",
+    gdprRetention:"📋 فترة الاحتفاظ: 30 يومًا",
+    gdprCompliant:"✅ متوافق مع اللائحة العامة لحماية البيانات (GDPR)",
+    gdprExport:"📥 تصدير",
+    gdprDelete:"🗑️ حذف",
+    gdprClose:"إغلاق",
+    gdprError:"❌ مدير اللائحة العامة لحماية البيانات غير متاح",
+    gdprNoCall:"❌ لا توجد مكالمة نشطة.",
+    gdprExporting:"📤 جاري تصدير البيانات...",
+    gdprExportSuccess:"✅ تم تصدير البيانات!",
+    gdprNoData:"⚠️ لم يتم العثور على بيانات لهذه المكالمة.",
+    gdprExportError:"❌ خطأ في التصدير: ",
+    gdprDeleting:"🗑️ جاري حذف البيانات...",
+    gdprDeleteSuccess:"✅ تم حذف جميع البيانات!",
+    gdprDeleteError:"❌ خطأ في الحذف.",
+    gdprConfirm:"هل أنت متأكد من رغبتك في حذف جميع بياناتك لهذه المكالمة؟ لا يمكن التراجع عن هذا الإجراء!",
+},
 };
 
   
@@ -4350,50 +4585,101 @@ function showToast(message, type = 'info', duration = 4000) {
 window.showToast = showToast;
 
 // ─── GDPR ADATVÉDELEM ───────────────────────────────────────────
+// ─── TOAST ÉRTESÍTÉSEK ──────────────────────────────────────────
+window.showToast = function(message, type = 'info', duration = 4000) {
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.style.cssText = `
+      position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+      z-index: 999; display: flex; flex-direction: column; gap: 8px;
+      pointer-events: none; max-width: 90%;
+    `;
+    document.body.appendChild(container);
+  }
+  
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    background: rgba(13,20,32,.92);
+    backdrop-filter: blur(12px);
+    border: 1px solid ${type === 'error' ? 'var(--danger)' : type === 'success' ? 'var(--green)' : type === 'warn' ? 'var(--amber)' : 'var(--teal)'};
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-size: 13px;
+    color: var(--text);
+    box-shadow: 0 8px 30px rgba(0,0,0,.5);
+    animation: toastSlideUp .4s ease;
+    pointer-events: auto;
+    text-align: center;
+    max-width: 400px;
+  `;
+  toast.textContent = message;
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity .3s';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+};
+
+// ─── GDPR ADATVÉDELEM ───────────────────────────────────────────
 async function exportMyData() {
   if (!window._gdprManager) {
-    showToast('❌ GDPR menedzser nem elérhető', 'error');
+    showToast(t('gdprError'), 'error');
     return;
   }
   
-  const roomId = window.roomId || window.roomId;
+  const roomId = window.roomId;
   if (!roomId) {
-    showToast('❌ Nincs aktív hívás, nem lehet exportálni.', 'error');
+    showToast(t('gdprNoCall'), 'error');
     return;
   }
+  
+  showToast(t('gdprExporting'), 'info', 2000);
   
   try {
-    await window._gdprManager.exportRoomData(roomId);
-    showToast('✅ Adatok exportálva!', 'success', 3000);
+    const result = await window._gdprManager.exportRoomData(roomId);
+    if (result && Object.keys(result).length > 0) {
+      showToast(t('gdprExportSuccess'), 'success', 3000);
+    } else {
+      showToast(t('gdprNoData'), 'warn', 3000);
+    }
   } catch (e) {
-    showToast('❌ Exportálási hiba: ' + e.message, 'error');
+    showToast(t('gdprExportError') + e.message, 'error');
+    console.error('[GDPR] Export hiba:', e);
   }
 }
 
 async function deleteMyData() {
   if (!window._gdprManager) {
-    showToast('❌ GDPR menedzser nem elérhető', 'error');
+    showToast(t('gdprError'), 'error');
     return;
   }
   
-  const roomId = window.roomId || window.roomId;
+  const roomId = window.roomId;
   if (!roomId) {
-    showToast('❌ Nincs aktív hívás.', 'error');
+    showToast(t('gdprNoCall'), 'error');
     return;
   }
   
-  if (!confirm('Biztosan törlöd az összes adatodat ehhez a híváshoz? Ez nem visszafordítható!')) return;
+  if (!confirm(t('gdprConfirm'))) return;
+  
+  showToast(t('gdprDeleting'), 'info', 2000);
   
   try {
     const result = await window._gdprManager.deleteRoomData(roomId);
     if (result && result.success) {
-      showToast('✅ Minden adat törölve!', 'success', 3000);
+      showToast(t('gdprDeleteSuccess'), 'success', 3000);
       document.getElementById('gdprPanel').style.display = 'none';
     } else {
-      showToast('❌ Hiba történt a törlés során.', 'error');
+      showToast(t('gdprDeleteError'), 'error');
+      console.error('[GDPR] Törlés eredmény:', result);
     }
   } catch (e) {
-    showToast('❌ Törlési hiba: ' + e.message, 'error');
+    showToast(t('gdprDeleteError'), 'error');
+    console.error('[GDPR] Törlés hiba:', e);
   }
 }
 
@@ -4452,13 +4738,6 @@ if (originalBeginCall) {
 
 if (document.getElementById('call')?.classList.contains('active')) {
   setTimeout(addGdprButton, 1500);
-}
-
-// Biztosítjuk, hogy a showToast globálisan elérhető legyen
-if (typeof window.showToast === 'undefined') {
-  window.showToast = function(message, type = 'info', duration = 4000) {
-    alert(message); // Fallback
-  };
 }
 
 
