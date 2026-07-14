@@ -814,6 +814,10 @@ select{
   <span class="btn-icon">⧉</span>
   <span class="btn-label" data-i18n="ctrlPip">PiP</span>
 </button>
+<button class="ctrl-btn" id="replayBtn" title="Utolsó mondat visszajátszása" disabled>
+  <span class="btn-icon">↩️</span>
+  <span class="btn-label">Replay</span>
+</button>
 <button class="ctrl-btn" id="histBtn">
   <span class="btn-icon">📝</span>
   <span class="btn-label" data-i18n="ctrlHist">Előzmény</span>
@@ -1408,6 +1412,8 @@ let micOn=true, camOn=true, mirrored=false, isSharing=false, isRecording=false;
 let recognition, recognitionShouldRun=false;
 let sttStream = null;
 let captionHideTimer=null, callEnded=false;
+let lastIncomingTranslated = ""; // Replay gombhoz
+let lastIncomingLang = "hu";     // Replay gombhoz
 let mediaRecorder=null, recordedChunks=[];
 let statsInterval=null;
 
@@ -3016,57 +3022,168 @@ function stopRecognition(){
    ========================================================================= */
 async function handleIncomingCaption(payload){
   if(!payload?.text) return;
-  try{
-    const translated = await translateText(payload.text, payload.sourceLang||"hu", myLang);
-    const tagText = (payload.name||LANG_LABEL[payload.sourceLang]||"PARTNER").toUpperCase();
+
+  // Azonnali megjelenítés fordítás ELŐTT (eredeti szöveg villan fel)
+  const tagText = (payload.name||LANG_LABEL[payload.sourceLang]||"PARTNER").toUpperCase();
+
+  // Ha ugyanaz a nyelv, nem kell fordítás
+  if(payload.sourceLang === myLang){
     incomingTag.textContent  = tagText;
-    incomingMain.textContent = translated;
-    incomingSub.textContent  = (payload.sourceLang&&payload.sourceLang!==myLang)
-      ? `„${payload.text}" (${LANG_LABEL[payload.sourceLang]||payload.sourceLang})` : "";
+    incomingMain.textContent = payload.text;
+    incomingSub.textContent  = "";
     incomingBox.style.display = "block";
     clearTimeout(captionHideTimer);
     captionHideTimer = setTimeout(()=>{ incomingBox.style.display="none"; },7000);
-    const sub = (payload.sourceLang&&payload.sourceLang!==myLang)
-      ? `„${payload.text}" (${LANG_LABEL[payload.sourceLang]||payload.sourceLang})` : "";
-    setSplitIncomingCaption(translated, sub, tagText);
-    
-    // ✨ PARTNER REZGŐ KERET BEKAPCSOL
-    remoteWrap.classList.add("speaking");
-    localWrap.classList.remove("speaking");
-    localWrap.classList.remove("own-speaking");
-    splitRight.classList.add("speaking");
-    splitLeft.classList.remove("speaking");
-    splitLeft.classList.remove("own-speaking");
-    
-    // Multi-peer esetén
-    if(payload.peerId) {
-      document.querySelectorAll(".peer-cell").forEach(cell => {
-        cell.classList.toggle("speaking", cell.dataset.peerId === payload.peerId);
-      });
-      if(ownGridCell) ownGridCell.classList.remove("speaking");
+    setSplitIncomingCaption(payload.text, "", tagText);
+    addHistoryItem(payload.text, "", false);
+    _triggerPartnerSpeakingUI(payload);
+
+    // Replay gombhoz mentjük — nincs fordítás, de van elhangzott szöveg
+    if(payload.text && payload.text.trim()){
+      lastIncomingTranslated = payload.text;
+      lastIncomingLang = myLang;
+      const replayBtnEl = document.getElementById("replayBtn");
+      if(replayBtnEl) replayBtnEl.disabled = false;
     }
-    
-    // 7 másodperc múlva kikapcsol (hosszabb, mert a felirat is tovább marad)
-    clearTimeout(window._partnerSpeakingTimer);
-    window._partnerSpeakingTimer = setTimeout(() => {
-      remoteWrap.classList.remove("speaking");
-      splitRight.classList.remove("speaking");
-      document.querySelectorAll(".peer-cell.speaking").forEach(cell => {
-        cell.classList.remove("speaking");
-      });
-    }, 7000);
-    
-    // Peer name frissítése
-    if(payload.name){
-      peers.forEach((p, pid)=>{
-        if(p.name==="Partner") p.name=payload.name;
-      });
-    }
-    updateSplitPartnerPresence(payload.name||null, payload.sourceLang||null);
-    addHistoryItem(translated, payload.text, false);
-  }catch(e){ console.error(e); }
+    return;
+  }
+
+  // Cache-ből azonnal visszaad ha már fordítottuk
+  const cacheKey = `${payload.sourceLang}|${myLang}|${payload.text.trim()}`;
+  const cachedTranslation = translator._getCache(cacheKey);
+
+  if(cachedTranslation !== undefined){
+    // 0ms – cache találat
+    _showIncomingCaption(cachedTranslation, payload, tagText);
+    return;
+  }
+
+  // Fordítás párhuzamosan indul – nem blokkolja a UI-t
+  // Azonnal megmutatjuk az eredeti szöveget amíg fordít
+  incomingTag.textContent  = tagText;
+  incomingMain.textContent = payload.text; // eredeti szöveg azonnal
+  incomingSub.textContent  = "⏳ fordítás...";
+  incomingBox.style.display = "block";
+  clearTimeout(captionHideTimer);
+  captionHideTimer = setTimeout(()=>{ incomingBox.style.display="none"; },7000);
+  _triggerPartnerSpeakingUI(payload);
+
+  try{
+    // Fordítás fut a háttérben
+    const translated = await translateText(payload.text, payload.sourceLang||"hu", myLang);
+    _showIncomingCaption(translated, payload, tagText);
+  }catch(e){
+    // Hiba esetén az eredeti szöveg marad
+    incomingSub.textContent = "";
+    console.error("[Caption] Fordítási hiba:", e);
+  }
 }
 
+function _showIncomingCaption(translated, payload, tagText){
+  const sub = (payload.sourceLang && payload.sourceLang !== myLang)
+    ? `„${payload.text}" (${LANG_LABEL[payload.sourceLang]||payload.sourceLang})` : "";
+
+    // Replay gombhoz mentjük az utolsó mondatot
+  lastIncomingTranslated = translated;
+  lastIncomingLang = myLang;
+
+  // Replay gomb aktiválása — csak most, hogy valóban van tartalom
+  if(translated && translated.trim()){
+    const replayBtnEl = document.getElementById("replayBtn");
+    if(replayBtnEl) replayBtnEl.disabled = false;
+  }
+
+  incomingTag.textContent  = tagText;
+  incomingMain.textContent = translated;
+  incomingSub.textContent  = sub;
+  incomingBox.style.display = "block";
+  clearTimeout(captionHideTimer);
+  captionHideTimer = setTimeout(()=>{ incomingBox.style.display="none"; },7000);
+  setSplitIncomingCaption(translated, sub, tagText);
+
+  // TranslationFeedback gombok visszarakva
+  if(incomingBox && window._translationFeedback){
+    window._translationFeedback.attachToCaption(
+      incomingBox, payload.text, translated, payload.sourceLang||"auto", myLang
+    );
+  }
+
+  // Peer name frissítése
+  if(payload.name){
+    peers.forEach((p)=>{
+      if(p.name==="Partner") p.name=payload.name;
+    });
+  }
+  updateSplitPartnerPresence(payload.name||null, payload.sourceLang||null);
+  addHistoryItem(translated, payload.text, false);
+}
+
+function _triggerPartnerSpeakingUI(payload){
+  remoteWrap.classList.add("speaking");
+  localWrap.classList.remove("speaking");
+  localWrap.classList.remove("own-speaking");
+
+  const splitLeft  = document.getElementById("splitLeft");
+  const splitRight = document.getElementById("splitRight");
+  if(splitRight) splitRight.classList.add("speaking");
+  if(splitLeft)  splitLeft.classList.remove("speaking");
+  if(splitLeft)  splitLeft.classList.remove("own-speaking");
+
+  if(payload.peerId){
+    document.querySelectorAll(".peer-cell").forEach(cell=>{
+      cell.classList.toggle("speaking", cell.dataset.peerId === payload.peerId);
+    });
+    if(ownGridCell) ownGridCell.classList.remove("speaking");
+  }
+
+  clearTimeout(window._partnerSpeakingTimer);
+  window._partnerSpeakingTimer = setTimeout(()=>{
+    remoteWrap.classList.remove("speaking");
+    if(splitRight) splitRight.classList.remove("speaking");
+    document.querySelectorAll(".peer-cell.speaking").forEach(cell=>{
+      cell.classList.remove("speaking");
+    });
+  }, 7000);
+}
+
+
+function replayLastIncoming(){
+  const btn = document.getElementById("replayBtn");
+
+  // Nincs mit lejátszani — vizuális jelzés, nem csendes visszatérés
+  if(!lastIncomingTranslated || !window.speechSynthesis){
+    if(btn){
+      btn.classList.add("input-error");
+      setTimeout(()=>{ btn.classList.remove("input-error"); }, 600);
+    }
+    return;
+  }
+
+  // Ha éppen beszél, leállítjuk
+  window.speechSynthesis.cancel();
+
+  const utter = new SpeechSynthesisUtterance(lastIncomingTranslated);
+  utter.lang = STT_LOCALE[lastIncomingLang] || "hu-HU";
+  utter.rate = 0.9;
+  utter.pitch = 1;
+  utter.volume = 1;
+
+  // Gomb vizuális visszajelzés
+  if(btn){
+    btn.querySelector(".btn-icon").textContent = "🔊";
+    btn.classList.add("active-teal");
+    utter.onend = ()=>{
+      btn.querySelector(".btn-icon").textContent = "↩️";
+      btn.classList.remove("active-teal");
+    };
+    utter.onerror = ()=>{
+      btn.querySelector(".btn-icon").textContent = "↩️";
+      btn.classList.remove("active-teal");
+    };
+  }
+
+  window.speechSynthesis.speak(utter);
+}
 
 function addHistoryItem(main, orig, isOwn){
   const histList = document.getElementById("historyList");
@@ -3546,13 +3663,23 @@ async function doHangup(){
   await saveCallEnd(_callDbId, roomId);
   console.log("✅ callEnded = true");
   
-  console.log("🛑 Hangfelismerés leállítása...");
+console.log("🛑 Hangfelismerés leállítása...");
   stopRecognition();
   console.log("   ✅ Hangfelismerés leállítva");
-  
+
+  console.log("↩️ Replay állapot törlése...");
+  lastIncomingTranslated = "";
+  lastIncomingLang = "hu";
+  const replayBtnEl = document.getElementById("replayBtn");
+  if(replayBtnEl){
+    replayBtnEl.disabled = true;
+    replayBtnEl.querySelector(".btn-icon").textContent = "↩️";
+    replayBtnEl.classList.remove("active-teal");
+  }
+  console.log("   ✅ Replay állapot törölve");
 
   
-  if(statsInterval){ 
+  if(statsInterval){
     console.log("📊 Statisztika leállítása...");
     clearInterval(statsInterval); 
     statsInterval=null; 
@@ -3947,7 +4074,11 @@ langMenu.querySelectorAll("button").forEach(btn=>{
   };
 });
 
-statsBtn.onclick = e=>{ e.stopPropagation(); statsOverlay.classList.toggle("open"); };
+statsBtn.onclick = e=>{
+  e.stopPropagation();
+  statsOverlay.classList.toggle("open");
+};
+
 histBtn.onclick = e=>{
   e.stopPropagation();
   const panel = document.getElementById("historyPanel");
@@ -3961,6 +4092,10 @@ histBtn.onclick = e=>{
     }, 80);
   }
 };
+
+
+document.getElementById("replayBtn").onclick = () => replayLastIncoming();
+
 
 // History panel drag (csak laptopon)
 (()=>{
