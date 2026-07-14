@@ -50,8 +50,38 @@
     // 6. GdprManager
     try {
       _gdprManager = new window.GdprManager(ctx.sb);
+      window._gdprManager = _gdprManager;  // ← GLOBÁLISAN ELÉRHETŐ
       console.log("[sdk-init] ✅ GdprManager kész");
     } catch(e) { console.error("[sdk-init] ❌ GdprManager:", e.message); }
+
+    // 6b. GDPR gomb hozzáadása
+    try {
+      if (ctx.roomId) {
+        setTimeout(() => {
+          const controls = document.querySelector('.controls');
+          if (controls && !document.getElementById('gdprBtn')) {
+            const btn = document.createElement('button');
+            btn.className = 'ctrl-btn';
+            btn.id = 'gdprBtn';
+            btn.innerHTML = `<span class="btn-icon">🔐</span><span class="btn-label">Adat</span>`;
+            btn.title = 'Adatvédelem beállítások';
+            btn.onclick = () => {
+              const panel = document.getElementById('gdprPanel');
+              if (panel) {
+                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+              }
+            };
+            const hangupBtn = document.getElementById('hangupBtn');
+            if (hangupBtn) {
+              controls.insertBefore(btn, hangupBtn);
+            } else {
+              controls.appendChild(btn);
+            }
+            console.log("[sdk-init] ✅ GDPR gomb hozzáadva");
+          }
+        }, 1000);
+      }
+    } catch(e) { console.error("[sdk-init] ❌ GDPR gomb:", e.message); }
 
     // 7. NetworkAdaptation
     try {
