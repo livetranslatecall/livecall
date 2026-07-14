@@ -1,119 +1,129 @@
 // sdk-init.js
-// Az index.html változóihoz kapcsolódik — semmit nem ír felül
-// Betöltési sorrend: index.html betölti a livecall-sdk.js-t, majd ezt
-
-// ═══════════════════════════════════════════════════════════════
-// VÁRAKOZÁS AMÍG AZ INDEX.HTML TELJESEN BETÖLT
-// ═══════════════════════════════════════════════════════════════
-
 (function () {
 
-  // ── SDK példányok ──
   let _transcriptExporter  = null;
   let _noiseCancellation   = null;
   let _analytics           = null;
   let _translationFeedback = null;
-  let _roomManager         = null;
   let _networkAdaptation   = null;
   let _webhookManager      = null;
   let _gdprManager         = null;
   let _embedWidget         = null;
 
-  // ── Eredeti függvények mentése (monkey-patch előtt) ──
-  let _originalBeginCallFlow      = null;
-  let _originalDoHangup           = null;
-  let _originalHandleIncoming     = null;
-  let _originalAddHistoryItem     = null;
-
-  // ═══════════════════════════════════════════════════════════════
-  // INIT — hívás kezdetén fut le
-  // ═══════════════════════════════════════════════════════════════
-
-  function _initSDK() {
-    const sb = window.supabaseClient;
-
-    // 1. TranscriptExporter
-    _transcriptExporter = new window.TranscriptExporter();
-
-    // 2. NoiseCancellation
-    _noiseCancellation = new window.NoiseCancellation();
-
-    // 3. Analytics
-    _analytics = new window.Analytics(sb);
-    _analytics.init(
-      window.roomId,
-      window.myPeerId,
-      () => {
-        // Az első peer PC-jét adjuk át
-        const first = window.peers?.values().next().value;
-        return first?.pc || null;
-      },
-      (result) => {
-        // MOS score megjelenítése a stats panelben
-        const mosEl = document.getElementById("statMos");
-        if (mosEl) {
-          mosEl.textContent = result.mos + " (" + result.quality + ")";
-          mosEl.style.color = result.quality === "Kiváló" || result.quality === "Jó"
-            ? "var(--green)"
-            : result.quality === "Elfogadható"
-            ? "var(--amber)"
-            : "var(--danger)";
-        }
-      }
-    );
-
-    // 4. TranslationFeedback
-    _translationFeedback = new window.TranslationFeedback(sb);
-
-    // 5. WebhookManager
-    _webhookManager = new window.WebhookManager(sb);
-    _webhookManager.setRoomId(window.roomId);
-    _webhookManager.loadWebhooks();
-    _webhookManager.fireCallStarted(window.roomId, [window.myName]);
-
-    // 6. GdprManager
-    _gdprManager = new window.GdprManager(sb);
-
-    // 7. NetworkAdaptation
-    _networkAdaptation = new window.NetworkAdaptation(() => window.livekitRoom);
-    _networkAdaptation.start((quality, rtt) => {
-      if (quality === "good") window.setNetStatus?.("good");
-      else if (quality === "warn") window.setNetStatus?.("warn");
-      else window.setNetStatus?.("bad");
-    });
-
-    // 8. EmbedWidget regisztrálása
-    if (!_embedWidget) {
-      _embedWidget = new window.EmbedWidget();
-      _embedWidget.define();
-    }
-
-    // 9. NoiseCancellation bekötése ha van localStream
-    _initNoiseCancellation();
-
-    // 10. Analytics indítása
-    _analytics.start();
-
-    // 11. Export UI megjelenítése
-    _showExportUI();
-
-    // 12. MOS sor hozzáadása a stats panelhez
-    _addMosStatRow();
-
-    console.log("[sdk-init] ✅ Minden SDK modul inicializálva.");
+  function _getCtx() {
+    return {
+      sb:      window.supabaseClient,
+      roomId:  window.roomId,
+      peerId:  window.myPeerId,
+      name:    window.myName,
+      lang:    window.myLang,
+      peers:   window.peers,
+      lk:      window.livekitRoom,
+    };
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // NOISE CANCELLATION BEKÖTÉSE
-  // ═══════════════════════════════════════════════════════════════
+  async function _initSDK() {
+    const ctx = _getCtx();
+    console.log("[sdk-init] 🚀 _initSDK indul", ctx);
+
+    if (!ctx.sb) { console.warn("[sdk-init] ❌ supabaseClient hiányzik"); return; }
+
+    // 1. TranscriptExporter
+    try {
+      _transcriptExporter = new window.TranscriptExporter();
+      console.log("[sdk-init] ✅ TranscriptExporter kész");
+    } catch(e) { console.error("[sdk-init] ❌ TranscriptExporter:", e.message); }
+
+    // 2. NoiseCancellation
+    try {
+      _noiseCancellation = new window.NoiseCancellation();
+      console.log("[sdk-init] ✅ NoiseCancellation kész");
+    } catch(e) { console.error("[sdk-init] ❌ NoiseCancellation:", e.message); }
+
+    // 3. Analytics
+    try {
+      _analytics = new window.Analytics(ctx.sb);
+      _analytics.init(
+        ctx.roomId,
+        ctx.peerId,
+        () => { const f = window.peers?.values().next().value; return f?.pc || null; },
+        (result) => {
+          const mosEl = document.getElementById("statMos");
+          if (mosEl) {
+            mosEl.textContent = result.mos + " (" + result.quality + ")";
+            mosEl.style.color =
+              result.quality === "Kiváló" || result.quality === "Jó" ? "var(--green)"
+              : result.quality === "Elfogadható" ? "var(--amber)"
+              : "var(--danger)";
+          }
+        }
+      );
+      _analytics.start();
+      console.log("[sdk-init] ✅ Analytics kész");
+    } catch(e) { console.error("[sdk-init] ❌ Analytics:", e.message); }
+
+    // 4. TranslationFeedback
+    try {
+      _translationFeedback = new window.TranslationFeedback(ctx.sb);
+      console.log("[sdk-init] ✅ TranslationFeedback kész");
+    } catch(e) { console.error("[sdk-init] ❌ TranslationFeedback:", e.message); }
+
+    // 5. WebhookManager
+    try {
+      _webhookManager = new window.WebhookManager(ctx.sb);
+      _webhookManager.setRoomId(ctx.roomId);
+      _webhookManager.loadWebhooks();
+      _webhookManager.fireCallStarted(ctx.roomId, [ctx.name]);
+      console.log("[sdk-init] ✅ WebhookManager kész");
+    } catch(e) { console.error("[sdk-init] ❌ WebhookManager:", e.message); }
+
+    // 6. GdprManager
+    try {
+      _gdprManager = new window.GdprManager(ctx.sb);
+      console.log("[sdk-init] ✅ GdprManager kész");
+    } catch(e) { console.error("[sdk-init] ❌ GdprManager:", e.message); }
+
+    // 7. NetworkAdaptation
+    try {
+      _networkAdaptation = new window.NetworkAdaptation(() => window.livekitRoom);
+      _networkAdaptation.start((quality) => {
+        if (quality === "good")      window.setNetStatus?.("good");
+        else if (quality === "warn") window.setNetStatus?.("warn");
+        else                         window.setNetStatus?.("bad");
+      });
+      console.log("[sdk-init] ✅ NetworkAdaptation kész");
+    } catch(e) { console.error("[sdk-init] ❌ NetworkAdaptation:", e.message); }
+
+    // 8. EmbedWidget
+    try {
+      if (!_embedWidget) {
+        _embedWidget = new window.EmbedWidget();
+        _embedWidget.define();
+        console.log("[sdk-init] ✅ EmbedWidget kész");
+      }
+    } catch(e) { console.error("[sdk-init] ❌ EmbedWidget:", e.message); }
+
+    // 9. NoiseCancellation bekötése
+    await _initNoiseCancellation();
+
+    // 10. UI kiegészítések
+    _showExportUI();
+    _addMosStatRow();
+
+    // 11. Caption observer
+    _patchCaptionHandling();
+
+    console.log("[sdk-init] ✅ Minden modul inicializálva. roomId:", ctx.roomId, "peerId:", ctx.peerId);
+  }
 
   async function _initNoiseCancellation() {
     const stream = window.localStream;
-    if (!stream || !_noiseCancellation) return;
+    if (!stream || !_noiseCancellation) {
+      console.log("[sdk-init] ⏭️ NoiseCancellation skip (nincs stream vagy modul)");
+      return;
+    }
     try {
       const filtered = await _noiseCancellation.init(stream);
-      // A szűrt stream csak a WebRTC peereken megy át
-      // A localStream-et NEM cseréljük le (hogy a STT érintetlen maradjon)
       if (window.peers) {
         window.peers.forEach((p) => {
           const senders = p.pc?.getSenders() || [];
@@ -123,15 +133,11 @@
           });
         });
       }
-      console.log("[sdk-init] ✅ NoiseCancellation bekötve.");
-    } catch (e) {
-      console.warn("[sdk-init] NoiseCancellation hiba:", e.message);
+      console.log("[sdk-init] ✅ NoiseCancellation bekötve");
+    } catch(e) {
+      console.warn("[sdk-init] ⚠️ NoiseCancellation hiba:", e.message);
     }
   }
-
-  // ═══════════════════════════════════════════════════════════════
-  // MOS SOR HOZZÁADÁSA A STATS PANELHEZ
-  // ═══════════════════════════════════════════════════════════════
 
   function _addMosStatRow() {
     const statsOverlay = document.getElementById("statsOverlay");
@@ -140,33 +146,35 @@
     row.className = "stat-row";
     row.innerHTML = `<span>MOS</span><span class="stat-val" id="statMos" style="color:var(--green)">--</span>`;
     statsOverlay.appendChild(row);
+    console.log("[sdk-init] ✅ MOS sor hozzáadva");
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // EXPORT UI — gomb a controls sorba
-  // ═══════════════════════════════════════════════════════════════
-
   function _showExportUI() {
-    if (document.getElementById("exportBtn")) return;
-
+    if (document.getElementById("exportBtn")) {
+      console.log("[sdk-init] ⏭️ exportBtn már létezik, skip");
+      return;
+    }
     const controls = document.querySelector(".controls");
-    if (!controls) return;
+    if (!controls) {
+      console.warn("[sdk-init] ❌ .controls nem található");
+      return;
+    }
 
     const btn = document.createElement("button");
     btn.className = "ctrl-btn";
     btn.id = "exportBtn";
     btn.innerHTML = `<span class="btn-icon">📤</span><span class="btn-label">Export</span>`;
     controls.appendChild(btn);
+    console.log("[sdk-init] ✅ exportBtn hozzáadva a controls-hoz");
 
-    // Export menü
     const menu = document.createElement("div");
     menu.id = "exportMenu";
-    menu.style.cssText = `
-      position:absolute;bottom:84px;left:50%;transform:translateX(-50%);
-      background:var(--panel);border:1px solid var(--line);border-radius:14px;
-      padding:8px;display:none;z-index:11;box-shadow:0 10px 30px rgba(0,0,0,.5);
-      min-width:180px;
-    `;
+    menu.style.cssText = [
+      "position:absolute", "bottom:84px", "left:50%", "transform:translateX(-50%)",
+      "background:var(--panel)", "border:1px solid var(--line)", "border-radius:14px",
+      "padding:8px", "display:none", "z-index:11",
+      "box-shadow:0 10px 30px rgba(0,0,0,.5)", "min-width:180px",
+    ].join(";");
 
     const options = [
       { label: "📄 TXT export",   fn: () => _transcriptExporter?.exportTXT() },
@@ -192,6 +200,7 @@
     btn.onclick = (e) => {
       e.stopPropagation();
       menu.style.display = menu.style.display === "none" ? "block" : "none";
+      console.log("[sdk-init] 📤 Export menü:", menu.style.display);
     };
 
     document.addEventListener("click", (e) => {
@@ -201,28 +210,22 @@
     });
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // FELIRATOK KIBŐVÍTÉSE — TranscriptExporter + TranslationFeedback
-  // ═══════════════════════════════════════════════════════════════
-
   function _patchCaptionHandling() {
-    // A handleIncomingCaption után hívjuk az addEntry-t
-    // Polling alapon figyeljük az incomingMain szövegét
     const incomingMain = document.getElementById("incomingMain");
     const ownMain      = document.getElementById("ownMain");
     const incomingBox  = document.getElementById("incomingCaptionBox");
 
-    if (!incomingMain || !ownMain) return;
+    if (!incomingMain || !ownMain) {
+      console.warn("[sdk-init] ❌ Caption elemek nem találhatók");
+      return;
+    }
 
-    // MutationObserver — figyeli ha változik a felirat szövege
     const observer = new MutationObserver((mutations) => {
       mutations.forEach(m => {
         if (m.target === incomingMain && incomingMain.textContent.trim()) {
           const text = incomingMain.textContent.trim();
           const tag  = document.getElementById("incomingTag")?.textContent || "Partner";
           _transcriptExporter?.addEntry(text, tag, window.myLang, false);
-
-          // TranslationFeedback csatolása
           if (incomingBox && _translationFeedback) {
             const orig = document.getElementById("incomingSub")?.textContent || text;
             _translationFeedback.attachToCaption(incomingBox, orig, text, "auto", window.myLang);
@@ -241,81 +244,75 @@
 
     observer.observe(incomingMain, { childList: true, characterData: true, subtree: true });
     observer.observe(ownMain,      { childList: true, characterData: true, subtree: true });
-
-    console.log("[sdk-init] ✅ Caption observer aktív.");
+    console.log("[sdk-init] ✅ Caption observer aktív");
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // HÍVÁS VÉGE — cleanup
-  // ═══════════════════════════════════════════════════════════════
-
   function _cleanupSDK() {
-    // Webhook
-    _webhookManager?.fireCallEnded(window.roomId, 0, {});
+    console.log("[sdk-init] 🧹 Cleanup indul...");
 
-    // TranscriptExporter webhook
-    if (_transcriptExporter && _webhookManager) {
-      _webhookManager.fireTranscriptReady(_transcriptExporter.getEntries());
-    }
+    try { _webhookManager?.fireCallEnded(window.roomId, 0, {}); } catch(_) {}
+    try {
+      if (_transcriptExporter && _webhookManager) {
+        _webhookManager.fireTranscriptReady(_transcriptExporter.getEntries());
+      }
+    } catch(_) {}
 
-    // Analytics leállítása
-    _analytics?.stop();
+    try { _analytics?.stop(); } catch(_) {}
+    try { _networkAdaptation?.stop(); } catch(_) {}
+    try { _noiseCancellation?.destroy(); } catch(_) {}
 
-    // NetworkAdaptation leállítása
-    _networkAdaptation?.stop();
-
-    // NoiseCancellation leállítása
-    _noiseCancellation?.destroy();
-
-    // Export gomb eltávolítása
     document.getElementById("exportBtn")?.remove();
     document.getElementById("exportMenu")?.remove();
     document.getElementById("statMos")?.closest(".stat-row")?.remove();
 
-    // Reset
     _transcriptExporter  = null;
     _noiseCancellation   = null;
     _analytics           = null;
     _translationFeedback = null;
     _networkAdaptation   = null;
+    _webhookManager      = null;
+    _gdprManager         = null;
 
-    console.log("[sdk-init] ✅ SDK cleanup kész.");
+    console.log("[sdk-init] ✅ Cleanup kész");
   }
-
-  // ═══════════════════════════════════════════════════════════════
-  // MEGFIGYELŐ — várja hogy a hívás elinduljon és véget érjen
-  // ═══════════════════════════════════════════════════════════════
 
   function _watchCallState() {
     let callActive = false;
+    console.log("[sdk-init] 👁️ _watchCallState polling indul");
 
     setInterval(() => {
-      const callScreen = document.getElementById("call");
-      const isActive   = callScreen?.classList.contains("active");
+      const isActive = document.getElementById("call")?.classList.contains("active") ?? false;
 
       if (isActive && !callActive) {
-        // Hívás éppen elindult
         callActive = true;
-        // Kis késleltetés hogy a supabaseClient és roomId biztosan be legyen állítva
+        console.log("[sdk-init] 📞 Hívás észlelve, SDK init 1500ms múlva...");
+        console.log("[sdk-init] 🔍 Jelenlegi window változók:",
+          "supabaseClient:", !!window.supabaseClient,
+          "roomId:", window.roomId,
+          "myPeerId:", window.myPeerId,
+          "myName:", window.myName,
+          "peers:", !!window.peers
+        );
         setTimeout(() => {
-          if (window.supabaseClient && window.roomId) {
+          console.log("[sdk-init] ⏰ Timeout lejárt, window változók most:",
+            "supabaseClient:", !!window.supabaseClient,
+            "roomId:", window.roomId,
+            "myPeerId:", window.myPeerId
+          );
+          if (window.supabaseClient) {
             _initSDK();
-            _patchCaptionHandling();
+          } else {
+            console.error("[sdk-init] ❌ supabaseClient még mindig hiányzik, SDK nem indul el!");
           }
         }, 1500);
       }
 
       if (!isActive && callActive) {
-        // Hívás véget ért
         callActive = false;
         _cleanupSDK();
       }
     }, 500);
   }
-
-  // ═══════════════════════════════════════════════════════════════
-  // INDÍTÁS
-  // ═══════════════════════════════════════════════════════════════
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", _watchCallState);
