@@ -1518,16 +1518,56 @@ async function connectToLiveKit() {
     const token = await generateLiveKitToken(roomId, myName);
 
     livekitRoom = new LivekitClient.Room({
+      // ── DYNACAST: csak azt a réteget küldi amit a fogadó valóban néz ──
+      dynacast: true,
+
+      // ── ADAPTÍV STREAM: fogadó oldalon automatikus felbontásváltás ──
+      adaptiveStream: true,
+
       audioCaptureDefaults: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
+        echoCancellation:  true,
+        noiseSuppression:  true,
+        autoGainControl:   true,
       },
+
+      videoCaptureDefaults: {
+        resolution: {
+          width:     1280,
+          height:    720,
+          frameRate: 30,
+        },
+      },
+
+      // ── PUBLISH DEFAULTS: simulcast rétegek meghatározása ──
+      publishDefaults: {
+        simulcast: true,
+        videoSimulcastLayers: [
+          // Kis réteg — gyenge hálózathoz (180p)
+          LivekitClient.VideoPresets.h180.resolution
+            ? LivekitClient.VideoPresets.h180
+            : { width: 320,  height: 180,  maxBitrate: 120_000, maxFramerate: 15 },
+          // Közepes réteg — normál hálózathoz (360p)
+          LivekitClient.VideoPresets.h360.resolution
+            ? LivekitClient.VideoPresets.h360
+            : { width: 640,  height: 360,  maxBitrate: 500_000, maxFramerate: 20 },
+          // Nagy réteg — jó hálózathoz (720p)
+          LivekitClient.VideoPresets.h720.resolution
+            ? LivekitClient.VideoPresets.h720
+            : { width: 1280, height: 720,  maxBitrate: 1_500_000, maxFramerate: 30 },
+        ],
+        videoCodec: "vp8",
+        audioBitrate:  32_000,
+        dtx:           true,
+        red:           true,
+      },
+
       stopLocalTrackOnUnpublish: false,
     });
 
+    // ── ESEMÉNYKEZELŐK ──
+
     livekitRoom.on("disconnected", async (reason) => {
-      livekitActive = false;
+      livekitActive    = false;
       livekitConnected = false;
       if (!callEnded && !fallbackActive) {
         showStatusBanner("fallback", "Kapcsolat átkapcsolva — folytatódik");
@@ -1536,78 +1576,99 @@ async function connectToLiveKit() {
     });
 
     livekitRoom.on("reconnecting", () => {
-
       setNetStatus("warn");
     });
 
     livekitRoom.on("reconnected", () => {
-      
       livekitConnected = true;
       setNetStatus("good");
     });
 
     livekitRoom.on("participantConnected", (participant) => {
-      
+      console.log("[LK] Résztvevő csatlakozott:", participant.identity);
     });
 
     livekitRoom.on("participantDisconnected", (participant) => {
-      
+      console.log("[LK] Résztvevő kilépett:", participant.identity);
     });
 
     livekitRoom.on("trackSubscribed", (track, publication, participant) => {
-     
       if (!livekitActive) return;
+
       if (track.kind === "video") {
         const mediaStream = new MediaStream([track.mediaStreamTrack]);
-        remoteVideo.srcObject = mediaStream;
+        remoteVideo.srcObject      = mediaStream;
         splitRemoteVideo.srcObject = mediaStream;
         splitWaiting.style.display = "none";
         remoteVideo.play().catch(() => {});
         splitRemoteVideo.play().catch(() => {});
       }
+
       if (track.kind === "audio") {
         const audioStream = new MediaStream([track.mediaStreamTrack]);
-        const audioEl = document.createElement("audio");
+        const audioEl     = document.createElement("audio");
         audioEl.srcObject = audioStream;
-        audioEl.autoplay = true;
+        audioEl.autoplay  = true;
         audioEl.style.display = "none";
         document.body.appendChild(audioEl);
       }
     });
 
     livekitRoom.on("connectionStateChanged", (state) => {
-      
+      console.log("[LK] Kapcsolat állapot:", state);
     });
 
+    // ── CSATLAKOZÁS ──
     await livekitRoom.connect(LIVEKIT_URL, token);
     livekitConnected = true;
-    livekitActive = true;
+    livekitActive    = true;
+    window.livekitRoom = livekitRoom;
 
+    // ── TRACK PUBLIKÁLÁS SIMULCASTTAL ──
     if (localStream) {
       for (const track of localStream.getTracks()) {
         try {
-          
-          await livekitRoom.localParticipant.publishTrack(track, {
-            ...(track.kind === "audio" ? {
-              audioBitrate: 32000,
-              dtx: true,
-            } : {})
-          });
-          
+          if (track.kind === "video") {
+            // Videó: simulcast rétegekkel
+            await livekitRoom.localParticipant.publishTrack(track, {
+              simulcast: true,
+              videoSimulcastLayers: [
+                LivekitClient.VideoPresets.h180.resolution
+                  ? LivekitClient.VideoPresets.h180
+                  : { width: 320,  height: 180,  maxBitrate: 120_000,   maxFramerate: 15 },
+                LivekitClient.VideoPresets.h360.resolution
+                  ? LivekitClient.VideoPresets.h360
+                  : { width: 640,  height: 360,  maxBitrate: 500_000,   maxFramerate: 20 },
+                LivekitClient.VideoPresets.h720.resolution
+                  ? LivekitClient.VideoPresets.h720
+                  : { width: 1280, height: 720,  maxBitrate: 1_500_000, maxFramerate: 30 },
+              ],
+              videoCodec: "vp8",
+            });
+            console.log("[LK] Videó track publikálva (simulcast: 180p / 360p / 720p)");
+          } else if (track.kind === "audio") {
+            // Audio: DTX + RED (redundáns kódolás csomagveszteség ellen)
+            await livekitRoom.localParticipant.publishTrack(track, {
+              audioBitrate: 32_000,
+              dtx:          true,
+              red:          true,
+            });
+            console.log("[LK] Audio track publikálva (DTX + RED)");
+          }
         } catch (e) {
-         
-          console.warn("⚠️ Track publikálási hiba:", track.kind, e);
+          console.warn("[LK] Track publikálási hiba:", track.kind, e?.message || e);
         }
       }
     } else {
+      console.warn("[LK] Nincs localStream a track publikáláshoz");
     }
 
     setNetStatus("good");
+    console.log("[LK] Csatlakozás sikeres, simulcast + dynacast aktív");
 
   } catch (error) {
-   
-    console.error("❌ LiveKit kapcsolati hiba:", error.message || error);
-    livekitActive = false;
+    console.error("[LK] Kapcsolati hiba:", error?.message || error);
+    livekitActive    = false;
     livekitConnected = false;
     if (!callEnded && !fallbackActive) {
       showStatusBanner("fallback", "Kapcsolat átkapcsolva — folytatódik");
@@ -2552,49 +2613,136 @@ function setNetStatus(level){
   netLabel.textContent = level==="good"?"●●●":level==="warn"?"●●○":"●○○";
 }
 
-function startStatsLoop(){
-  if(statsInterval) clearInterval(statsInterval);
-  statsInterval = setInterval(async()=>{
-    // Az első csatlakozott peer PC-jét vizsgáljuk
+function calcMOS(rtt, jitter, loss) {
+  // R-faktor alapú MOS becslés (ITU-T G.107 egyszerűsített)
+  if (rtt == null) return null;
+  const lossFloat = loss != null ? parseFloat(loss) : 0;
+  const jitterMs  = jitter != null ? jitter : 0;
+  const rttMs     = rtt;
+
+  // Alap R-faktor
+  let R = 93.2;
+
+  // RTT hatása (Id — késleltetési romlás)
+  const Id = 0.024 * rttMs + 0.11 * (rttMs - 177.3) * (rttMs > 177.3 ? 1 : 0);
+  R -= Id;
+
+  // Jitter hatása (becsült puffer szükséglet)
+  const jitterPenalty = jitterMs * 0.4;
+  R -= jitterPenalty;
+
+  // Csomagveszteség hatása (Ie — berendezés romlás)
+  const Ie = 30 * Math.log(1 + 15 * (lossFloat / 100));
+  R -= Ie;
+
+  // R → MOS konverzió (ITU-T képlet)
+  R = Math.max(0, Math.min(100, R));
+  let mos;
+  if (R < 0)        mos = 1;
+  else if (R > 100) mos = 4.5;
+  else              mos = 1 + 0.035 * R + R * (R - 60) * (100 - R) * 7e-6;
+
+  return Math.max(1, Math.min(4.5, mos));
+}
+
+function mosColor(mos) {
+  if (mos == null) return "var(--text-dim)";
+  if (mos >= 4.0)  return "var(--green)";
+  if (mos >= 3.0)  return "var(--amber)";
+  return "var(--danger)";
+}
+
+let _mosHistory = [];
+let _mosReportTimer = null;
+
+function scheduleMosReport(mos) {
+  // 60 másodpercenként menti a MOS átlagot Supabase-be
+  _mosHistory.push(mos);
+  if (_mosReportTimer) return;
+  _mosReportTimer = setTimeout(async () => {
+    _mosReportTimer = null;
+    if (!supabaseClient || !_callDbId || _mosHistory.length === 0) {
+      _mosHistory = [];
+      return;
+    }
+    const avg = _mosHistory.reduce((a, b) => a + b, 0) / _mosHistory.length;
+    _mosHistory = [];
+    try {
+      await supabaseClient
+        .from("calls")
+        .update({ mos_avg: parseFloat(avg.toFixed(2)) })
+        .eq("id", _callDbId);
+      console.log("[MOS] Átlag mentve:", avg.toFixed(2));
+    } catch (e) {
+      console.warn("[MOS] Mentési hiba:", e?.message || e);
+    }
+  }, 60000);
+}
+
+function startStatsLoop() {
+  if (statsInterval) clearInterval(statsInterval);
+  statsInterval = setInterval(async () => {
     const firstPeer = peers.values().next().value;
-    if(!firstPeer?.pc) return;
-    try{
+    if (!firstPeer?.pc) return;
+    try {
       const stats = await firstPeer.pc.getStats();
-      let rtt=null, jitter=null, loss=null, bwKb=null;
-      stats.forEach(r=>{
-        if(r.type==="candidate-pair"&&r.state==="succeeded"&&r.currentRoundTripTime!=null){
-          rtt = Math.round(r.currentRoundTripTime*1000);
+      let rtt = null, jitter = null, loss = null, bwKb = null, lossRaw = null;
+
+      stats.forEach(r => {
+        if (r.type === "candidate-pair" && r.state === "succeeded" && r.currentRoundTripTime != null) {
+          rtt = Math.round(r.currentRoundTripTime * 1000);
         }
-        if(r.type==="inbound-rtp"&&r.kind==="audio"){
-          jitter = r.jitter!=null ? Math.round(r.jitter*1000) : null;
-          if(r.packetsLost!=null&&r.packetsReceived!=null){
-            const total = r.packetsLost+r.packetsReceived;
-            loss = total>0 ? ((r.packetsLost/total)*100).toFixed(1)+"%" : "0%";
+        if (r.type === "inbound-rtp" && r.kind === "audio") {
+          jitter = r.jitter != null ? Math.round(r.jitter * 1000) : null;
+          if (r.packetsLost != null && r.packetsReceived != null) {
+            const total = r.packetsLost + r.packetsReceived;
+            lossRaw = total > 0 ? (r.packetsLost / total) * 100 : 0;
+            loss = lossRaw.toFixed(1) + "%";
           }
         }
-        if(r.type==="inbound-rtp"&&r.kind==="video"&&r.bytesReceived!=null){
+        if (r.type === "inbound-rtp" && r.kind === "video" && r.bytesReceived != null) {
           const now = Date.now();
-          if(prevGraphTs){
-            const dt = (now-prevGraphTs)/1000;
-            bwKb = (r.bytesReceived-prevGraphBytes)/1024/dt;
+          if (prevGraphTs) {
+            const dt = (now - prevGraphTs) / 1000;
+            bwKb = (r.bytesReceived - prevGraphBytes) / 1024 / dt;
           }
           prevGraphBytes = r.bytesReceived;
           prevGraphTs = now;
         }
       });
-      el("statRtt").textContent    = rtt!=null    ? rtt+"ms"  : "--";
-      el("statJitter").textContent = jitter!=null  ? jitter+"ms": "--";
-      el("statPacket").textContent = loss          || "--";
-      el("statBw").textContent     = bwKb!=null    ? bwKb.toFixed(0)+"KB/s" : "--";
+
+      // Stats szöveg frissítése
+      el("statRtt").textContent    = rtt    != null ? rtt + "ms"          : "--";
+      el("statJitter").textContent = jitter != null ? jitter + "ms"        : "--";
+      el("statPacket").textContent = loss            || "--";
+      el("statBw").textContent     = bwKb   != null ? bwKb.toFixed(0) + "KB/s" : "--";
+
+      // MOS számítás
+      const mos = calcMOS(rtt, jitter, lossRaw);
+      const mosEl = document.getElementById("statMos");
+      if (mosEl) {
+        if (mos != null) {
+          mosEl.textContent = mos.toFixed(2);
+          mosEl.style.color = mosColor(mos);
+        } else {
+          mosEl.textContent = "--";
+          mosEl.style.color = "var(--text-dim)";
+        }
+      }
+
+      // MOS Supabase mentés ütemezése
+      if (mos != null) scheduleMosReport(mos);
+
       // Grafikon frissítése
       updateGraph(rtt, bwKb);
+
       // Hálózati státusz
-      if(rtt!=null){
-        if(rtt<150) setNetStatus("good");
-        else if(rtt<350) setNetStatus("warn");
-        else setNetStatus("bad");
+      if (rtt != null) {
+        if (rtt < 150)      setNetStatus("good");
+        else if (rtt < 350) setNetStatus("warn");
+        else                setNetStatus("bad");
       }
-    }catch(_){}
+    } catch (_) {}
   }, 2000);
 }
 
