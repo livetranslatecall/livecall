@@ -15,9 +15,6 @@
 
   <!-- LiveKit Client -->
 <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
-<script src="./livecall-sdk.js"></script>
-<script src="./translator.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui.css">
 <style>
 :root{
   --bg:#0d1420;--panel:#161f30;--panel-2:#1d2942;--line:#293349;
@@ -813,10 +810,6 @@ select{
   <span class="btn-icon">⧉</span>
   <span class="btn-label" data-i18n="ctrlPip">PiP</span>
 </button>
-<button class="ctrl-btn" id="exportBtn">
-  <span class="btn-icon">📥</span>
-  <span class="btn-label">Export</span>
-</button>
 <button class="ctrl-btn" id="histBtn">
   <span class="btn-icon">📝</span>
   <span class="btn-label" data-i18n="ctrlHist">Előzmény</span>
@@ -874,7 +867,7 @@ select{
   <span id="bannerText"></span>
 </div>
 
-<script>
+<script type="module">
 /* =========================================================================
    KONFIGURÁCIÓ
    ========================================================================= */
@@ -1414,9 +1407,6 @@ const multiGrid=el("multiGrid");
 const peersBtn=el("peersBtn");
 const participantsPanel=el("participantsPanel"),participantsList=el("participantsList");
 const statE2ee=el("statE2ee");
-const netPill=el("netPill");
-const splitLeft=el("splitLeft");
-const splitRight=el("splitRight");
 
 /* =========================================================================
    ÁLLAPOT
@@ -1431,11 +1421,6 @@ let sttStream = null;
 let captionHideTimer=null, callEnded=false;
 let mediaRecorder=null, recordedChunks=[];
 let statsInterval=null;
-// ── Stats graph állapot ──
-const RTT_HISTORY = [];
-const BW_HISTORY  = [];
-const GRAPH_POINTS = 30;
-let prevGraphBytes = 0, prevGraphTs = 0;
 
 // ── Multi-peer állapot ──
 // peerId → { pc, dataChannel, remoteDescSet, pendingCandidates, name, lang, cellEl, videoEl }
@@ -1449,20 +1434,16 @@ let e2eeReady = false;
 
 
 
-// TranslatorEngine a translator.js-ből globálisan töltődik be
+// ── Stats graph állapot ──
+const RTT_HISTORY = [];
+const BW_HISTORY  = [];
+const GRAPH_POINTS = 30;
+let prevGraphBytes = 0, prevGraphTs = 0;
 
-const roomMgr     = new RoomManager(null, null, null);
-const netAdapt    = new NetworkAdaptation(() => roomMgr.getRoom());
-const noiseCx     = new NoiseCancellation();
-const transcript  = new TranscriptExporter();
-const webhookMgr  = new WebhookManager(null);
-const embedWidget = new EmbedWidget();
-const apiClient   = new ApiClient(null);
-const analytics   = new Analytics(null);
-const feedback    = new TranslationFeedback(null);
-const gdpr        = new GdprManager(null);
-
-embedWidget.define();
+/* =========================================================================
+   FORDÍTÁSI MOTOR
+   ========================================================================= */
+import { TranslatorEngine } from './translator.js';
 
 const statusBanner = el("translationStatusBanner");
 let bannerHideTimer = null;
@@ -1558,12 +1539,11 @@ async function connectToLiveKit() {
     livekitRoom.on("disconnected", (reason) => {
       dbLog("livekit_disconnected", String(reason||""));
       livekitConnected = false;
-      window._livekitActive = false;
       if (!callEnded) activateWebRTCFallback();
     });
 
     livekitRoom.on("reconnecting", () => { dbLog("livekit_reconnecting",""); setNetStatus("warn"); });
-    livekitRoom.on("reconnected", () => { dbLog("livekit_reconnected",""); livekitConnected = true; window._livekitActive = true; setNetStatus("good"); });
+    livekitRoom.on("reconnected", () => { dbLog("livekit_reconnected",""); livekitConnected = true; setNetStatus("good"); });
 
     livekitRoom.on("participantConnected", (participant) => {
       dbLog("livekit_participant_connected", participant.identity);
@@ -1599,7 +1579,6 @@ async function connectToLiveKit() {
 
     await livekitRoom.connect(LIVEKIT_URL, token);
     livekitConnected = true;
-    window._livekitActive = true;
     await dbLog("livekit_connected_ok", "kapcsolat sikeres");
 
     if (localStream) {
@@ -1607,9 +1586,10 @@ async function connectToLiveKit() {
         try {
           await dbLog("livekit_publishTrack_before", "kind: "+track.kind+" readyState: "+track.readyState+" enabled: "+track.enabled);
           await livekitRoom.localParticipant.publishTrack(track, {
-            source: track.kind === "audio"
-              ? LivekitClient.Track.Source.Microphone
-              : LivekitClient.Track.Source.Camera,
+            ...(track.kind === "audio" ? {
+              audioBitrate: 32000,
+              dtx: true,
+            } : {})
           });
           await dbLog("livekit_publishTrack_after", "kind: "+track.kind+" SIKERES");
         } catch (e) {
@@ -1625,10 +1605,10 @@ async function connectToLiveKit() {
     await dbLog("livekit_ERROR", error.message||String(error));
     console.error("❌ LiveKit kapcsolati hiba:", error.message || error);
     livekitConnected = false;
-    window._livekitActive = false;
     throw error;
   }
 }
+
 
   
 
@@ -1636,27 +1616,31 @@ async function activateWebRTCFallback() {
   if (callEnded) return;
   console.log("🔄 activateWebRTCFallback indul...");
 
+  // LiveKit szoba lezárása ha még él
   if (livekitRoom) {
     try { await livekitRoom.disconnect(); } catch (_) {}
     livekitRoom = null;
   }
   livekitConnected = false;
-  window._livekitActive = false;
 
+  // Ha már vannak WebRTC peer kapcsolatok, csak a streamet kell frissíteni
   if (peers.size > 0) {
     console.log("✅ WebRTC peer kapcsolatok már aktívak, stream visszaállítása...");
 
+    // LiveKit által dinamikusan létrehozott audio elemek törlése
     document.querySelectorAll("audio[autoplay]").forEach(a => {
       a.srcObject = null;
       a.remove();
     });
 
+    // Saját stream újraindítása ha a trackok leálltak
     const tracksEnded = !localStream || localStream.getTracks().every(t => t.readyState === "ended");
     if (tracksEnded) {
       console.log("🎥 Saját stream újraindítása...");
       try {
         await initMedia();
         window._localStream = localStream;
+        // WebRTC peer senderek frissítése az új trackekkel
         peers.forEach((p) => {
           const senders = p.pc?.getSenders() || [];
           localStream.getTracks().forEach(track => {
@@ -1691,7 +1675,7 @@ async function activateWebRTCFallback() {
         splitWaiting.style.display = "none";
         remoteVideo.play().catch(() => {});
         splitRemoteVideo.play().catch(() => {});
-        console.log("✅ Stream visszaállítva.");
+        console.log("✅ Stream visszaállítva PC receiver-ből.");
       } else {
         console.warn("⚠️ Nem találtunk streamet a peer-nél.");
       }
@@ -1701,6 +1685,7 @@ async function activateWebRTCFallback() {
     return;
   }
 
+  // Nincs még peer – újra jelzünk a csatornán keresztül
   console.log("📡 WebRTC peer újraépítés indul a Supabase csatornán...");
   setNetStatus("bad");
 
@@ -1964,10 +1949,12 @@ statsGraphClose.onclick = e=>{ e.stopPropagation(); statsGraphOverlay.classList.
 function createPeerConnectionForPeer(peerId, initiator){
   const pc = new RTCPeerConnection({iceServers: ICE_SERVERS});
 
+  // Saját streamek hozzáadása
   if(localStream){
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
   }
 
+  // DataChannel
   let dc = null;
   if(initiator){
     dc = pc.createDataChannel("main", {ordered:true});
@@ -1980,8 +1967,8 @@ function createPeerConnectionForPeer(peerId, initiator){
     if(p) p.remoteDataChannel = rdc;
   };
 
+  // Remote track fogadása
   pc.ontrack = e=>{
-    if(window._livekitActive) return;
     const stream = e.streams?.[0];
     if(!stream) return;
     const p = peers.get(peerId);
@@ -1991,6 +1978,7 @@ function createPeerConnectionForPeer(peerId, initiator){
     splitRemoteVideo.srcObject = stream;
     splitWaiting.style.display = "none";
     updateMultiGridLayout();
+    // Autoplay kényszerítés
     remoteVideo.play().catch(()=>{});
     splitRemoteVideo.play().catch(()=>{});
   };
@@ -2009,11 +1997,13 @@ function createPeerConnectionForPeer(peerId, initiator){
     if(s==="connected"){
       setNetStatus("good");
       startStatsLoop();
+      // E2EE kulcscsere indítása ha mi vagyunk az initiator
       if(initiator) sendE2eeKey(peerId);
     } else if(s==="disconnected"){
       setNetStatus("warn");
     } else if(s==="failed"){
       setNetStatus("bad");
+      // Peer eltávolítása
       removePeer(peerId);
     }
   };
@@ -2301,7 +2291,7 @@ async function setupChannel(code){
 
   console.log("📨 Eseményfigyelők beállítása...");
   
-  channel.on("broadcast", {event:"signal"}, async ({payload})=> {
+ channel.on("broadcast", {event:"signal"}, async ({payload})=> {
     console.log("   📨 Signal üzenet érkezett:", payload.kind, "from:", payload.from);
     await handleSignal(payload);
   });
@@ -2327,41 +2317,39 @@ async function setupChannel(code){
     const peerIds = Object.keys(state);
     console.log("   👥 Résztvevők száma:", peerIds.length);
 
+    // Résztvevők frissítése
     const presentPeerIds = new Set();
     peerIds.forEach(pid=>{
       const presences = state[pid];
       if(!Array.isArray(presences)) return;
       presences.forEach(p=>{
-        if(p.peerId === myPeerId) return;
+        if(p.peerId === myPeerId) return; // Saját magunk
         presentPeerIds.add(p.peerId||pid);
-
+        // Ha ez egy új peer, kapcsolódunk hozzá
         if(!peers.has(p.peerId||pid)){
-          console.log("   👤 Új peer felismerve:", p.peerId||pid, "név:", p.name, "nyelv:", p.lang);
-          const weAreInitiator = myPeerId > (p.peerId||pid);
-
-          if(!window._livekitActive){
-            initPeer(p.peerId||pid, p.name||"Partner", p.lang||"hu", weAreInitiator);
-            saveParticipantJoin(roomId, p.peerId||pid, p.name||"Partner", p.lang||"hu");
-            if(supabaseClient && _callDbId){
-              supabaseClient.from("calls").update({
-                participant_count: peers.size + 1
-              }).eq("id", _callDbId).then(()=>{
-                console.log("✅ [STATS] Résztvevők száma frissítve:", peers.size + 1);
-              }).catch(e=>{
-                console.warn("[STATS] Résztvevők száma frissítési hiba:", e?.message || e);
-              });
-            }
-          } else {
-            console.log("   ℹ️ LiveKit aktív, WebRTC peer nem épül fel:", p.peerId||pid);
-            saveParticipantJoin(roomId, p.peerId||pid, p.name||"Partner", p.lang||"hu");
-          }
-
+  console.log("   👤 Új peer felismerve:", p.peerId||pid, "név:", p.name, "nyelv:", p.lang);
+  // Csak a nagyobb peerId kezdeményez, hogy elkerüljük a dupla offer-t
+  const weAreInitiator = myPeerId > (p.peerId||pid);
+  initPeer(p.peerId||pid, p.name||"Partner", p.lang||"hu", weAreInitiator);
+  // Partner csatlakozás mentése Supabase-be
+  saveParticipantJoin(roomId, p.peerId||pid, p.name||"Partner", p.lang||"hu");
+  // Résztvevők számának frissítése
+  if(supabaseClient && _callDbId){
+    supabaseClient.from("calls").update({
+      participant_count: peers.size + 1
+    }).eq("id", _callDbId).then(()=>{
+      console.log("✅ [STATS] Résztvevők száma frissítve:", peers.size + 1);
+    }).catch(e=>{
+      console.warn("[STATS] Résztvevők száma frissítési hiba:", e?.message || e);
+    });
+  }
           updateSplitPartnerPresence(p.name||"Partner", p.lang||"hu");
-          const pnb = document.getElementById("partnerNameText");
-          if(pnb) pnb.textContent = p.name||"Partner";
-          const pnl = document.getElementById("partnerNameLang");
-          if(pnl) pnl.textContent = LANG_LABEL[p.lang||"hu"]||p.lang||"hu";
-        } else {
+const pnb = document.getElementById("partnerNameText");
+if(pnb) pnb.textContent = p.name||"Partner";
+const pnl = document.getElementById("partnerNameLang");
+if(pnl) pnl.textContent = LANG_LABEL[p.lang||"hu"]||p.lang||"hu";
+} else {
+          // Frissítjük a nevet/nyelvet
           const existing = peers.get(p.peerId||pid);
           if(existing){
             existing.name = p.name||existing.name;
@@ -2372,6 +2360,7 @@ async function setupChannel(code){
       });
     });
 
+    // Eltávozottak eltávolítása
     peers.forEach((_, pid)=>{
       if(!presentPeerIds.has(pid)){
         console.log("   👤 Peer eltávolítva:", pid);
@@ -2615,37 +2604,53 @@ async function initMedia(){
     const videoConstraint = preferred
       ? {deviceId:{exact:preferred.deviceId}}
       : {facingMode:"user"};
-
-    const audioConstraint = {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
-      channelCount: 1,
-      sampleRate: 16000,
-    };
-
+    await dbLog("initMedia_getUserMedia", "indul, videoConstraint: "+JSON.stringify(videoConstraint));
+    
+    // MOBILON NEM KÉRÜNK AUDIO TRACK-ET, HOGY A SPEECHRECOGNITION HASZNÁLHASSA A MIKROFONT
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
+    let audioConstraint;
+    if (isMobile) {
+      // Mobilon: NINCS audio track a getUserMedia-ben
+      audioConstraint = false;
+      await dbLog("initMedia_mobile_audio_off", "Mobil: audio track NEM kérve, SpeechRecognition fogja használni a mikrofont");
+    } else {
+      // Laptopon: audio track bekapcsolva
+      audioConstraint = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1,
+        sampleRate: 16000,
+      };
+      await dbLog("initMedia_desktop_audio_on", "Laptop: audio track kérve");
+    }
+    
     localStream = await navigator.mediaDevices.getUserMedia({
       video: videoConstraint,
       audio: audioConstraint
     });
-
     await dbLog("initMedia_stream_ok", "audio trackok: "+localStream.getAudioTracks().length+" video trackok: "+localStream.getVideoTracks().length);
-
     localVideo.srcObject = localStream;
     splitLocalVideo.srcObject = localStream;
     window._localStream = localStream;
 
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if(isMobile){
-      localStream.getAudioTracks().forEach(t => t.enabled = false);
-      await dbLog("initMedia_mobile_audio_muted", "Mobil: audio track némítva, mikrofon gombra vár");
-    }
-
     const audioTrack = localStream.getAudioTracks()[0];
     if(audioTrack){
       await dbLog("initMedia_audioTrack", "label: "+audioTrack.label+" readyState: "+audioTrack.readyState);
+      window._sharedAudioContext = new AudioContext();
+      window._sharedAudioSource = window._sharedAudioContext.createMediaStreamSource(localStream);
+      window._sharedMicStream = localStream;
+      await dbLog("initMedia_audioContext", "state: "+window._sharedAudioContext.state);
+    } else {
+      await dbLog("initMedia_audioTrack_MISSING", "nincs audio track!");
+      // Mobilon ez normális, mert nem kértünk audio track-et
+      if (!isMobile) {
+        console.warn("⚠️ Nincs audio track (laptop)");
+      } else {
+        console.log("📱 Mobil: audio track szándékosan nincs, SpeechRecognition fogja használni");
+      }
     }
-
   }catch(err){
     await dbLog("initMedia_ERROR", err.message||String(err));
     console.error("Média hiba:", err);
@@ -2681,7 +2686,6 @@ function startRecognition(){
   let isStarting = false;
   let noSpeechStreak = 0;
   const isAndroid = /Android/i.test(navigator.userAgent);
-  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   async function createAndStart(){
     dbLog("STT_createAndStart_called", "recognitionShouldRun: "+recognitionShouldRun+" micOn: "+micOn+" callEnded: "+callEnded+" isStarting: "+isStarting+" recognition: "+(recognition?"van":"null"));
@@ -2695,6 +2699,20 @@ function startRecognition(){
     }
     isStarting = true;
 
+    // Csak asztali gépen használjuk az AudioContext-et
+    if (!isAndroid && window._sharedAudioContext) {
+      try{
+        dbLog("STT_audioContext_state_before_resume", window._sharedAudioContext.state);
+        if(window._sharedAudioContext.state === "suspended"){
+          await window._sharedAudioContext.resume();
+          dbLog("STT_audioContext_resumed", window._sharedAudioContext.state);
+        }
+      }catch(e){
+        dbLog("STT_audioContext_resume_ERROR", e.message||String(e));
+        console.warn("[STT] AudioContext resume hiba:", e.message);
+      }
+    }
+
     const r = new SR();
     r.lang = STT_LOCALE[myLang] || "hu-HU";
     r.continuous = false;
@@ -2707,7 +2725,7 @@ function startRecognition(){
       noSpeechStreak = 0;
       micBtn.style.outline = "2px solid var(--teal)";
       dbLog("STT_onstart", "STT aktív, lang: "+r.lang);
-      console.log("[STT] Start:", r.lang, isAndroid ? "(Android)" : isIOS ? "(iOS)" : "(Desktop)");
+      console.log("[STT] Start:", r.lang, isAndroid ? "(Android)" : "(Desktop)");
     };
 
     r.onresult = async e=>{
@@ -2729,6 +2747,7 @@ function startRecognition(){
         ownMain.textContent = final.trim();
         setSplitOwnCaption(final.trim());
         
+        // ✨ SAJÁT REZGŐ KERET BEKAPCSOL
         localWrap.classList.add("speaking");
         localWrap.classList.add("own-speaking");
         remoteWrap.classList.remove("speaking");
@@ -2736,6 +2755,7 @@ function startRecognition(){
         splitLeft.classList.add("own-speaking");
         splitRight.classList.remove("speaking");
         
+        // Multi-peer esetén
         if(ownGridCell) {
           ownGridCell.classList.add("speaking");
           document.querySelectorAll(".peer-cell").forEach(cell => {
@@ -2743,6 +2763,7 @@ function startRecognition(){
           });
         }
         
+        // 4 másodperc múlva kikapcsol
         clearTimeout(window._speakingTimer);
         window._speakingTimer = setTimeout(() => {
           localWrap.classList.remove("speaking");
@@ -2773,18 +2794,21 @@ function startRecognition(){
         recognitionShouldRun = false;
         dbLog("STT_onerror_PERMISSION_DENIED", "leállítás");
         console.warn("[STT] Engedély megtagadva, leállítás.");
-        micOn = false;
-        micBtn.classList.add("off");
-        micBtn.querySelector(".btn-icon").textContent = "🔇";
+        if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){
+          micOn = false;
+          if(localStream) localStream.getAudioTracks().forEach(t => t.enabled = false);
+          micBtn.classList.add("off");
+          micBtn.querySelector(".btn-icon").textContent = "🔇";
+        }
         return;
       }
 
       if(e.error === "aborted"){ dbLog("STT_onerror_aborted","újraindítás skip"); return; }
 
       if(e.error === "audio-capture"){
-        dbLog("STT_onerror_audio_capture", "audio-capture hiba — 2s várakozás");
-        console.warn("[STT] audio-capture hiba — várunk 2s...");
-        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 2000);
+        dbLog("STT_onerror_audio_capture", "audio-capture hiba — 1.5s várakozás");
+        console.warn("[STT] audio-capture hiba — várunk 1.5s...");
+        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 1500);
         return;
       }
 
@@ -2792,7 +2816,7 @@ function startRecognition(){
         noSpeechStreak++;
         dbLog("STT_onerror_no_speech", "streak: "+noSpeechStreak);
         console.log("[STT] no-speech #"+noSpeechStreak);
-        const delay = (isAndroid || isIOS) && noSpeechStreak > 3 ? 1000 : 200;
+        const delay = isAndroid && noSpeechStreak > 3 ? 800 : 100;
         if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, delay);
         return;
       }
@@ -2816,7 +2840,7 @@ function startRecognition(){
       recognition = null;
       console.log("[STT] End, shouldRun:", recognitionShouldRun);
       if(recognitionShouldRun && micOn && !callEnded){
-        const delay = (isAndroid || isIOS) ? 800 : 300;
+        const delay = isAndroid ? 600 : 300;
         setTimeout(createAndStart, delay);
       }
     };
@@ -2831,11 +2855,17 @@ function startRecognition(){
       console.warn("[STT] start() hiba:", e.message);
       recognition = null;
       isStarting = false;
-      if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 2000);
+      if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 1500);
     }
   }
 
-  createAndStart();
+  if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window._userInteracted) {
+    dbLog("STT_mobile_waiting_for_tap", "Mobil: várunk egy érintésre a mikrofon gombon");
+    window._userInteracted = true;
+    createAndStart();
+  } else {
+    createAndStart();
+  }
 }
 
 function stopRecognition(){
@@ -2864,7 +2894,6 @@ async function handleIncomingCaption(payload){
     incomingSub.textContent  = (payload.sourceLang&&payload.sourceLang!==myLang)
       ? `„${payload.text}" (${LANG_LABEL[payload.sourceLang]||payload.sourceLang})` : "";
     incomingBox.style.display = "block";
-    feedback.attachToCaption(incomingBox, payload.text, translated, payload.sourceLang || "hu", myLang);
     clearTimeout(captionHideTimer);
     captionHideTimer = setTimeout(()=>{ incomingBox.style.display="none"; },7000);
     const sub = (payload.sourceLang&&payload.sourceLang!==myLang)
@@ -2922,7 +2951,6 @@ function addHistoryItem(main, orig, isOwn){
   textEl.style.cssText = "font-size:12px;color:"+(isOwn?"var(--teal)":"var(--amber)")+";line-height:1.4;";
   textEl.textContent = main;
   item.appendChild(timeEl);
-  transcript.addEntry(main, isOwn ? myName : "Partner", isOwn ? myLang : "partner", isOwn);
   item.appendChild(textEl);
   if(orig && orig !== main){
     const origEl = document.createElement("div");
@@ -3380,16 +3408,10 @@ async function doHangup(){
   console.log("═══════════════════════════════════════════════════");
   
   callEnded = true;
-  window._livekitActive = false;
-  netAdapt.stop();
-  analytics.stop();
-  noiseCx.destroy();
-  transcript.clear();
-  await webhookMgr.fireCallEnded(roomId, 0, {});
-  await webhookMgr.fireTranscriptReady(transcript.getEntries());
-
+  // Mobilon: állítsuk vissza a felhasználói interakció jelzőt
   window._userInteracted = false;
   
+  // ─── HÍVÁS VÉGE MENTÉSE SUPABASE-BE ─────────────────────────
   await saveParticipantLeave(roomId, myPeerId, _translationCount);
   await saveCallEnd(_callDbId, roomId);
   console.log("✅ callEnded = true");
@@ -3397,7 +3419,9 @@ async function doHangup(){
   console.log("🛑 Hangfelismerés leállítása...");
   stopRecognition();
   console.log("   ✅ Hangfelismerés leállítva");
+  
 
+  
   if(statsInterval){ 
     console.log("📊 Statisztika leállítása...");
     clearInterval(statsInterval); 
@@ -3412,13 +3436,16 @@ async function doHangup(){
   }
   
   if(isSharing){ 
-    isSharing = false;
-    if(screenStream){ 
-      screenStream.getTracks().forEach(t=>t.stop()); 
-      screenStream=null; 
-    }
+  isSharing = false;
+  if(screenStream){ 
+    screenStream.getTracks().forEach(t=>t.stop()); 
+    screenStream=null; 
   }
+}
+  
 
+
+  // Minden peer lezárása
   console.log("👥 Peerek lezárása (" + peers.size + " db)...");
   peers.forEach((p, pid)=>{
     try{ p.pc.close(); }catch(_){}
@@ -3438,6 +3465,7 @@ async function doHangup(){
   ownGridCell = null;
   console.log("   ✅ MultiGrid törölve");
 
+// LiveKit szoba lezárása
   if (livekitRoom) {
     console.log("🔗 LiveKit szoba lezárása...");
     try { await livekitRoom.disconnect(); } catch (_) {}
@@ -3461,18 +3489,18 @@ async function doHangup(){
   }
 
   console.log("🖥️ Videó elemek törlése...");
-  remoteVideo.srcObject     = null; 
-  localVideo.srcObject      = null;
-  splitLocalVideo.srcObject = null; 
-  splitRemoteVideo.srcObject= null;
+  remoteVideo.srcObject    = null; 
+  localVideo.srcObject   = null;
+  splitLocalVideo.srcObject= null; 
+  splitRemoteVideo.srcObject=null;
   splitWaiting.style.display = "flex";
   multiGrid.style.display = "none";
   console.log("   ✅ Videó elemek törölve");
 
   console.log("🗑️ Gyorsítótár és chat törlése...");
   translateCache && translateCache.clear();
-  chatMessages.innerHTML = "";
-  if(histList) histList.innerHTML = "";
+  chatMessages.innerHTML="";
+if(histList) histList.innerHTML="";
   console.log("   ✅ Gyorsítótár és chat törölve");
 
   console.log("🔄 Képernyőváltás (call -> setup)...");
@@ -3481,15 +3509,15 @@ async function doHangup(){
   console.log("   ✅ Képernyőváltás megtörtént");
 
   console.log("🔧 UI elemek visszaállítása...");
-  roomCodeDisplay.style.display = "none";
-  shareLinkBox.style.display = "none";
+  roomCodeDisplay.style.display="none";
+  shareLinkBox.style.display="none";
   setupStatus.textContent = t("callEnded");
-  createRoomBtn.disabled = false; 
-  joinRoomBtn.disabled = false;
-  recPill.style.display = "none";
-  isRecording = false; 
-  isSharing = false; 
-  mirrored = false;
+  createRoomBtn.disabled=false; 
+  joinRoomBtn.disabled=false;
+  recPill.style.display="none";
+  isRecording=false; 
+  isSharing=false; 
+  mirrored=false;
 
   hangupModal.classList.remove("open");
   statsGraphOverlay.classList.remove("open");
@@ -3497,6 +3525,7 @@ async function doHangup(){
 
   console.log("   ✅ UI elemek visszaállítva");
 
+  // URL paraméter eltávolítása
   if(window.history.replaceState){
     window.history.replaceState({}, document.title, window.location.pathname);
     console.log("   ✅ URL paraméterek törölve");
@@ -3535,22 +3564,7 @@ async function beginCallFlow(){
   try{
     console.log("🔌 Supabase kapcsolat inicializálása...");
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
-    roomMgr._sb    = supabaseClient;
-webhookMgr._sb = supabaseClient;
-analytics._sb  = supabaseClient;
-feedback._sb   = supabaseClient;
-gdpr._sb       = supabaseClient;
-apiClient._sb  = supabaseClient;
-webhookMgr.setRoomId(roomId);
-analytics.init(roomId, myPeerId, () => peers.values().next().value?.pc, (stats) => {
-  const rttEl = document.getElementById("statRtt");
-  if (rttEl) rttEl.textContent = stats.rtt ? stats.rtt + "ms" : "--";
-  const jEl = document.getElementById("statJitter");
-  if (jEl) jEl.textContent = stats.jitter ? stats.jitter + "ms" : "--";
-});
     window.supabaseClient = supabaseClient;
-    
     translator._initKeys();
     console.log("✅ Supabase kliens kész");
     
@@ -3605,52 +3619,30 @@ analytics.init(roomId, myPeerId, () => peers.values().next().value?.pc, (stats) 
       }, 5000);
     }
 
-    // ─── STT INDÍTÁS ──────────────────────────────────────────
-    // ASZTALI GÉP: automatikusan indul
-    // MOBIL: mikrofon BEkapcsolva, DE a hangfelismerés NEM indul automatikusan
-    
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-    
-    // MINDEN ESETBEN engedélyezzük a mikrofont kezdetben (mobilon is!)
-    micOn = true;
-    if (localStream) {
-      localStream.getAudioTracks().forEach(t => t.enabled = true);
-    }
-    micBtn.classList.remove("off");
-    micBtn.querySelector(".btn-icon").textContent = "🎙️";
-    
+    // ─── STT INDÍTÁSA: MOBILON CSAK MIKROFON GOMBBAL ───
+    // Mobilon NE induljon automatikusan, csak ha a felhasználó rányom a mikrofon gombra
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     if (!isMobile) {
-      // ASZTALI: automatikusan indul a hangfelismerés
+      // Asztali gépen automatikusan indul
       await new Promise(r => setTimeout(r, 800));
-      recognitionShouldRun = true;
       startRecognition();
-      console.log("🖥️ Asztali: STT automatikusan elindítva");
+      console.log("✅ Asztali: STT automatikusan elindítva");
     } else {
-      // MOBIL: mikrofon BE van kapcsolva, de a hangfelismerés NEM indul
-      // A felhasználónak kell rányomnia a mikrofon gombra az indításhoz
+      // Mobilon: mikrofon alapból KI van kapcsolva, STT nem fut
+      console.log("📱 Mobil: STT NEM indul automatikusan, várok mikrofon gombra");
+      // Mikrofon alapból ki van kapcsolva
+      micOn = false;
+      if (localStream) {
+        localStream.getAudioTracks().forEach(t => t.enabled = false);
+      }
+      micBtn.classList.add("off");
+      micBtn.querySelector(".btn-icon").textContent = "🔇";
+      // recognitionShouldRun false, így nem indul el magától
       recognitionShouldRun = false;
-      console.log("📱 Mobil: Mikrofon BEKAPCSOLVA, de STT várakozik (mikrofon gombra kell nyomni)");
     }
 
     // Chat előzmények betöltése
     loadChatHistoryFromSupabase();
-    netAdapt.start((quality, rtt) => {
-  const dot = document.getElementById("netDot");
-  const lbl = document.getElementById("netLabel");
-  if (!dot || !lbl) return;
-  if (quality === "bad") {
-    dot.className = "net-dot bad";
-    lbl.textContent = "●○○";
-  } else if (quality === "warn") {
-    dot.className = "net-dot warn";
-    lbl.textContent = "●●○";
-  } else {
-    dot.className = "net-dot";
-    lbl.textContent = "●●●";
-  }
-});
-analytics.start();
-await webhookMgr.fireCallStarted(roomId, [myName]);
 
   }catch(err){
     console.error(err);
@@ -3738,39 +3730,54 @@ joinRoomBtn.onclick = async () => {
   try {
     await beginCallFlow();
   } catch(e) {
-    console.error("beginCallFlow hiba:", e);
     createRoomBtn.disabled = false;
     joinRoomBtn.disabled   = false;
-    setupStatus.textContent = e.message || t("errPerm");
+    setupStatus.textContent = t("errPerm");
   }
 };
 
 
 
 
+/* =========================================================================
+   CALL UI EVENTS
+   ========================================================================= */
 micBtn.onclick = ()=>{
   if(!localStream) return;
-
+  
+  // Mikrofon hangjának be/ki kapcsolása
   micOn = !micOn;
   localStream.getAudioTracks().forEach(t => t.enabled = micOn);
   micBtn.classList.toggle("off", !micOn);
   micBtn.querySelector(".btn-icon").textContent = micOn ? "🎙️" : "🔇";
-
-  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-
-  if(micOn){
-    // Mikrofon BEKAPCSOLVA → indul a hangfelismerés
-    recognitionShouldRun = true;
-    startRecognition();
-    console.log(isMobile ? "📱 Mobil: hangfelismerés elindítva (mikrofon gomb)" : "🖥️ Asztali: hangfelismerés elindítva");
+  
+  // Hangfelismerés kezelése mobilon
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  
+  if (isMobile) {
+    // Mobilon: ha bekapcsoltuk a mikrofont, induljon a hangfelismerés
+    if (micOn) {
+      // recognitionShouldRun true, hogy tudjon futni
+      recognitionShouldRun = true;
+      startRecognition();
+      console.log("📱 Mobil: hangfelismerés elindítva a mikrofon gombra");
+    } else {
+      // Ha kikapcsoltuk a mikrofont, állítsuk le a hangfelismerést
+      stopRecognition();
+      recognitionShouldRun = false;
+      console.log("📱 Mobil: hangfelismerés leállítva");
+    }
   } else {
-    // Mikrofon KIKAPCSOLVA → hangfelismerés leáll
-    stopRecognition();
-    recognitionShouldRun = false;
-    console.log(isMobile ? "📱 Mobil: hangfelismerés leállítva" : "🖥️ Asztali: hangfelismerés leállítva");
+    // Asztali: ha be van kapcsolva a mikrofon, indítsuk újra a felismerést
+    if (micOn) {
+      recognitionShouldRun = true;
+      startRecognition();
+    } else {
+      stopRecognition();
+      recognitionShouldRun = false;
+    }
   }
 };
-
 
 camBtn.onclick = ()=>{
   if(!localStream) return;
@@ -3802,24 +3809,6 @@ langMenu.querySelectorAll("button").forEach(btn=>{
 });
 
 statsBtn.onclick = e=>{ e.stopPropagation(); statsOverlay.classList.toggle("open"); };
-document.getElementById("exportBtn").onclick = e => {
-  e.stopPropagation();
-  const menu = document.getElementById("exportMenu");
-  if (menu) { menu.classList.toggle("open"); return; }
-  const m = document.createElement("div");
-  m.id = "exportMenu";
-  m.style.cssText = "position:absolute;bottom:84px;left:50%;transform:translateX(-50%);" +
-    "background:var(--panel);border:1px solid var(--line);border-radius:14px;" +
-    "padding:8px;z-index:11;box-shadow:0 10px 30px rgba(0,0,0,.5);min-width:160px;";
-  m.innerHTML = `
-    <button onclick="transcript.exportPDF()" style="display:block;width:100%;text-align:left;padding:10px 14px;background:none;border:none;color:var(--text);font-size:14px;border-radius:8px;cursor:pointer;">📄 PDF letöltés</button>
-    <button onclick="transcript.exportWord()" style="display:block;width:100%;text-align:left;padding:10px 14px;background:none;border:none;color:var(--text);font-size:14px;border-radius:8px;cursor:pointer;">📝 Word letöltés</button>
-    <button onclick="transcript.exportSRT()" style="display:block;width:100%;text-align:left;padding:10px 14px;background:none;border:none;color:var(--text);font-size:14px;border-radius:8px;cursor:pointer;">🎬 SRT felirat</button>
-    <button onclick="transcript.exportTXT()" style="display:block;width:100%;text-align:left;padding:10px 14px;background:none;border:none;color:var(--text);font-size:14px;border-radius:8px;cursor:pointer;">📋 TXT szöveg</button>
-  `;
-  document.getElementById("call").appendChild(m);
-  setTimeout(() => document.addEventListener("click", () => m.remove(), { once: true }), 100);
-};
 histBtn.onclick = e=>{
   e.stopPropagation();
   const panel = document.getElementById("historyPanel");
