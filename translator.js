@@ -579,4 +579,4 @@ _getCache(key) {
 
 }
 
-window.TranslatorEngine = TranslatorEngine;
+
