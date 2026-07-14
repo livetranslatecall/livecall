@@ -3613,6 +3613,15 @@ analytics.init(roomId, myPeerId, () => peers.values().next().value?.pc, (stats) 
     setupScreen.classList.remove("active");
 callScreen.classList.add("active");
 
+// Belépéskor mikrofon azonnal KI — még minden egyéb előtt
+micOn = false;
+recognitionShouldRun = false;
+micBtn.classList.add("off");
+micBtn.querySelector(".btn-icon").textContent = "🔇";
+if(localStream){
+  localStream.getAudioTracks().forEach(t => { t.enabled = false; });
+}
+
 
 if (isMobile) {
   micBtn.classList.add("off");
