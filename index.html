@@ -3604,6 +3604,14 @@ async function beginCallFlow(){
     await saveParticipantJoin(roomId, myPeerId, myName, myLang);
 
     setupScreen.classList.remove("active");
+    // window változók exportálása sdk-init.js számára
+window.roomId      = roomId;
+window.myPeerId    = myPeerId;
+window.myName      = myName;
+window.myLang      = myLang;
+window.peers       = peers;
+window.localStream = localStream;
+window.setNetStatus = setNetStatus;
     callScreen.classList.add("active");
 
     updateParticipantsPanel();
