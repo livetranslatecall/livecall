@@ -4366,6 +4366,21 @@ camBtn.onclick = ()=>{
 
 recBtn.onclick    = toggleRecording;
 pipBtn.onclick    = togglePiP;
+hangupBtn.onclick = ()=> {
+  console.log("🔴 Hangup gomb megnyomva!");
+  console.log("🔍 hangupModal eleme:", document.getElementById('hangupModal'));
+  console.log("🔍 hangupModal classList BEFORE:", document.getElementById('hangupModal')?.className);
+  hangupModal.classList.add("open");
+  console.log("🔍 hangupModal classList AFTER:", document.getElementById('hangupModal')?.className);
+};
+modalCancelBtn.onclick = ()=> {
+  console.log("❌ Mégse gomb");
+  hangupModal.classList.remove("open");
+};
+modalConfirmBtn.onclick = ()=> {
+  console.log("✅ Befejezés megerősítve!");
+  doHangup();
+};
 
 
 
