@@ -474,6 +474,8 @@ const supabaseClient = window.supabase
 
 window.supabaseClient = supabaseClient;
 
+
+
 if(!supabaseClient){
   console.error("❌ Supabase nem töltődött be! Ellenőrizd a CDN-t.");
 } else {
@@ -663,6 +665,7 @@ async function openAdmin(){
   renderLog();
   startPolling();
   startStatsRefresh();
+  window.dispatchEvent(new Event("adminReady"));
 }
 
 $("logoutBtn").onclick=()=>{
@@ -1272,5 +1275,30 @@ function stopStatsRefresh(){
 
 initLogin();
 </script>
+
+<script src="./livecall-sdk.js"></script>
+
+<script>
+  window.addEventListener("adminReady", async () => {
+    const gdpr    = new GdprManager(window.supabaseClient);
+    const fbStats = new TranslationFeedback(window.supabaseClient);
+    const wh      = new WebhookManager(window.supabaseClient);
+
+    await gdpr.deleteOlderThan(30);
+
+    const stats = await fbStats.getStats();
+    if (stats) {
+      const qEl = document.getElementById("statQuality");
+      const sEl = document.getElementById("statQualitySub");
+      if (qEl) qEl.textContent = stats.accuracy;
+      if (sEl) sEl.textContent = `${stats.positive}👍 / ${stats.negative}👎 (${stats.total} értékelés)`;
+    }
+
+    await wh.loadWebhooks();
+  });
+</script>
+
+
+
 </body>
 </html>
