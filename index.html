@@ -2705,6 +2705,7 @@ function startRecognition(){
   let isStarting = false;
   let noSpeechStreak = 0;
   const isAndroid = /Android/i.test(navigator.userAgent);
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   async function createAndStart(){
     dbLog("STT_createAndStart_called", "recognitionShouldRun: "+recognitionShouldRun+" micOn: "+micOn+" callEnded: "+callEnded+" isStarting: "+isStarting+" recognition: "+(recognition?"van":"null"));
@@ -2718,20 +2719,6 @@ function startRecognition(){
     }
     isStarting = true;
 
-    // Csak asztali gépen használjuk az AudioContext-et
-    if (!isAndroid && window._sharedAudioContext) {
-      try{
-        dbLog("STT_audioContext_state_before_resume", window._sharedAudioContext.state);
-        if(window._sharedAudioContext.state === "suspended"){
-          await window._sharedAudioContext.resume();
-          dbLog("STT_audioContext_resumed", window._sharedAudioContext.state);
-        }
-      }catch(e){
-        dbLog("STT_audioContext_resume_ERROR", e.message||String(e));
-        console.warn("[STT] AudioContext resume hiba:", e.message);
-      }
-    }
-
     const r = new SR();
     r.lang = STT_LOCALE[myLang] || "hu-HU";
     r.continuous = false;
@@ -2744,7 +2731,7 @@ function startRecognition(){
       noSpeechStreak = 0;
       micBtn.style.outline = "2px solid var(--teal)";
       dbLog("STT_onstart", "STT aktív, lang: "+r.lang);
-      console.log("[STT] Start:", r.lang, isAndroid ? "(Android)" : "(Desktop)");
+      console.log("[STT] Start:", r.lang, isAndroid ? "(Android)" : isIOS ? "(iOS)" : "(Desktop)");
     };
 
     r.onresult = async e=>{
@@ -2766,7 +2753,6 @@ function startRecognition(){
         ownMain.textContent = final.trim();
         setSplitOwnCaption(final.trim());
         
-        // ✨ SAJÁT REZGŐ KERET BEKAPCSOL
         localWrap.classList.add("speaking");
         localWrap.classList.add("own-speaking");
         remoteWrap.classList.remove("speaking");
@@ -2774,7 +2760,6 @@ function startRecognition(){
         splitLeft.classList.add("own-speaking");
         splitRight.classList.remove("speaking");
         
-        // Multi-peer esetén
         if(ownGridCell) {
           ownGridCell.classList.add("speaking");
           document.querySelectorAll(".peer-cell").forEach(cell => {
@@ -2782,7 +2767,6 @@ function startRecognition(){
           });
         }
         
-        // 4 másodperc múlva kikapcsol
         clearTimeout(window._speakingTimer);
         window._speakingTimer = setTimeout(() => {
           localWrap.classList.remove("speaking");
@@ -2813,21 +2797,18 @@ function startRecognition(){
         recognitionShouldRun = false;
         dbLog("STT_onerror_PERMISSION_DENIED", "leállítás");
         console.warn("[STT] Engedély megtagadva, leállítás.");
-        if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){
-          micOn = false;
-          if(localStream) localStream.getAudioTracks().forEach(t => t.enabled = false);
-          micBtn.classList.add("off");
-          micBtn.querySelector(".btn-icon").textContent = "🔇";
-        }
+        micOn = false;
+        micBtn.classList.add("off");
+        micBtn.querySelector(".btn-icon").textContent = "🔇";
         return;
       }
 
       if(e.error === "aborted"){ dbLog("STT_onerror_aborted","újraindítás skip"); return; }
 
       if(e.error === "audio-capture"){
-        dbLog("STT_onerror_audio_capture", "audio-capture hiba — 1.5s várakozás");
-        console.warn("[STT] audio-capture hiba — várunk 1.5s...");
-        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 1500);
+        dbLog("STT_onerror_audio_capture", "audio-capture hiba — 2s várakozás");
+        console.warn("[STT] audio-capture hiba — várunk 2s...");
+        if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 2000);
         return;
       }
 
@@ -2835,7 +2816,7 @@ function startRecognition(){
         noSpeechStreak++;
         dbLog("STT_onerror_no_speech", "streak: "+noSpeechStreak);
         console.log("[STT] no-speech #"+noSpeechStreak);
-        const delay = isAndroid && noSpeechStreak > 3 ? 800 : 100;
+        const delay = (isAndroid || isIOS) && noSpeechStreak > 3 ? 1000 : 200;
         if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, delay);
         return;
       }
@@ -2859,7 +2840,7 @@ function startRecognition(){
       recognition = null;
       console.log("[STT] End, shouldRun:", recognitionShouldRun);
       if(recognitionShouldRun && micOn && !callEnded){
-        const delay = isAndroid ? 600 : 300;
+        const delay = (isAndroid || isIOS) ? 800 : 300;
         setTimeout(createAndStart, delay);
       }
     };
@@ -2874,17 +2855,11 @@ function startRecognition(){
       console.warn("[STT] start() hiba:", e.message);
       recognition = null;
       isStarting = false;
-      if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 1500);
+      if(recognitionShouldRun && micOn && !callEnded) setTimeout(createAndStart, 2000);
     }
   }
 
-  if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window._userInteracted) {
-    dbLog("STT_mobile_waiting_for_tap", "Mobil: várunk egy érintésre a mikrofon gombon");
-    window._userInteracted = true;
-    createAndStart();
-  } else {
-    createAndStart();
-  }
+  createAndStart();
 }
 
 function stopRecognition(){
