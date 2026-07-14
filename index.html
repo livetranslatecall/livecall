@@ -497,7 +497,7 @@ select{
   .split-view{display:flex;}
   #remoteWrap,#localWrap{display:none!important;}
   .room-pill{display:none;}
-  #captionWrap{bottom:90px;}
+  #captionWrap{display:none!important;}
   #chatPanel{width:320px;}
   .ctrl-btn{width:54px;height:54px;}
   .ctrl-btn.end{width:62px;height:62px;}
@@ -2739,18 +2739,18 @@ function startRecognition(){
         const res = e.results[i];
         if(res.isFinal) final += res[0].transcript;
         else{
-          ownBox.style.display = "block";
+if(!isLaptop()) ownBox.style.display = "block";
           ownMain.textContent = res[0].transcript;
           setSplitOwnCaption(res[0].transcript);
         }
       }
-      if(final.trim()){
+    if(final.trim()){
         dbLog("STT_onresult_final", final.trim().slice(0,100));
         console.log("[STT] Eredmény:", final.trim());
-        ownBox.style.display = "block";
+        if(!isLaptop()) ownBox.style.display = "block";
         ownMain.textContent = final.trim();
         setSplitOwnCaption(final.trim());
-        
+
         // ✨ SAJÁT REZGŐ KERET BEKAPCSOL
         localWrap.classList.add("speaking");
         localWrap.classList.add("own-speaking");
