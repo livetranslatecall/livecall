@@ -3761,8 +3761,15 @@ if(enterRoomBtn){
   enterRoomBtn.onclick = async()=>{
     enterRoomBtn.disabled = true;
     setupStatus.textContent = t("waitMsg");
-    await beginCallFlow();
-    // Visszaállítás (ha újraindulna)
+    try {
+      await beginCallFlow();
+    } catch(e) {
+      console.error("enterRoomBtn hiba:", e);
+      setupStatus.textContent = e.message || t("errPerm");
+      createRoomBtn.disabled = false;
+      joinRoomBtn.disabled = false;
+      enterRoomBtn.disabled = false;
+    }
     enterRoomBtn.style.display = "none";
     enterRoomBtn.disabled = false;
   };
