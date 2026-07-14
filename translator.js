@@ -13,20 +13,40 @@ const SAVE_DEBOUNCE_MS    = 3_000;
 const MAX_CACHE_SIZE      = 500;
 
 const FALLBACK_MESSAGES = {
-  hu: "⚠️ Groq fordítás átmenetileg nem elérhető – gyengébb minőségű fordításra váltottunk. A rendszer folyamatosan próbál visszakapcsolni.",
-  en: "⚠️ Groq translation temporarily unavailable – switched to lower quality fallback. The system keeps retrying.",
-  ru: "⚠️ Перевод Groq временно недоступен – переключились на запасной вариант. Система продолжает попытки восстановления.",
+  hu: "⚠️ Az elsődleges fordítási szolgáltatás átmenetileg nem elérhető – gyengébb minőségű fordításra váltottunk. A rendszer folyamatosan próbál visszakapcsolni.",
+  en: "⚠️ Primary translation service temporarily unavailable – switched to lower quality fallback. The system keeps retrying.",
+  ru: "⚠️ Основной сервис перевода временно недоступен – переключились на запасной вариант. Система продолжает попытки восстановления.",
+  de: "⚠️ Primärer Übersetzungsdienst vorübergehend nicht verfügbar – auf geringere Qualität umgeschaltet. Das System versucht weiterhin, die Verbindung wiederherzustellen.",
+  fr: "⚠️ Service de traduction principal temporairement indisponible – bascule vers une traduction de qualité inférieure. Le système continue d'essayer de rétablir la connexion.",
+  es: "⚠️ Servicio de traducción principal temporalmente no disponible – se cambió a una traducción de menor calidad. El sistema sigue intentando reconectar.",
+  it: "⚠️ Servizio di traduzione principale temporaneamente non disponibile – passaggio a una traduzione di qualità inferiore. Il sistema continua a provare a riconnettersi.",
+  pt: "⚠️ Serviço de tradução principal temporariamente indisponível – mudança para tradução de qualidade inferior. O sistema continua tentando reconectar.",
+  pl: "⚠️ Główny serwis tłumaczeniowy chwilowo niedostępny – przełączono na gorszą jakość tłumaczenia. System stale próbuje przywrócić połączenie.",
+  ro: "⚠️ Serviciul principal de traducere este temporar indisponibil – s-a trecut la o traducere de calitate inferioară. Sistemul încearcă în mod continuu să revină.",
+  uk: "⚠️ Основний сервіс перекладу тимчасово недоступний – переключено на нижчу якість перекладу. Система продовжує спроби відновити з'єднання.",
+  zh: "⚠️ 主要翻译服务暂时不可用 – 已切换到较低质量的翻译。系统持续尝试恢复连接。",
+  ar: "⚠️ خدمة الترجمة الرئيسية غير متاحة مؤقتًا – تم التبديل إلى ترجمة أقل جودة. يستمر النظام في محاولة استعادة الاتصال.",
 };
 
 const GROQ_RESTORED_MESSAGES = {
-  hu: "✅ Groq fordítás visszaállt – kiváló minőségű fordítás aktív.",
-  en: "✅ Groq translation restored – high quality translation active.",
-  ru: "✅ Перевод Groq восстановлен – высококачественный перевод активен.",
+  hu: "✅ Az elsődleges fordítási szolgáltatás visszaállt – kiváló minőségű fordítás aktív.",
+  en: "✅ Primary translation service restored – high quality translation active.",
+  ru: "✅ Основной сервис перевода восстановлен – высококачественный перевод активен.",
+  de: "✅ Primärer Übersetzungsdienst wiederhergestellt – hochwertige Übersetzung aktiv.",
+  fr: "✅ Service de traduction principal rétabli – traduction de haute qualité active.",
+  es: "✅ Servicio de traducción principal restablecido – traducción de alta calidad activa.",
+  it: "✅ Servizio di traduzione principale ripristinato – traduzione di alta qualità attiva.",
+  pt: "✅ Serviço de tradução principal restaurado – tradução de alta qualidade ativa.",
+  pl: "✅ Główny serwis tłumaczeniowy przywrócony – wysokiej jakości tłumaczenie aktywne.",
+  ro: "✅ Serviciul principal de traducere restaurat – traducere de înaltă calitate activă.",
+  uk: "✅ Основний сервіс перекладу відновлено – високоякісний переклад активний.",
+  zh: "✅ 主要翻译服务已恢复 – 高质量翻译已激活。",
+  ar: "✅ تم استعادة خدمة الترجمة الرئيسية – الترجمة عالية الجودة نشطة.",
 };
 
 // ─── FŐ OSZTÁLY ───────────────────────────────────────────────────────────────
 
-export class TranslatorEngine {
+class TranslatorEngine {
   constructor({ onStatusChange, onKeyUpdate, getCurrentLang }) {
     /** @type {Array<{key:string,label:string,used:number,limit:number,exhausted:boolean,lastError:string|null}>} */
     this._keys             = [];
