@@ -3586,12 +3586,18 @@ analytics.init(roomId, myPeerId, () => peers.values().next().value?.pc, (stats) 
     await saveParticipantJoin(roomId, myPeerId, myName, myLang);
 
     setupScreen.classList.remove("active");
-    callScreen.classList.add("active");
+callScreen.classList.add("active");
 
-    updateParticipantsPanel();
 
-    // E2EE kulcs előgenerálás
-    await generateE2eeKey();
+if (isMobile) {
+  micBtn.classList.add("off");
+  micBtn.querySelector(".btn-icon").textContent = "🔇";
+}
+
+updateParticipantsPanel();
+
+// E2EE kulcs előgenerálás
+await generateE2eeKey();
 
 // ─── LIVEKIT KAPCSOLÓDÁS ELŐSZÖR ───
     try {
