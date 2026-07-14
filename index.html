@@ -3605,26 +3605,31 @@ analytics.init(roomId, myPeerId, () => peers.values().next().value?.pc, (stats) 
       }, 5000);
     }
 
-    // ─── STT INDÍTÁSA: MOBILON CSAK MIKROFON GOMBBAL ───
-    // Mobilon NE induljon automatikusan, csak ha a felhasználó rányom a mikrofon gombra
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    // ─── STT INDÍTÁS ──────────────────────────────────────────
+    // ASZTALI GÉP: automatikusan indul
+    // MOBIL: mikrofon BEkapcsolva, DE a hangfelismerés NEM indul automatikusan
+    
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    
+    // MINDEN ESETBEN engedélyezzük a mikrofont kezdetben (mobilon is!)
+    micOn = true;
+    if (localStream) {
+      localStream.getAudioTracks().forEach(t => t.enabled = true);
+    }
+    micBtn.classList.remove("off");
+    micBtn.querySelector(".btn-icon").textContent = "🎙️";
+    
     if (!isMobile) {
-      // Asztali gépen automatikusan indul
+      // ASZTALI: automatikusan indul a hangfelismerés
       await new Promise(r => setTimeout(r, 800));
+      recognitionShouldRun = true;
       startRecognition();
-      console.log("✅ Asztali: STT automatikusan elindítva");
+      console.log("🖥️ Asztali: STT automatikusan elindítva");
     } else {
-      // Mobilon: mikrofon alapból KI van kapcsolva, STT nem fut
-      console.log("📱 Mobil: STT NEM indul automatikusan, várok mikrofon gombra");
-      // Mikrofon alapból ki van kapcsolva
-      micOn = false;
-      if (localStream) {
-        localStream.getAudioTracks().forEach(t => t.enabled = false);
-      }
-      micBtn.classList.add("off");
-      micBtn.querySelector(".btn-icon").textContent = "🔇";
-      // recognitionShouldRun false, így nem indul el magától
+      // MOBIL: mikrofon BE van kapcsolva, de a hangfelismerés NEM indul
+      // A felhasználónak kell rányomnia a mikrofon gombra az indításhoz
       recognitionShouldRun = false;
+      console.log("📱 Mobil: Mikrofon BEKAPCSOLVA, de STT várakozik (mikrofon gombra kell nyomni)");
     }
 
     // Chat előzmények betöltése
@@ -3751,13 +3756,15 @@ micBtn.onclick = ()=>{
   micBtn.classList.toggle("off", !micOn);
   micBtn.querySelector(".btn-icon").textContent = micOn ? "🎙️" : "🔇";
 
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
   if(micOn){
+    // Mikrofon BEKAPCSOLVA → indul a hangfelismerés
     recognitionShouldRun = true;
     startRecognition();
-    console.log(isMobile ? "📱 Mobil: hangfelismerés elindítva" : "🖥️ Asztali: hangfelismerés elindítva");
+    console.log(isMobile ? "📱 Mobil: hangfelismerés elindítva (mikrofon gomb)" : "🖥️ Asztali: hangfelismerés elindítva");
   } else {
+    // Mikrofon KIKAPCSOLVA → hangfelismerés leáll
     stopRecognition();
     recognitionShouldRun = false;
     console.log(isMobile ? "📱 Mobil: hangfelismerés leállítva" : "🖥️ Asztali: hangfelismerés leállítva");
