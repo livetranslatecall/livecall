@@ -3625,8 +3625,8 @@ if (!isMobile) {
   if (localStream) {
     localStream.getAudioTracks().forEach(t => t.enabled = false);
   }
-  micBtn.classList.add("off");
-  micBtn.querySelector(".btn-icon").textContent = "🔇";
+  // ⚠️ NE NYÚLJ A micBtn-HOZ MÉG, MERT NEM LÉTEZIK!
+  // (A micBtn csak a call képernyőn van, ami még nincs betöltve)
   recognitionShouldRun = false;
   console.log("📱 Mobil: Mikrofon KIKAPCSOLVA, várakozás a gombnyomásra");
 }
