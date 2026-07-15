@@ -1076,7 +1076,7 @@ class GdprManager {
     return { success: results.every(r => r.ok), results };
   }
 
-  async deleteOlderThan(days = 30) {
+  async deleteOlderThan(days = 5) {
     if (!this._sb) return;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
