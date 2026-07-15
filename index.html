@@ -737,10 +737,10 @@ select{
 
         <div class="status-line" id="setupStatus" data-i18n="setupStatusDefault"></div>
    
-    <div style="display:flex; justify-content:center; gap:12px; margin-top:12px; flex-wrap:wrap; font-size:12px;">
-      <a href="privacy.html" style="color:var(--text-dim); text-decoration:none;">Adatvédelmi tájékoztató</a>
-      <a href="terms.html" style="color:var(--text-dim); text-decoration:none;">Felhasználási feltételek</a>
-    </div>
+<div style="display:flex; justify-content:center; gap:12px; margin-top:12px; flex-wrap:wrap; font-size:12px;">
+  <a href="privacy.html" data-i18n="privacy" style="color:var(--text-dim); text-decoration:none;">Adatvédelmi tájékoztató</a>
+  <a href="terms.html" data-i18n="terms" style="color:var(--text-dim); text-decoration:none;">Felhasználási feltételek</a>
+</div>
 
     
 
@@ -1139,7 +1139,8 @@ const I18N = {
     gdprDeleteSuccess:"✅ Minden adat törölve!",
     gdprDeleteError:"❌ Hiba történt a törlés során.",
     gdprConfirm:"Biztosan törlöd az összes adatodat ehhez a híváshoz? Ez nem visszafordítható!",
-
+    privacy: "Adatvédelmi tájékoztató",
+    terms: "Felhasználási feltételek"
   },
   en:{
     tagline:"Video call with live translation — 13 languages",
@@ -1190,6 +1191,8 @@ const I18N = {
     gdprDeleteSuccess:"✅ All data deleted!",
     gdprDeleteError:"❌ Delete error.",
     gdprConfirm:"Are you sure you want to delete all your data for this call? This cannot be undone!",
+    privacy: "Privacy Policy",
+    terms: "Terms of Use"
 },
   ru:{
     tagline:"Видеозвонок с живым переводом — 13 языков",
@@ -1240,6 +1243,8 @@ const I18N = {
     gdprDeleteSuccess:"✅ Все данные удалены!",
     gdprDeleteError:"❌ Ошибка удаления.",
     gdprConfirm:"Вы уверены, что хотите удалить все данные для этого звонка? Это действие нельзя отменить!",
+    privacy: "Политика конфиденциальности",
+  terms: "Условия использования"
 },
   de:{
     tagline:"Videoanruf mit Echtzeit-Übersetzung — 13 Sprachen",
@@ -1289,6 +1294,8 @@ const I18N = {
     gdprDeleteSuccess:"✅ Alle Daten gelöscht!",
     gdprDeleteError:"❌ Löschfehler.",
     gdprConfirm:"Möchten Sie wirklich alle Daten für diesen Anruf löschen? Dies kann nicht rückgängig gemacht werden!",
+    privacy: "Datenschutzerklärung",
+  terms: "Nutzungsbedingungen"
 },
   fr:{
     tagline:"Appel vidéo avec traduction en direct — 13 langues",
@@ -1338,6 +1345,8 @@ const I18N = {
     gdprDeleteSuccess:"✅ Toutes les données supprimées!",
     gdprDeleteError:"❌ Erreur de suppression.",
     gdprConfirm:"Êtes-vous sûr de vouloir supprimer toutes vos données pour cet appel? Cette action est irréversible!",
+     privacy: "Politique de confidentialité",
+  terms: "Conditions d'utilisation"
 },
   es:{
     tagline:"Videollamada con traducción en vivo — 13 idiomas",
@@ -1387,6 +1396,8 @@ const I18N = {
     gdprDeleteSuccess:"✅ ¡Todos los datos eliminados!",
     gdprDeleteError:"❌ Error al eliminar.",
     gdprConfirm:"¿Estás seguro de que quieres eliminar todos tus datos para esta llamada? ¡Esta acción no se puede deshacer!",
+      privacy: "Política de privacidad",
+  terms: "Términos de uso"
 },
   it:{
     tagline:"Videochiamata con traduzione in tempo reale — 13 lingue",
@@ -1436,6 +1447,8 @@ const I18N = {
     gdprDeleteSuccess:"✅ Tutti i dati eliminati!",
     gdprDeleteError:"❌ Errore di eliminazione.",
     gdprConfirm:"Sei sicuro di voler eliminare tutti i tuoi dati per questa chiamata? Questa azione non può essere annullata!",
+    privacy: "Informativa sulla privacy",
+  terms: "Condizioni d'uso"
 },
   pt:{
     tagline:"Videochamada com tradução ao vivo — 13 idiomas",
@@ -1485,6 +1498,8 @@ const I18N = {
     gdprDeleteSuccess:"✅ Todos os dados excluídos!",
     gdprDeleteError:"❌ Erro ao excluir.",
     gdprConfirm:"Tem certeza de que deseja excluir todos os seus dados para esta chamada? Esta ação não pode ser desfeita!",
+    privacy: "Política de privacidade",
+  terms: "Termos de uso"
 },
   pl:{
     tagline:"Połączenie wideo z tłumaczeniem na żywo — 13 języków",
@@ -1534,6 +1549,8 @@ const I18N = {
     gdprDeleteSuccess:"✅ Wszystkie dane usunięte!",
     gdprDeleteError:"❌ Błąd usuwania.",
     gdprConfirm:"Czy na pewno chcesz usunąć wszystkie swoje dane dla tego połączenia? Tej operacji nie można cofnąć!",
+      privacy: "Polityka prywatności",
+  terms: "Warunki korzystania"
 },
   ro:{
     tagline:"Apel video cu traducere în timp real — 13 limbi",
@@ -1583,6 +1600,8 @@ const I18N = {
     gdprDeleteSuccess:"✅ Toate datele au fost șterse!",
     gdprDeleteError:"❌ Eroare la ștergere.",
     gdprConfirm:"Sigur dorești să ștergi toate datele pentru acest apel? Această acțiune este ireversibilă!",
+     privacy: "Politica de confidențialitate",
+  terms: "Termeni de utilizare"
 },
   uk:{
     tagline:"Відеодзвінок з живим перекладом — 13 мов",
@@ -1632,6 +1651,8 @@ const I18N = {
     gdprDeleteSuccess:"✅ Усі дані видалено!",
     gdprDeleteError:"❌ Помилка видалення.",
     gdprConfirm:"Ви впевнені, що хочете видалити всі свої дані для цього дзвінка? Цю дію не можна скасувати!",
+     privacy: "Політика конфіденційності",
+  terms: "Умови використання"
 },
   zh:{
     tagline:"实时翻译视频通话 — 13种语言",
@@ -1681,6 +1702,8 @@ const I18N = {
     gdprDeleteSuccess:"✅ 所有数据已删除！",
     gdprDeleteError:"❌ 删除错误。",
     gdprConfirm:"您确定要删除此通话的所有数据吗？此操作不可撤销！",
+     privacy: "隐私政策",
+  terms: "使用条款"
 },
   ar:{
     tagline:"مكالمة فيديو مع ترجمة فورية — 13 لغة",
@@ -1730,6 +1753,8 @@ const I18N = {
     gdprDeleteSuccess:"✅ تم حذف جميع البيانات!",
     gdprDeleteError:"❌ خطأ في الحذف.",
     gdprConfirm:"هل أنت متأكد من رغبتك في حذف جميع بياناتك لهذه المكالمة؟ لا يمكن التراجع عن هذا الإجراء!",
+     privacy: "سياسة الخصوصية",
+  terms: "شروط الاستخدام"
 },
 };
 
