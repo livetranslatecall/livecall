@@ -275,7 +275,6 @@ async translate(text, src, tgt) {
           signal: AbortSignal.timeout(12000),
         });
 
-        // Rate limit vagy szerver túlterhelt
         if (res.status === 429 || res.status === 503) {
           console.warn(`[Translator] Kulcs #${idx + 1} rate limit (${res.status}), következő kulcsra vált.`);
           slot.exhausted  = true;
@@ -286,7 +285,6 @@ async translate(text, src, tgt) {
           continue;
         }
 
-        // Egyéb HTTP hiba
         if (!res.ok) {
           console.warn(`[Translator] Kulcs #${idx + 1} HTTP hiba: ${res.status}`);
           slot.lastError = `http_${res.status}`;
@@ -297,7 +295,6 @@ async translate(text, src, tgt) {
 
         const data = await res.json();
 
-        // Edge function visszajelzése: minden modell megbukott
         if (data?.error === "all_models_failed") {
           console.warn(`[Translator] Kulcs #${idx + 1}: all_models_failed.`);
           slot.exhausted  = true;
@@ -308,7 +305,6 @@ async translate(text, src, tgt) {
           continue;
         }
 
-        // Sikeres fordítás
         if (data?.translated) {
           slot.used      = (slot.used || 0) + 1;
           slot.exhausted = slot.used >= slot.limit;
@@ -322,7 +318,6 @@ async translate(text, src, tgt) {
           }
 
           await this._saveKeys();
-          this._scheduleSyncToSupabase();
           this._onKeyUpdate(this._keys);
           return data.translated;
         }
@@ -432,51 +427,36 @@ async translate(text, src, tgt) {
   // ─── MENTÉS ──────────────────────────────────────────────────────────────────
 
   async _saveKeys() {
-    const toSave = this._keys.map((k) => ({
-      key:       k.key,
-      label:     k.label,
-      used:      k.used,
-      lastError: k.lastError,
-    }));
+  const toSave = this._keys.map((k) => ({
+    key:       k.key,
+    label:     k.label,
+    used:      k.used,
+    lastError: k.lastError,
+  }));
 
-    // 1. LocalStorage — mindig, azonnal
-    try {
-      localStorage.setItem("lt_groq_keys",  JSON.stringify(toSave));
-      localStorage.setItem("lt_reset_date", this._lastResetDate);
-    } catch (e) {
-      console.warn("[Translator] localStorage mentési hiba:", e);
-    }
+  // 1. LocalStorage — mindig, azonnal
+  try {
+    localStorage.setItem("lt_groq_keys",  JSON.stringify(toSave));
+    localStorage.setItem("lt_reset_date", this._lastResetDate);
+  } catch (e) {
+    console.warn("[Translator] localStorage mentési hiba:", e);
   }
 
-  // Supabase mentés debounce-olva (ne írjon fordításonként)
-  _scheduleSyncToSupabase() {
-    const client = window.supabaseClient;
-    if (!client) return;
-
-    if (this._syncTimer) clearTimeout(this._syncTimer);
-
-    this._syncTimer = setTimeout(async () => {
-      const toSave = this._keys.map((k) => ({
-        key:       k.key,
-        label:     k.label,
-        used:      k.used,
-        lastError: k.lastError,
-      }));
-
-      try {
-        console.log("[Translator] Supabase szinkron indul (RPC)...");
-        const { error } = await client.rpc("save_groq_keys", {
-          admin_token: "LiveCall2026Admin",
-          keys_data:   toSave,
-        });
-
-        if (error) throw error;
-        console.log("[Translator] ✅ Supabase szinkron sikeres (RPC).");
-      } catch (e) {
-        console.warn("[Translator] Supabase szinkron hiba:", e?.message || e);
-      }
-    }, SAVE_DEBOUNCE_MS);
+  // 2. Supabase — azonnal
+  const client = window.supabaseClient;
+  if (!client) return;
+  try {
+    const { error } = await client.rpc("save_groq_keys", {
+      admin_token: "LiveCall2026Admin",
+      keys_data:   toSave,
+    });
+    if (error) throw error;
+    console.log("[Translator] ✅ Supabase mentés sikeres, used:",
+      toSave.filter(k => k.key).map(k => k.used));
+  } catch (e) {
+    console.warn("[Translator] Supabase mentési hiba:", e?.message || e);
   }
+}
 
   // ─── POLLING ─────────────────────────────────────────────────────────────────
 
