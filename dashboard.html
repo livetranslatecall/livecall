@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LiveTranslate - Kapcsolataim</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js">
+    </script>
+    <style>
+        /* ═══════════════════════════════════════════════════════════
+           CSS — UGYANAZ A DESIGN NYELV, MINT A FŐ ALKALMAZÁSBAN
+           ═══════════════════════════════════════════════════════════ */
+        :root {
+            --bg: #0d1420;
+            --panel: #161f30;
+            --panel-2: #1d2942;
+            --line: #293349;
+            --text: #eef2f8;
+            --text-dim: #8b96ab;
+            --teal: #4fd1c5;
+            --amber: #f2a65a;
+            --danger: #e2586b;
+            --green: #48bb78;
+            --purple: #9f7aea;
+            --radius: 18px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Manrope', system-ui, sans-serif;
+            min-height: 100dvh;
+            padding: 20px;
+        }
+
+        h1,
+        h2,
+        h3,
+        .brand {
+            font-family: 'Space Grotesk', system-ui, sans-serif;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        /* ── TOPBAR ── */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 0 24px;
+            border-bottom: 1px solid var(--line);
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .brand {
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .brand span {
+            color: var(--teal);
+        }
+
+        .topbar-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 12px;
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: 'Manrope', sans-serif;
+            cursor: pointer;
+            transition: transform .1s, opacity .15s, box-shadow .2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn:active {
+            transform: scale(.97);
+        }
+        .btn-primary {
+            background: var(--teal);
+            color: #08221f;
+        }
+        .btn-secondary {
+            background: var(--panel-2);
+            color: var(--text);
+            border: 1px solid var(--line);
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 4px 18px rgba(79, 209, 197, .3);
+        }
+
+        /* ── LOGIN CARD ── */
+        .login-card {
+            max-width: 400px;
+            margin: 60px auto;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            padding: 36px 28px;
+        }
+        .login-card .icon {
+            font-size: 48px;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .login-card h2 {
+            text-align: center;
+            font-size: 22px;
+            margin-bottom: 6px;
+        }
+        .login-card .sub {
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .field {
+            margin-bottom: 16px;
+        }
+        .field label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-dim);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            margin-bottom: 6px;
+        }
+        .field input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel-2);
+            color: var(--text);
+            font-size: 15px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color .2s;
+        }
+        .field input:focus {
+            border-color: var(--teal);
+        }
+        .field input.error {
+            border-color: var(--danger);
+        }
+
+        .err-msg {
+            color: var(--danger);
+            font-size: 13px;
+            text-align: center;
+            min-height: 20px;
+            margin-top: 8px;
+        }
+
+        /* ── DASHBOARD CONTENT ── */
+        #dashboardContent {
+            display: none;
+        }
+
+        .section {
+            margin-bottom: 32px;
+        }
+        .section-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--line);
+        }
+        .section-head h2 {
+            font-size: 17px;
+            font-weight: 700;
+        }
+        .section-head .badge {
+            background: var(--panel-2);
+            border: 1px solid var(--line);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 16px 18px;
+        }
+        .stat-card .label {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            margin-bottom: 4px;
+        }
+        .stat-card .value {
+            font-size: 26px;
+            font-weight: 800;
+            font-family: 'Space Grotesk', monospace;
+        }
+        .stat-card .sub {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 3px;
+        }
+        .stat-card.teal {
+            border-color: rgba(79, 209, 197, .3);
+            background: rgba(79, 209, 197, .06);
+        }
+        .stat-card.green {
+            border-color: rgba(72, 187, 120, .3);
+            background: rgba(72, 187, 120, .06);
+        }
+        .stat-card.amber {
+            border-color: rgba(242, 166, 90, .3);
+            background: rgba(242, 166, 90, .06);
+        }
+
+        /* ── HÍVÁS LISTA ── */
+        .call-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 4px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--line) transparent;
+        }
+        .call-list::-webkit-scrollbar {
+            width: 5px;
+        }
+        .call-list::-webkit-scrollbar-thumb {
+            background: var(--line);
+            border-radius: 3px;
+        }
+
+        .call-card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 16px 18px;
+            transition: border-color .2s;
+        }
+        .call-card.active {
+            border-color: var(--green);
+        }
+        .call-card .call-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .call-card .call-header .room {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--teal);
+        }
+        .call-card .call-header .date {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-left: auto;
+        }
+        .call-card .call-header .status-badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 12px;
+        }
+        .call-card .call-header .status-badge.active {
+            background: rgba(72, 187, 120, .15);
+            color: var(--green);
+            border: 1px solid rgba(72, 187, 120, .35);
+        }
+        .call-card .call-header .status-badge.ended {
+            background: var(--panel-2);
+            color: var(--text-dim);
+            border: 1px solid var(--line);
+        }
+
+        .call-card .call-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--text-dim);
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .call-card .call-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .call-card .participants {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+        .call-card .participants .pill {
+            background: var(--panel-2);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 11px;
+        }
+
+        .call-card .actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* ── ÖSSZEFOGLALÓ (SUMMARY) ── */
+        .summary-box {
+            background: var(--panel-2);
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-top: 10px;
+            border-left: 3px solid var(--teal);
+        }
+        .summary-box .summary-text {
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text);
+        }
+        .summary-box .key-points {
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .summary-box .key-points .point {
+            background: rgba(79, 209, 197, .12);
+            border: 1px solid rgba(79, 209, 197, .25);
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 11px;
+            color: var(--teal);
+        }
+
+        /* ── EMLÉKEZTETŐK ── */
+        .reminder-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .reminder-item {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .reminder-item .reminder-text {
+            font-size: 13px;
+            flex: 1;
+        }
+        .reminder-item .reminder-date {
+            font-size: 12px;
+            color: var(--amber);
+            font-weight: 600;
+        }
+        .reminder-item .reminder-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .reminder-item.done {
+            opacity: .5;
+            border-color: var(--green);
+        }
+
+        /* ── LOADING ── */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-dim);
+        }
+        .loading .spinner {
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--line);
+            border-top-color: var(--teal);
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+            margin-bottom: 12px;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-dim);
+        }
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+        .empty-state h3 {
+            font-size: 18px;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        /* ── TOAST ── */
+        #toastContainer {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+            max-width: 90%;
+        }
+        .toast {
+            background: rgba(13, 20, 32, .92);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--teal);
+            border-radius: 12px;
+            padding: 10px 18px;
+            font-size: 13px;
+            color: var(--text);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, .5);
+            animation: toastSlideUp .4s ease;
+            pointer-events: auto;
+            text-align: center;
+        }
+        .toast.error {
+            border-color: var(--danger);
+        }
+        .toast.success {
+            border-color: var(--green);
+        }
+        .toast.warn {
+            border-color: var(--amber);
+        }
+        @keyframes toastSlideUp {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 600px) {
+            .topbar {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .topbar-right {
+                justify-content: center;
+            }
+            .status-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .call-card .call-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .call-card .call-header .date {
+                margin-left: 0;
+            }
+        }
+
+        /* ── VISSZA GOMB ── */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 13px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            transition: background .15s, color .15s;
+        }
+        .back-link:hover {
+            background: var(--panel-2);
+            color: var(--text);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="app">
+
+        <!-- ═══════════════════════════════════════════════════════════
+        LOGIN KÉPERNYŐ
+        ═══════════════════════════════════════════════════════════ -->
+        <div id="loginScreen">
+            <div class="login-card">
+                <div class="icon">🔐</div>
+                <h2>Kapcsolataim</h2>
+                <p class="sub">LiveTranslate Call — Összefoglalók és emlékeztetők</p>
+
+                <div class="field">
+                    <label>👤 A te neved (ahogy a hívásokban megjelent)</label>
+                    <input type="text" id="nameInput" placeholder="pl. Klárika" />
+                </div>
+
+                <button class="btn btn-primary" id="loginBtn" style="width:100%;">
+                    📋 Belépés a kapcsolataimhoz
+                </button>
+
+                <div class="err-msg" id="loginError"></div>
+
+                <div style="margin-top:16px;text-align:center;">
+                    <a href="index.html" class="back-link">← Vissza a hívás képernyőre</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+        DASHBOARD TARTALOM
+        ═══════════════════════════════════════════════════════════ -->
+        <div id="dashboardContent">
+
+            <!-- TOPBAR -->
+            <div class="topbar">
+                <div class="brand">LiveTranslate <span>Kapcsolataim</span></div>
+                <div class="topbar-right">
+                    <span style="font-size:13px;color:var(--text-dim);" id="userNameDisplay"></span>
+                    <button class="btn btn-secondary btn-sm" id="logoutBtn">🚪 Kilépés</button>
+                    <a href="index.html" class="back-link">← Hívás</a>
+                </div>
+            </div>
+
+            <!-- STATISZTIKA KÁRTYÁK -->
+            <div class="status-grid" id="statsGrid">
+                <div class="stat-card teal">
+                    <div class="label">Összes hívás</div>
+                    <div class="value" id="statTotalCalls">0</div>
+                    <div class="sub">amiben részt vettél</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="label">Összefoglalók</div>
+                    <div class="value" id="statSummaries">0</div>
+                    <div class="sub">elérhető összefoglaló</div>
+                </div>
+                <div class="stat-card amber">
+                    <div class="label">Aktív emlékeztetők</div>
+                    <div class="value" id="statReminders">0</div>
+                    <div class="sub">amire figyelned kell</div>
+                </div>
+            </div>
+
+            <!-- HÍVÁSOK LISTÁJA -->
+            <div class="section">
+                <div class="section-head">
+                    <h2>📞 Hívásaid</h2>
+                    <span class="badge" id="callsBadge">0</span>
+                    <button class="btn btn-secondary btn-sm" id="refreshBtn" style="margin-left:auto;">🔄 Frissítés</button>
+                    <button class="btn btn-primary btn-sm" id="generateAllBtn">⚡ Minden összefoglaló generálása</button>
+                </div>
+                <div id="callsContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <div>Hívások betöltése...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EMLÉKEZTETŐK -->
+            <div class="section">
+                <div class="section-head">
+                    <h2>⏰ Emlékeztetők</h2>
+                    <span class="badge" id="remindersBadge">0</span>
+                </div>
+                <div id="remindersContainer">
+                    <div class="empty-state">
+                        <div class="icon">🔔</div>
+                        <h3>Nincs aktív emlékeztető</h3>
+                        <p>Az emlékeztetők automatikusan jönnek létre a hívások összefoglalóiból.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /dashboardContent -->
+
+    </div><!-- /container -->
+
+    <!-- TOASTOK -->
+    <div id="toastContainer"></div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+    JAVASCRIPT — MINDEN LOGIKA ITT VAN
+    ═══════════════════════════════════════════════════════════ -->
+    <script>
+        // ─── KONFIGURÁCIÓ ───────────────────────────────────────────────
+
+        const SUPABASE_URL = "https://yyexlblyepkxyqqbgpvu.supabase.co";
+        const SUPABASE_ANON_KEY =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZXhsYmx5ZXBreHlxcWJncHZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTE5MjAsImV4cCI6MjA5OTEyNzkyMH0.qG1iDFLarL_OCAuJVnpsb6uOUMRNvUyWdpxYw7C5TDs";
+
+        const EDGE_FUNCTION_URL =
+            "https://yyexlblyepkxyqqbgpvu.supabase.co/functions/v1/groq-translate";
+
+        // ─── SUPABASE KLIENS ────────────────────────────────────────────
+
+        let supabase = null;
+
+        function initSupabase() {
+            if (!supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+            return supabase;
+        }
+
+        // ─── TOAST RENDSZER ────────────────────────────────────────────
+
+        function showToast(message, type = 'info', duration = 4000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity .3s';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // ─── DASHBOARD LOGIKA ─────────────────────────────────────────
+
+        let currentUserName = '';
+        let allCalls = [];
+        let allParticipants = [];
+
+        // ─── BELÉPÉS ────────────────────────────────────────────────────
+
+        document.getElementById('loginBtn').onclick = async function() {
+            const name = document.getElementById('nameInput').value.trim();
+            if (!name) {
+                document.getElementById('loginError').textContent = '⚠️ Add meg a neved!';
+                document.getElementById('nameInput').classList.add('error');
+                setTimeout(() => document.getElementById('nameInput').classList.remove('error'), 600);
+                return;
+            }
+
+            document.getElementById('loginError').textContent = '';
+            currentUserName = name;
+            document.getElementById('userNameDisplay').textContent = '👤 ' + name;
+
+            // Betöltjük az adatokat
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboardContent').style.display = 'block';
+
+            await loadData();
+        };
+
+        // Enter billentyű a belépéshez
+        document.getElementById('nameInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') document.getElementById('loginBtn').click();
+        });
+
+        // ─── KILÉPÉS ────────────────────────────────────────────────────
+
+        document.getElementById('logoutBtn').onclick = function() {
+            document.getElementById('dashboardContent').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'block';
+            document.getElementById('nameInput').value = '';
+            currentUserName = '';
+        };
+
+        // ─── ADATOK BETÖLTÉSE ─────────────────────────────────────────
+
+        async function loadData() {
+            const container = document.getElementById('callsContainer');
+            container.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>Adatok betöltése...</div>
+                </div>
+            `;
+
+            try {
+                const sb = initSupabase();
+
+                // 1. Betöltjük az összes hívást
+                const { data: calls, error: callsErr } = await sb
+                    .from('calls')
+                    .select('*')
+                    .order('started_at', { ascending: false });
+
+                if (callsErr) throw callsErr;
+                allCalls = calls || [];
+
+                // 2. Betöltjük az összes résztvevőt
+                const { data: participants, error: partsErr } = await sb
+                    .from('call_participants')
+                    .select('*');
+
+                if (partsErr) throw partsErr;
+                allParticipants = participants || [];
+
+                // 3. Betöltjük az emlékeztetőket
+                await loadReminders();
+
+                // 4. Megjelenítjük
+                renderStats();
+                renderCalls();
+                renderReminders();
+
+            } catch (err) {
+                console.error('[Dashboard] Betöltési hiba:', err);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">❌</div>
+                        <h3>Hiba történt</h3>
+                        <p>${err.message || 'Ismeretlen hiba'}</p>
+                        <button class="btn btn-secondary btn-sm" onclick="loadData()" style="margin-top:12px;">
+                            🔄 Újrapróbálkozás
+                        </button>
+                    </div>
+                `;
+                showToast('❌ Adatok betöltése sikertelen', 'error');
+            }
+        }
+
+        // ─── STATISZTIKA ──────────────────────────────────────────────
+
+        function renderStats() {
+            // Csak azok a hívások, ahol a felhasználó részt vett
+            const myCalls = allCalls.filter(call => {
+                return allParticipants.some(p =>
+                    p.room_id === call.room_id &&
+                    p.name === currentUserName
+                );
+            });
+
+            // Összefoglalóval rendelkező hívások
+            const callsWithSummary = myCalls.filter(c => c.summary);
+
+            // Aktív emlékeztetők
+            const reminders = getReminders();
+            const activeReminders = reminders.filter(r => !r.done);
+
+            document.getElementById('statTotalCalls').textContent = myCalls.length;
+            document.getElementById('statSummaries').textContent = callsWithSummary.length;
+            document.getElementById('statReminders').textContent = activeReminders.length;
+            document.getElementById('callsBadge').textContent = myCalls.length;
+            document.getElementById('remindersBadge').textContent = activeReminders.length;
+        }
+
+        // ─── HÍVÁSOK MEGJELENÍTÉSE ────────────────────────────────────
+
+        function renderCalls() {
+            const container = document.getElementById('callsContainer');
+
+            // Szűrés: csak azok a hívások, ahol a felhasználó részt vett
+            const myCalls = allCalls.filter(call => {
+                return allParticipants.some(p =>
+                    p.room_id === call.room_id &&
+                    p.name === currentUserName
+                );
+            });
+
+            if (myCalls.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <h3>Még nem voltál hívásban</h3>
+                        <p>Vegyél részt egy hívásban, és itt megjelennek az összefoglalók.</p>
+                        <a href="index.html" class="btn btn-primary" style="margin-top:12px;display:inline-block;">
+                            📞 Hívás indítása
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="call-list">';
+
+            myCalls.forEach(call => {
+                const isActive = !call.ended_at;
+                const participants = allParticipants.filter(p => p.room_id === call.room_id);
+                const myPart = participants.find(p => p.name === currentUserName);
+                const myTransCount = myPart?.translation_count || 0;
+
+                const dateStr = call.started_at ?
+                    new Date(call.started_at).toLocaleString('hu-HU', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }) :
+                    'Ismeretlen';
+
+                const duration = call.duration_seconds ?
+                    formatDuration(call.duration_seconds) :
+                    (isActive ? '⏳ Folyamatban' : '–');
+
+                const hasSummary = !!call.summary;
+
+                html += `
+                    <div class="call-card ${isActive ? 'active' : ''}">
+                        <div class="call-header">
+                            <span class="room">🏠 ${call.room_id}</span>
+                            <span class="status-badge ${isActive ? 'active' : 'ended'}">
+                                ${isActive ? '● ÉLŐ' : '✓ Befejezve'}
+                            </span>
+                            <span class="date">${dateStr}</span>
+                        </div>
+
+                        <div class="call-meta">
+                            <span>⏱ ${duration}</span>
+                            <span>👥 ${participants.length} fő</span>
+                            <span>🔄 ${myTransCount} fordítás (tőled)</span>
+                            ${call.mos_avg ? `<span>📶 MOS: ${call.mos_avg.toFixed(2)}</span>` : ''}
+                        </div>
+
+                        <div class="participants">
+                            ${participants.map(p => `
+                                <span class="pill">
+                                    ${p.name === currentUserName ? '⭐ ' : ''}
+                                    ${p.name || 'Ismeretlen'}
+                                    (${(p.lang || '--').toUpperCase()})
+                                    ${p.translation_count ? '🔄' + p.translation_count : ''}
+                                </span>
+                            `).join('')}
+                        </div>
+
+                        ${hasSummary ? `
+                            <div class="summary-box">
+                                <div class="summary-text">${escHtml(call.summary)}</div>
+                                ${call.summary_key_points ? `
+                                    <div class="key-points">
+                                        ${JSON.parse(call.summary_key_points).map(p => `
+                                            <span class="point">✓ ${escHtml(p)}</span>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                                ${call.summary_reminders ? `
+                                    <div style="margin-top:8px;font-size:11px;color:var(--amber);">
+                                        ⏰ Emlékeztetők: ${escHtml(call.summary_reminders)}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        ` : `
+                            <div class="actions">
+                                <button class="btn btn-primary btn-sm" onclick="generateSummary('${call.room_id}')">
+                                    ⚡ Összefoglaló generálása
+                                </button>
+                            </div>
+                        `}
+
+                        ${!hasSummary ? `
+                            <div style="margin-top:6px;font-size:11px;color:var(--text-dim);">
+                                💡 Az összefoglaló a hívás összes feliratából készül.
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // ─── ÖSSZEFOGLALÓ GENERÁLÁSA ──────────────────────────────────
+
+        window.generateSummary = async function(roomId) {
+            showToast('📝 Összefoglaló generálása folyamatban...', 'info', 3000);
+
+            try {
+                const sb = initSupabase();
+
+                // 1. Lekérjük a chat_history-t a szobához
+                const { data: chats, error: chatErr } = await sb
+                    .from('chat_history')
+                    .select('*')
+                    .eq('room_id', roomId)
+                    .order('created_at', { ascending: true });
+
+                if (chatErr) throw chatErr;
+
+                if (!chats || chats.length === 0) {
+                    showToast('⚠️ Ehhez a híváshoz nincsenek feliratok.', 'warn');
+                    return;
+                }
+
+                // 2. Összefűzzük a szövegeket
+                const transcript = chats
+                    .map(c => `[${c.user_name}]: ${c.message}`)
+                    .join('\n');
+
+                if (transcript.length < 10) {
+                    showToast('⚠️ Túl kevés szöveg az összefoglalóhoz.', 'warn');
+                    return;
+                }
+
+                // 3. Lekérjük a Groq kulcsokat
+                const keys = await loadGroqKeys();
+                const activeKey = keys.find(k => k.key && k.used < 1000);
+
+                if (!activeKey) {
+                    showToast('❌ Nincs elérhető Groq API kulcs.', 'error');
+                    return;
+                }
+
+                // 4. Összefoglaló generálása Groq-al
+                const prompt = `
+                    Te egy intelligens asszisztens vagy. Az alábbi szöveg egy videóhívás feliratainak összefoglalása.
+
+                    FELADAT:
+                    1. Írj egy rövid, 5-10 mondatos összefoglalót a beszélgetésről.
+                    2. Emeld ki a fontos pontokat (megállapodások, közös érdeklődési körök, említett események).
+                    3. Ha említettek konkrét dátumokat vagy eseményeket, azokat is emeld ki.
+
+                    VÁLASZ FORMATUM (CSAK JSON):
+                    {
+                        "summary": "az összefoglaló szövege",
+                        "key_points": ["pont1", "pont2", ...],
+                        "reminders": ["emlékeztető szöveg (dátummal ha van)", ...]
+                    }
+
+                    FELIRATOK:
+                    ${transcript}
+                `;
+
+                const response = await fetch(EDGE_FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-groq-key': activeKey.key,
+                    },
+                    body: JSON.stringify({
+                        text: prompt,
+                        src: 'en',
+                        tgt: 'en'
+                    }),
+                    signal: AbortSignal.timeout(30000),
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.json();
+                let result;
+
+                try {
+                    result = JSON.parse(data.translated);
+                } catch (e) {
+                    // Ha nem JSON, próbáljuk kinyerni a szöveget
+                    const raw = data.translated;
+                    const summaryMatch = raw.match(/summary["']?\s*:\s*["']([^"']+)["']/);
+                    const summary = summaryMatch ? summaryMatch[1] : raw.slice(0, 500);
+
+                    result = {
+                        summary: summary,
+                        key_points: [],
+                        reminders: [],
+                    };
+                }
+
+                // 5. Mentés Supabase-be
+                const { error: updateErr } = await sb
+                    .from('calls')
+                    .update({
+                        summary: result.summary || 'Összefoglaló nem elérhető.',
+                        summary_key_points: JSON.stringify(result.key_points || []),
+                        summary_reminders: (result.reminders || []).join('; '),
+                        summary_generated_at: new Date().toISOString(),
+                    })
+                    .eq('room_id', roomId);
+
+                if (updateErr) throw updateErr;
+
+                // 6. Emlékeztetők mentése
+                if (result.reminders && result.reminders.length > 0) {
+                    for (const reminderText of result.reminders) {
+                        // Próbálunk dátumot kinyerni
+                        const dateMatch = reminderText.match(/(\d{4}-\d{2}-\d{2}|\d{4}\.\d{2}\.\d{2}|\d{2}\.\d{2}\.\d{4})/);
+                        let reminderDate = null;
+                        if (dateMatch) {
+                            try {
+                                reminderDate = new Date(dateMatch[1]);
+                                if (isNaN(reminderDate)) reminderDate = null;
+                            } catch (_) {}
+                        }
+
+                        await sb
+                            .from('reminders')
+                            .upsert({
+                                room_id: roomId,
+                                user_name: currentUserName,
+                                text: reminderText,
+                                reminder_date: reminderDate ? reminderDate.toISOString() : null,
+                                done: false,
+                                created_at: new Date().toISOString(),
+                            }, {
+                                onConflict: 'room_id,user_name,text',
+                                ignoreDuplicates: true,
+                            });
+                    }
+                }
+
+                showToast('✅ Összefoglaló elkészült!', 'success', 3000);
+                await loadData();
+
+            } catch (err) {
+                console.error('[Dashboard] Összefoglaló hiba:', err);
+                showToast('❌ Hiba az összefoglaló generálása közben: ' + (err.message || 'Ismeretlen hiba'), 'error');
+            }
+        };
+
+        // ─── EMLÉKEZTETŐK ──────────────────────────────────────────────
+
+        let reminders = [];
+
+        async function loadReminders() {
+            try {
+                const sb = initSupabase();
+                const { data, error } = await sb
+                    .from('reminders')
+                    .select('*')
+                    .eq('user_name', currentUserName)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                reminders = data || [];
+            } catch (err) {
+                console.warn('[Dashboard] Emlékeztetők betöltési hiba:', err);
+                reminders = [];
+            }
+        }
+
+        function getReminders() {
+            return reminders;
+        }
+
+        function renderReminders() {
+            const container = document.getElementById('remindersContainer');
+            const active = reminders.filter(r => !r.done);
+            const done = reminders.filter(r => r.done);
+
+            if (active.length === 0 && done.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">🔔</div>
+                        <h3>Nincs emlékeztető</h3>
+                        <p>Generálj összefoglalót egy hívásból, és itt megjelennek az emlékeztetők.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="reminder-list">';
+
+            // Aktív emlékeztetők
+            active.forEach(r => {
+                const dateStr = r.reminder_date ?
+                    new Date(r.reminder_date).toLocaleDateString('hu-HU') :
+                    'Nincs dátum';
+                html += `
+                    <div class="reminder-item">
+                        <span class="reminder-text">${escHtml(r.text)}</span>
+                        <span class="reminder-date">📅 ${dateStr}</span>
+                        <div class="reminder-actions">
+                            <button class="btn btn-primary btn-sm" onclick="markReminderDone('${r.id}')">
+                                ✅ Kész
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteReminder('${r.id}')">
+                                🗑
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Kész emlékeztetők (összecsukva)
+            if (done.length > 0) {
+                html += `
+                    <div style="margin-top:12px;padding:8px 12px;background:var(--panel-2);border-radius:8px;">
+                        <details>
+                            <summary style="cursor:pointer;font-size:12px;color:var(--text-dim);">
+                                ✅ Kész emlékeztetők (${done.length})
+                            </summary>
+                            <div style="margin-top:8px;">
+                `;
+                done.forEach(r => {
+                    html += `
+                        <div class="reminder-item done" style="margin-bottom:6px;">
+                            <span class="reminder-text">${escHtml(r.text)}</span>
+                            <span class="reminder-date" style="color:var(--green);">✅ Kész</span>
+                            <button class="btn btn-danger btn-sm" onclick="deleteReminder('${r.id}')">🗑</button>
+                        </div>
+                    `;
+                });
+                html += `
+                            </div>
+                        </details>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // ─── EMLÉKEZTETŐ MŰVELETEK ────────────────────────────────────
+
+        window.markReminderDone = async function(id) {
+            try {
+                const sb = initSupabase();
+                const { error } = await sb
+                    .from('reminders')
+                    .update({ done: true })
+                    .eq('id', id);
+
+                if (error) throw error;
+                showToast('✅ Emlékeztető kész!', 'success', 2000);
+                await loadReminders();
+                renderReminders();
+                renderStats();
+            } catch (err) {
+                showToast('❌ Hiba: ' + err.message, 'error');
+            }
+        };
+
+        window.deleteReminder = async function(id) {
+            if (!confirm('Biztosan törlöd ezt az emlékeztetőt?')) return;
+            try {
+                const sb = initSupabase();
+                const { error } = await sb
+                    .from('reminders')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+                showToast('🗑️ Emlékeztető törölve.', 'info', 2000);
+                await loadReminders();
+                renderReminders();
+                renderStats();
+            } catch (err) {
+                showToast('❌ Hiba: ' + err.message, 'error');
+            }
+        };
+
+        // ─── GROQ KULCSOK BETÖLTÉSE ──────────────────────────────────
+
+        async function loadGroqKeys() {
+            try {
+                const sb = initSupabase();
+                const { data, error } = await sb
+                    .rpc('get_groq_keys', { admin_token: 'LiveCall2026Admin' });
+
+                if (error) throw error;
+
+                if (data?.keys && Array.isArray(data.keys)) {
+                    return data.keys.map((k, i) => ({
+                        key: k.key || '',
+                        label: k.label || `Kulcs #${i + 1}`,
+                        used: Number(k.used) || 0,
+                        limit: 1000,
+                        exhausted: (Number(k.used) || 0) >= 1000,
+                        lastError: k.lastError || null,
+                    }));
+                }
+
+                return [];
+            } catch (err) {
+                console.warn('[Dashboard] Kulcs betöltési hiba:', err);
+                return [];
+            }
+        }
+
+        // ─── SEGÉDFÜGGVÉNYEK ──────────────────────────────────────────
+
+        function formatDuration(seconds) {
+            if (!seconds) return '–';
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            if (m === 0) return `${s}mp`;
+            return `${m}p ${s}mp`;
+        }
+
+        function escHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        // ─── FRISSÍTÉS GOMB ───────────────────────────────────────────
+
+        document.getElementById('refreshBtn').onclick = loadData;
+
+        // ─── MINDEN ÖSSZEFOGLALÓ GENERÁLÁSA ──────────────────────────
+
+        document.getElementById('generateAllBtn').onclick = async function() {
+            const myCalls = allCalls.filter(call => {
+                return allParticipants.some(p =>
+                    p.room_id === call.room_id &&
+                    p.name === currentUserName
+                );
+            });
+
+            const withoutSummary = myCalls.filter(c => !c.summary);
+
+            if (withoutSummary.length === 0) {
+                showToast('✅ Minden hívásnak van már összefoglalója!', 'success', 2000);
+                return;
+            }
+
+            if (!confirm(`Generáljam az összefoglalókat ${withoutSummary.length} híváshoz? Ez eltarthat egy ideig.`)) {
+                return;
+            }
+
+            showToast(`📝 ${withoutSummary.length} összefoglaló generálása...`, 'info', 5000);
+
+            for (const call of withoutSummary) {
+                await window.generateSummary(call.room_id);
+                // Kis szünet, hogy ne terheljük túl a Groq-ot
+                await new Promise(r => setTimeout(r, 1000));
+            }
+
+            showToast('✅ Minden összefoglaló elkészült!', 'success', 3000);
+            await loadData();
+        };
+
+        // ─── AUTOMATIKUS BELÉPÉS (HA VAN MENTETT NÉV) ────────────────
+
+        // A név mentése localStorage-ba
+        document.getElementById('loginBtn').addEventListener('click', function() {
+            const name = document.getElementById('nameInput').value.trim();
+            if (name) {
+                localStorage.setItem('dashboard_user_name', name);
+            }
+        });
+
+        // Betöltéskor ellenőrizzük a mentett nevet
+        window.addEventListener('DOMContentLoaded', function() {
+            const savedName = localStorage.getItem('dashboard_user_name');
+            if (savedName) {
+                document.getElementById('nameInput').value = savedName;
+                // Automatikus belépés
+                setTimeout(() => document.getElementById('loginBtn').click(), 300);
+            }
+        });
+
+        console.log('📋 LiveTranslate Dashboard betöltve.');
+        console.log('🔧 Használat: add meg a neved, és lásd a hívásaid összefoglalóit.');
+    </script>
+
+</body>
+</html>
