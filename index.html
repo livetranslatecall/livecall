@@ -12,9 +12,14 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-
-  <!-- LiveKit Client -->
 <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+<script>
+  window.LIVECALL_CONFIG = {
+    livekitUrl:      "wss://videolive-d0o40xt9.livekit.cloud",
+    supabaseUrl:     "https://yyexlblyepkxyqqbgpvu.supabase.co",
+    supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZXhsYmx5ZXBreHlxcWJncHZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTE5MjAsImV4cCI6MjA5OTEyNzkyMH0.qG1iDFLarL_OCAuJVnpsb6uOUMRNvUyWdpxYw7C5TDs",
+  };
+</script>
 <script src="livecall-sdk.js"></script>
 <style>
 :root{
@@ -953,12 +958,12 @@ select{
 /* =========================================================================
    KONFIGURÁCIÓ
    ========================================================================= */
-const SUPABASE_URL      = "https://yyexlblyepkxyqqbgpvu.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZXhsYmx5ZXBreHlxcWJncHZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTE5MjAsImV4cCI6MjA5OTEyNzkyMH0.qG1iDFLarL_OCAuJVnpsb6uOUMRNvUyWdpxYw7C5TDs";
-  // ─── LIVEKIT KONFIGURÁCIÓ ───
-const LIVEKIT_URL = "wss://videolive-d0o40xt9.livekit.cloud";
-
-const LIVEKIT_API_KEY = ""; // Nem kell a kliensnek — a token Edge Function-ben generálódik
+const _CFG = window.LIVECALL_CONFIG || {};
+const SUPABASE_URL      = _CFG.supabaseUrl     || "https://yyexlblyepkxyqqbgpvu.supabase.co";
+const SUPABASE_ANON_KEY = _CFG.supabaseAnonKey || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZXhsYmx5ZXBreHlxcWJncHZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTE5MjAsImV4cCI6MjA5OTEyNzkyMH0.qG1iDFLarL_OCAuJVnpsb6uOUMRNvUyWdpxYw7C5TDs";
+// ─── LIVEKIT KONFIGURÁCIÓ ───
+const LIVEKIT_URL       = _CFG.livekitUrl      || "wss://videolive-d0o40xt9.livekit.cloud";
+const LIVEKIT_API_KEY   = ""; // Nem kell a kliensnek — a token Edge Function-ben generálódik
 // LIVEKIT_API_SECRET szándékosan nincs itt — csak az Edge Function ismeri
 const ICE_SERVERS = [
   {urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"},
@@ -1690,6 +1695,8 @@ const histList=el("historyList");
 const pipBtn=el("pipBtn");
 const statsBtn=el("statsBtn"),statsOverlay=el("statsOverlay");
 const netDot=el("netDot"),netLabel=el("netLabel"),recPill=el("recPill");
+const netPill=el("netPill");
+
 const emojiOverlay=el("emojiOverlay");
 const hangupModal=el("hangupModal"),modalCancelBtn=el("modalCancelBtn"),modalConfirmBtn=el("modalConfirmBtn");
 const splitView=el("splitView");
@@ -1800,11 +1807,11 @@ function nowTime(){
 }
 
 
-const LIVEKIT_TOKEN_URL = 
-  "https://yyexlblyepkxyqqbgpvu.supabase.co/functions/v1/livekit-token";
+
 
 async function generateLiveKitToken(roomName, participantName) {
-  const res = await fetch(LIVEKIT_TOKEN_URL, {
+  const base = (window.LIVECALL_CONFIG && window.LIVECALL_CONFIG.supabaseUrl) || "https://yyexlblyepkxyqqbgpvu.supabase.co";
+  const res = await fetch(`${base}/functions/v1/livekit-token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -1820,7 +1827,6 @@ async function generateLiveKitToken(roomName, participantName) {
   const { token } = await res.json();
   return token;
 }
-
 
 // ─── LIVEKIT KAPCSOLAT ───
 let livekitRoom = null;
@@ -4585,6 +4591,7 @@ function showWidgetBox() {
     }
   }
 }
+
 
 function copyEmbedCode() {
   const input = document.getElementById('embedCodeInput');
