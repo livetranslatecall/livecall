@@ -1775,6 +1775,8 @@ const translator = new TranslatorEngine({
   getCurrentLang: ()=> myLang,
 });
 
+window.translator = translator;
+
 async function translateText(text, src, tgt){
   const result = await translator.translate(text, src, tgt);
   // Fordítás számláló növelése
