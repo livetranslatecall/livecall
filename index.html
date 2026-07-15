@@ -134,7 +134,28 @@ h1,h2,.brand,.big-code{font-family:'Space Grotesk',system-ui,sans-serif;}
              radial-gradient(circle at 85% 90%,rgba(242,166,90,.12),transparent 45%),var(--bg);
   overflow-y:auto;
 }
-.card{width:100%;max-width:440px;background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:28px 24px;}
+.card{
+  width:100%;
+  max-width:440px;
+  max-height:90dvh;
+  overflow-y:auto;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:24px;
+  padding:28px 24px;
+  scrollbar-width:thin;
+}
+.card::-webkit-scrollbar{
+  width:4px;
+}
+.card::-webkit-scrollbar-thumb{
+  background:var(--line);
+  border-radius:3px;
+}
+.card::-webkit-scrollbar-track{
+  background:transparent;
+}
+
 .card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
 .brand{font-size:22px;font-weight:700;letter-spacing:.2px;margin:0;}
 .brand span{color:var(--teal);}
