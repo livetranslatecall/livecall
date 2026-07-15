@@ -4265,7 +4265,8 @@ createRoomBtn.onclick = async()=>{
   enterBtn.disabled = false;
   
   setupStatus.textContent = "🔗 " + t("shareLinkMsg");
-setupStatus.dataset.statusType = "shareLink";   // ← EZT ADD HOZZÁ
+setupStatus.dataset.statusType = "shareLink";
+setTimeout(showWidgetBox, 600);  
 };
 
 // ── BELÉPÉS GOMB ──
