@@ -1,7 +1,7 @@
 {
-  "name": "Élő Fordító Hívás",
-  "short_name": "FordítóHívás",
-  "description": "Élő videóhívás azonnali felirat-fordítással magyar, angol és orosz nyelv között",
+  "name": "LiveTranslate Call",
+  "short_name": "LiveTranslate",
+  "description": "Live video call with real-time subtitle translation across 13 languages",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0d1420",
