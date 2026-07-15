@@ -6,6 +6,14 @@
 // 1. LIVEKIT SZOBAKEZELÉS + AUTOMATIKUS ÚJRACSATLAKOZÁS
 // ═══════════════════════════════════════════════════════════════
 
+
+window.LIVECALL_CONFIG = window.LIVECALL_CONFIG || {
+  livekitUrl:     "wss://videolive-d0o40xt9.livekit.cloud",
+  supabaseUrl:    "https://yyexlblyepkxyqqbgpvu.supabase.co",
+  supabaseAnonKey: "",
+};
+
+
 class RoomManager {
   constructor(supabaseClient, onRemoteStream, onParticipantUpdate) {
     this._sb               = supabaseClient;
@@ -59,9 +67,9 @@ async _doConnect() {
       this._bindEvents();
 
       await this._room.connect(
-        "wss://videolive-d0o40xt9.livekit.cloud",
-        this._token
-      );
+  (window.LIVECALL_CONFIG && window.LIVECALL_CONFIG.livekitUrl) || "wss://videolive-d0o40xt9.livekit.cloud",
+  this._token
+);
 
       this._connected         = true;
       this._reconnectAttempts = 0;
@@ -86,7 +94,7 @@ async _doConnect() {
     }
   }
 
-  
+
 _bindEvents() {
     const r = this._room;
 
@@ -744,45 +752,41 @@ class ApiClient {
   }
 
   async generateToken(roomId, userName) {
-    try {
-      const res = await fetch(
-        "https://yyexlblyepkxyqqbgpvu.supabase.co/functions/v1/livekit-token",
-        {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ roomId, userName }),
-        }
-      );
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      const { token } = await res.json();
-      return { token, roomId, userName };
-    } catch (e) {
-      console.error("[ApiClient] Token hiba:", e.message);
-      throw e;
-    }
+  const base = (window.LIVECALL_CONFIG && window.LIVECALL_CONFIG.supabaseUrl) || "https://yyexlblyepkxyqqbgpvu.supabase.co";
+  try {
+    const res = await fetch(`${base}/functions/v1/livekit-token`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ roomId, userName }),
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const { token } = await res.json();
+    return { token, roomId, userName };
+  } catch (e) {
+    console.error("[ApiClient] Token hiba:", e.message);
+    throw e;
   }
+}
 
   async translate(text, src, tgt, groqKey) {
-    try {
-      const res = await fetch(
-        "https://yyexlblyepkxyqqbgpvu.supabase.co/functions/v1/groq-translate",
-        {
-          method:  "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-groq-key":   groqKey || "",
-          },
-          body:   JSON.stringify({ text, src, tgt }),
-          signal: AbortSignal.timeout(12000),
-        }
-      );
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return await res.json();
-    } catch (e) {
-      console.error("[ApiClient] Fordítás hiba:", e.message);
-      throw e;
-    }
+  const base = (window.LIVECALL_CONFIG && window.LIVECALL_CONFIG.supabaseUrl) || "https://yyexlblyepkxyqqbgpvu.supabase.co";
+  try {
+    const res = await fetch(`${base}/functions/v1/groq-translate`, {
+      method:  "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-groq-key":   groqKey || "",
+      },
+      body:   JSON.stringify({ text, src, tgt }),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return await res.json();
+  } catch (e) {
+    console.error("[ApiClient] Fordítás hiba:", e.message);
+    throw e;
   }
+}
 
   async listRooms(limit = 20) {
     if (!this._sb) return [];
