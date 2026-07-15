@@ -4,9 +4,32 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>LiveTranslate Call</title>
+<meta name="description" content="LiveTranslate Call – valós idejű videóhívás és automatikus fordítás 13 nyelven. Privát, GDPR-kompatibilis, E2EE titkosítással.">
+<meta property="og:title" content="LiveTranslate Call">
+<meta property="og:description" content="Valós idejű videóhívás és fordítás 13 nyelven.">
+<meta property="og:image" content="https://livetranslatecall.github.io/livecall/icon-512.png">
+<meta property="og:url" content="https://livetranslatecall.github.io/livecall/">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d1420">
+
+<!-- Nyelvi változatok a Google számára -->
+<link rel="alternate" hreflang="hu" href="https://livetranslatecall.github.io/livecall/?lang=hu" />
+<link rel="alternate" hreflang="en" href="https://livetranslatecall.github.io/livecall/?lang=en" />
+<link rel="alternate" hreflang="de" href="https://livetranslatecall.github.io/livecall/?lang=de" />
+<link rel="alternate" hreflang="fr" href="https://livetranslatecall.github.io/livecall/?lang=fr" />
+<link rel="alternate" hreflang="es" href="https://livetranslatecall.github.io/livecall/?lang=es" />
+<link rel="alternate" hreflang="it" href="https://livetranslatecall.github.io/livecall/?lang=it" />
+<link rel="alternate" hreflang="pt" href="https://livetranslatecall.github.io/livecall/?lang=pt" />
+<link rel="alternate" hreflang="pl" href="https://livetranslatecall.github.io/livecall/?lang=pl" />
+<link rel="alternate" hreflang="ro" href="https://livetranslatecall.github.io/livecall/?lang=ro" />
+<link rel="alternate" hreflang="uk" href="https://livetranslatecall.github.io/livecall/?lang=uk" />
+<link rel="alternate" hreflang="zh" href="https://livetranslatecall.github.io/livecall/?lang=zh" />
+<link rel="alternate" hreflang="ar" href="https://livetranslatecall.github.io/livecall/?lang=ar" />
+<link rel="alternate" hreflang="x-default" href="https://livetranslatecall.github.io/livecall/" />
+
 <link rel="apple-touch-icon" href="icon-192.png">
+
 <link rel="icon" href="favicon.ico" type="image/x-icon"> 
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,6 +45,75 @@
   };
 </script>
 <script src="livecall-sdk.js"></script>
+
+<!-- 🔥 IDE: Nyelvi meta tagek frissítése -->
+<script>
+  // Oldal betöltésekor ellenőrizzük a ?lang= paramétert
+  (function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const lang = urlParams.get('lang') || 'hu';
+    
+    // Nyelvi szövegek
+    const texts = {
+      hu: {
+        title: 'LiveTranslate Call',
+        description: 'LiveTranslate Call – valós idejű videóhívás és automatikus fordítás 13 nyelven. Privát, GDPR-kompatibilis, E2EE titkosítással.'
+      },
+      en: {
+        title: 'LiveTranslate Call',
+        description: 'LiveTranslate Call – real-time video call with automatic translation in 13 languages. Private, GDPR-compliant, E2EE encrypted.'
+      },
+      de: {
+        title: 'LiveTranslate Call – Videoanruf mit Übersetzung',
+        description: 'LiveTranslate Call – Videoanruf mit Echtzeit-Übersetzung in 13 Sprachen. Privat, GDPR-konform, E2EE-verschlüsselt.'
+      },
+      fr: {
+        title: 'LiveTranslate Call – Appel vidéo avec traduction',
+        description: 'LiveTranslate Call – Appel vidéo avec traduction en temps réel dans 13 langues. Privé, conforme au RGPD, chiffré E2EE.'
+      },
+      es: {
+        title: 'LiveTranslate Call – Videollamada con traducción',
+        description: 'LiveTranslate Call – Videollamada con traducción en tiempo real en 13 idiomas. Privado, compatible con GDPR, cifrado E2EE.'
+      },
+      it: {
+        title: 'LiveTranslate Call – Videochiamata con traduzione',
+        description: 'LiveTranslate Call – Videochiamata con traduzione in tempo reale in 13 lingue. Privato, conforme al GDPR, crittografato E2EE.'
+      },
+      pt: {
+        title: 'LiveTranslate Call – Videochamada com tradução',
+        description: 'LiveTranslate Call – Videochamada com tradução em tempo real em 13 idiomas. Privado, compatível com GDPR, criptografado E2EE.'
+      },
+      pl: {
+        title: 'LiveTranslate Call – Połączenie wideo z tłumaczeniem',
+        description: 'LiveTranslate Call – Połączenie wideo z tłumaczeniem na żywo w 13 językach. Prywatne, zgodne z RODO, szyfrowane E2EE.'
+      },
+      ro: {
+        title: 'LiveTranslate Call – Apel video cu traducere',
+        description: 'LiveTranslate Call – Apel video cu traducere în timp real în 13 limbi. Privat, conform GDPR, criptat E2EE.'
+      },
+      uk: {
+        title: 'LiveTranslate Call – Відеодзвінок з перекладом',
+        description: 'LiveTranslate Call – Відеодзвінок з живим перекладом 13 мовами. Приватний, відповідає GDPR, шифрування E2EE.'
+      },
+      zh: {
+        title: 'LiveTranslate Call – 视频通话与翻译',
+        description: 'LiveTranslate Call – 实时视频通话和13种语言的自动翻译。私密，符合GDPR，E2EE加密。'
+      },
+      ar: {
+        title: 'LiveTranslate Call – مكالمة فيديو مع ترجمة',
+        description: 'LiveTranslate Call – مكالمة فيديو مع ترجمة فورية بـ 13 لغة. خاص، متوافق مع GDPR، مشفر E2EE.'
+      }
+    };
+    
+    const selected = texts[lang] || texts.hu;
+    document.title = selected.title;
+    document.querySelector('meta[name="description"]').content = selected.description;
+    document.querySelector('meta[property="og:description"]').content = selected.description;
+    document.querySelector('meta[property="og:title"]').content = selected.title;
+  })();
+</script>
+
+
 <style>
 :root{
   --bg:#0d1420;--panel:#161f30;--panel-2:#1d2942;--line:#293349;
