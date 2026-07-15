@@ -9,7 +9,6 @@ const EDGE_FUNCTION_URL =
 
 const DAILY_LIMIT_PER_KEY = 1000;
 const POLL_INTERVAL_MS    = 30_000;
-const SAVE_DEBOUNCE_MS    = 3_000;
 const MAX_CACHE_SIZE      = 500;
 
 const FALLBACK_MESSAGES = {
@@ -48,13 +47,11 @@ const GROQ_RESTORED_MESSAGES = {
 
 export class TranslatorEngine {
   constructor({ onStatusChange, onKeyUpdate, getCurrentLang }) {
-    /** @type {Array<{key:string,label:string,used:number,limit:number,exhausted:boolean,lastError:string|null}>} */
     this._keys             = [];
     this._currentKeyIndex  = 0;
     this._groqAvailable    = false;
     this._usingFallback    = false;
     this._pollTimer        = null;
-    this._syncTimer        = null;
     this._cache            = new Map();
     this._lastResetDate    = this._todayStr();
     this._onStatusChange   = onStatusChange || (() => {});
@@ -68,11 +65,10 @@ export class TranslatorEngine {
 
   // ─── PUBLIKUS API ────────────────────────────────────────────────────────────
 
-async translate(text, src, tgt) {
+  async translate(text, src, tgt) {
     if (!text || !text.trim()) return text;
     if (src === tgt) return text;
 
-    // Várunk az inicializálásra (max 5 mp)
     if (!this._initialized) {
       await this._waitForInit(5000);
     }
@@ -86,7 +82,6 @@ async translate(text, src, tgt) {
 
     this._maybeResetDaily();
 
-    // Groq próba
     const activeKeys = this._keys.filter(k => k.key && !k.exhausted);
     if (activeKeys.length > 0) {
       const result = await this._tryGroq(text, src, tgt);
@@ -102,7 +97,6 @@ async translate(text, src, tgt) {
       }
     }
 
-    // MyMemory fallback
     if (!this._usingFallback) {
       this._usingFallback = true;
       this._groqAvailable = false;
@@ -114,7 +108,6 @@ async translate(text, src, tgt) {
     this._setCache(cacheKey, fallback);
     return fallback;
   }
-
 
   async pingGroq() {
     const activeKey = this._getActiveKey();
@@ -212,7 +205,6 @@ async translate(text, src, tgt) {
 
   destroy() {
     if (this._pollTimer) clearInterval(this._pollTimer);
-    if (this._syncTimer) clearTimeout(this._syncTimer);
     console.log("[Translator] Motor leállítva.");
   }
 
@@ -362,45 +354,42 @@ async translate(text, src, tgt) {
   async _loadKeys() {
     const client = window.supabaseClient;
 
-    // 1. Supabase próba
     if (client) {
-  try {
-    console.log("[Translator] Kulcsok betöltése Supabase-ből...");
-    const { data, error } = await client
-      .rpc("get_groq_keys", { admin_token: "LiveCall2026Admin" });
+      try {
+        console.log("[Translator] Kulcsok betöltése Supabase-ből...");
+        const { data, error } = await client
+          .rpc("get_groq_keys", { admin_token: "LiveCall2026Admin" });
 
-    if (error) throw error;
+        if (error) throw error;
 
-    if (data?.keys && Array.isArray(data.keys) && data.keys.length > 0) {
-      const today = this._todayStr();
-      if (data.reset_date !== today) {
-        console.log("[Translator] Supabase reset_date régi, napi reset szükséges...");
-        data.keys.forEach(k => { k.used = 0; k.lastError = null; });
-        this._lastResetDate = today;
-        // reset_date frissítése RPC-n keresztül
-        await client.rpc("save_groq_keys", {
-          admin_token: "LiveCall2026Admin",
-          keys_data: data.keys,
-        });
+        if (data?.keys && Array.isArray(data.keys) && data.keys.length > 0) {
+          const today = this._todayStr();
+          if (data.reset_date !== today) {
+            console.log("[Translator] Supabase reset_date régi, napi reset szükséges...");
+            data.keys.forEach(k => { k.used = 0; k.lastError = null; });
+            this._lastResetDate = today;
+            await client.rpc("save_groq_keys", {
+              admin_token: "LiveCall2026Admin",
+              keys_data: data.keys,
+            });
+          }
+          console.log("[Translator] ✅ Supabase betöltés sikeres:", data.keys.filter(k => k.key).length, "kulcs.");
+          return data.keys.map((item, i) => ({
+            key:       item.key       || "",
+            label:     item.label     || `Kulcs #${i + 1}`,
+            used:      Number(item.used) || 0,
+            limit:     DAILY_LIMIT_PER_KEY,
+            exhausted: (Number(item.used) || 0) >= DAILY_LIMIT_PER_KEY,
+            lastError: item.lastError || null,
+          }));
+        }
+
+        console.log("[Translator] Supabase üres, localStorage próba...");
+      } catch (e) {
+        console.warn("[Translator] Supabase betöltés hiba:", e?.message || e);
       }
-      console.log("[Translator] ✅ Supabase betöltés sikeres:", data.keys.filter(k => k.key).length, "kulcs.");
-      return data.keys.map((item, i) => ({
-        key:       item.key       || "",
-        label:     item.label     || `Kulcs #${i + 1}`,
-        used:      Number(item.used) || 0,
-        limit:     DAILY_LIMIT_PER_KEY,
-        exhausted: (Number(item.used) || 0) >= DAILY_LIMIT_PER_KEY,
-        lastError: item.lastError || null,
-      }));
     }
 
-    console.log("[Translator] Supabase üres, localStorage próba...");
-  } catch (e) {
-    console.warn("[Translator] Supabase betöltés hiba:", e?.message || e);
-  }
-}
-
-    // 2. localStorage fallback
     try {
       const raw = localStorage.getItem("lt_groq_keys");
       if (!raw) {
@@ -427,36 +416,39 @@ async translate(text, src, tgt) {
   // ─── MENTÉS ──────────────────────────────────────────────────────────────────
 
   async _saveKeys() {
-  const toSave = this._keys.map((k) => ({
-    key:       k.key,
-    label:     k.label,
-    used:      k.used,
-    lastError: k.lastError,
-  }));
+    const toSave = this._keys.map((k) => ({
+      key:       k.key,
+      label:     k.label,
+      used:      k.used,
+      lastError: k.lastError,
+    }));
 
-  // 1. LocalStorage — mindig, azonnal
-  try {
-    localStorage.setItem("lt_groq_keys",  JSON.stringify(toSave));
-    localStorage.setItem("lt_reset_date", this._lastResetDate);
-  } catch (e) {
-    console.warn("[Translator] localStorage mentési hiba:", e);
-  }
+    // 1. LocalStorage — mindig, azonnal
+    try {
+      localStorage.setItem("lt_groq_keys",  JSON.stringify(toSave));
+      localStorage.setItem("lt_reset_date", this._lastResetDate);
+    } catch (e) {
+      console.warn("[Translator] localStorage mentési hiba:", e);
+    }
 
-  // 2. Supabase — azonnal
-  const client = window.supabaseClient;
-  if (!client) return;
-  try {
-    const { error } = await client.rpc("save_groq_keys", {
-      admin_token: "LiveCall2026Admin",
-      keys_data:   toSave,
-    });
-    if (error) throw error;
-    console.log("[Translator] ✅ Supabase mentés sikeres, used:",
-      toSave.filter(k => k.key).map(k => k.used));
-  } catch (e) {
-    console.warn("[Translator] Supabase mentési hiba:", e?.message || e);
+    // 2. Supabase — csak ha inicializálva és van kulcs
+    if (!this._initialized) return;
+    if (toSave.filter(k => k.key).length === 0) return;
+
+    const client = window.supabaseClient;
+    if (!client) return;
+    try {
+      const { error } = await client.rpc("save_groq_keys", {
+        admin_token: "LiveCall2026Admin",
+        keys_data:   toSave,
+      });
+      if (error) throw error;
+      console.log("[Translator] ✅ Supabase mentés sikeres, used:",
+        toSave.filter(k => k.key).map(k => k.used));
+    } catch (e) {
+      console.warn("[Translator] Supabase mentési hiba:", e?.message || e);
+    }
   }
-}
 
   // ─── POLLING ─────────────────────────────────────────────────────────────────
 
@@ -484,8 +476,8 @@ async translate(text, src, tgt) {
   _notifyStatus(type) {
     const lang = this._getCurrentLang();
     const msg  = type === "fallback"
-      ? (FALLBACK_MESSAGES[lang]        || FALLBACK_MESSAGES.hu)
-      : (GROQ_RESTORED_MESSAGES[lang]   || GROQ_RESTORED_MESSAGES.hu);
+      ? (FALLBACK_MESSAGES[lang]      || FALLBACK_MESSAGES.hu)
+      : (GROQ_RESTORED_MESSAGES[lang] || GROQ_RESTORED_MESSAGES.hu);
     this._onStatusChange({ type, message: msg });
   }
 
@@ -503,75 +495,68 @@ async translate(text, src, tgt) {
         k.lastError = null;
       });
       this._currentKeyIndex = 0;
-      this._saveKeys();
-      this._syncResetDateToSupabase(today);
+      if (this._initialized && this._keys.filter(k => k.key).length > 0) {
+        this._saveKeys();
+      }
       this._onKeyUpdate(this._keys);
       console.log("[Translator] ✅ Napi limitek visszaállítva:", today);
     }
   }
 
   async _syncResetDateToSupabase(date) {
-  const client = window.supabaseClient;
-  if (!client) return;
-  try {
-    const { error } = await client.rpc("save_groq_keys", {
-      admin_token: "LiveCall2026Admin",
-      keys_data: this._keys.map(k => ({
-        key: k.key, label: k.label, used: k.used, lastError: k.lastError,
-      })),
-    });
-    if (error) throw error;
-    console.log("[Translator] ✅ reset_date szinkronizálva:", date);
-  } catch (e) {
-    console.warn("[Translator] reset_date sync hiba:", e?.message || e);
+    const client = window.supabaseClient;
+    if (!client) return;
+    try {
+      const { error } = await client.rpc("save_groq_keys", {
+        admin_token: "LiveCall2026Admin",
+        keys_data: this._keys.map(k => ({
+          key: k.key, label: k.label, used: k.used, lastError: k.lastError,
+        })),
+      });
+      if (error) throw error;
+      console.log("[Translator] ✅ reset_date szinkronizálva:", date);
+    } catch (e) {
+      console.warn("[Translator] reset_date sync hiba:", e?.message || e);
+    }
   }
-}
 
   _setCache(key, value) {
-  // Memória cache
-  if (this._cache.size >= MAX_CACHE_SIZE) {
-    const firstKey = this._cache.keys().next().value;
-    this._cache.delete(firstKey);
-  }
-  this._cache.set(key, value);
-
-  // localStorage cache
-  try {
-    const raw = localStorage.getItem("lt_translate_cache");
-    const obj = raw ? JSON.parse(raw) : {};
-    const keys = Object.keys(obj);
-    // Ha tele van, töröljük a legrégebbiek felét
-    if (keys.length >= MAX_CACHE_SIZE) {
-      keys.slice(0, Math.floor(MAX_CACHE_SIZE / 2)).forEach(k => delete obj[k]);
+    if (this._cache.size >= MAX_CACHE_SIZE) {
+      const firstKey = this._cache.keys().next().value;
+      this._cache.delete(firstKey);
     }
-    obj[key] = value;
-    localStorage.setItem("lt_translate_cache", JSON.stringify(obj));
-    console.log("[Cache] Írás sikeres, kulcsok száma:", Object.keys(obj).length);
-  } catch(e) {
-    // localStorage tele vagy nem elérhető — csak memória cache marad
-    console.warn("[Translator] localStorage cache írási hiba:", e);
+    this._cache.set(key, value);
+
+    try {
+      const raw = localStorage.getItem("lt_translate_cache");
+      const obj = raw ? JSON.parse(raw) : {};
+      const keys = Object.keys(obj);
+      if (keys.length >= MAX_CACHE_SIZE) {
+        keys.slice(0, Math.floor(MAX_CACHE_SIZE / 2)).forEach(k => delete obj[k]);
+      }
+      obj[key] = value;
+      localStorage.setItem("lt_translate_cache", JSON.stringify(obj));
+      console.log("[Cache] Írás sikeres, kulcsok száma:", Object.keys(obj).length);
+    } catch(e) {
+      console.warn("[Translator] localStorage cache írási hiba:", e);
+    }
+  }
+
+  _getCache(key) {
+    if (this._cache.has(key)) {
+      return this._cache.get(key);
+    }
+    try {
+      const raw = localStorage.getItem("lt_translate_cache");
+      if (!raw) return undefined;
+      const obj = JSON.parse(raw);
+      if (obj[key] !== undefined) {
+        this._cache.set(key, obj[key]);
+        return obj[key];
+      }
+    } catch(e) {
+      console.warn("[Translator] localStorage cache olvasási hiba:", e);
+    }
+    return undefined;
   }
 }
-
-_getCache(key) {
-  // Először memória cache
-  if (this._cache.has(key)) {
-    return this._cache.get(key);
-  }
-  // Aztán localStorage cache
-  try {
-    const raw = localStorage.getItem("lt_translate_cache");
-    if (!raw) return undefined;
-    const obj = JSON.parse(raw);
-    if (obj[key] !== undefined) {
-      this._cache.set(key, obj[key]);
-      return obj[key];
-    }
-  } catch(e) {
-    console.warn("[Translator] localStorage cache olvasási hiba:", e);
-  }
-  return undefined;
-}
-
-} 
-
