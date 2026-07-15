@@ -652,16 +652,17 @@
         const EDGE_FUNCTION_URL =
             "https://yyexlblyepkxyqqbgpvu.supabase.co/functions/v1/groq-translate";
 
+      
+
         // ─── SUPABASE KLIENS ────────────────────────────────────────────
 
-        let supabase = null;
-
-        function initSupabase() {
-            if (!supabase) {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            }
-            return supabase;
-        }
+function initSupabase() {
+    // Használjuk a window.supabaseClient-et, ha már létezik
+    if (!window.supabaseClient) {
+        window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+    return window.supabaseClient;
+}
 
         // ─── TOAST RENDSZER ────────────────────────────────────────────
 
