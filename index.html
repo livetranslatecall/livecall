@@ -4579,8 +4579,8 @@ function showWidgetBox() {
     box.style.display = 'block';
     const input = document.getElementById('embedCodeInput');
     if (input) {
-      // 🔧 ITT A JAVÍTÁS! - myLang változót használjuk, ami a setup-ból jön
-      const lang = window.myLang || 'hu';
+      // 🔧 JAVÍTÁS: uiLang-et használunk, ami a nyelvi kódot tartalmazza!
+      const lang = typeof uiLang !== 'undefined' ? uiLang : 'hu';
       input.value = `<livecall-widget color="#4fd1c5" lang="${lang}" btn-text="Hívás indítása"></livecall-widget>`;
     }
   }
